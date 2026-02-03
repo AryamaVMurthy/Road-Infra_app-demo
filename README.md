@@ -8,7 +8,7 @@ A full-stack application for reporting and managing city infrastructure issues (
 - **Authority Dashboard**: View issues on map, assign to workers, approve resolutions
   - **Kanban Triage View**: Visual workflow with REPORTED → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED columns
   - **Quick-Assign**: One-click worker assignment with real-time task count display
-  - **Worker Analytics**: Embedded workforce overview with top performers leaderboard
+  - **Worker Analytics**: Embedded workforce overview with real-time stats
   - **ETA Tracking**: Display estimated completion times on issue cards
   - **Auto-Refresh**: Dashboard updates every 30 seconds with manual refresh option
 - **Worker Dashboard**: Accept assigned tasks with ETA, submit resolution proof
@@ -149,6 +149,10 @@ Copy the 6-digit code and enter it in the verification screen.
    - Toggle between Markers and Heatmap view
    - Click markers to see issue details
 3. **Kanban Triage**: Manage issue workflow
+   - Each card has a **⋮ menu** with admin actions:
+     - **Assign/Reassign Worker**: Change who's working on it
+     - **Unassign Worker**: Remove worker and reset to REPORTED
+     - **Move to Status**: Manually change status (REPORTED, ASSIGNED, IN_PROGRESS, RESOLVED, CLOSED)
    - **REPORTED**: New issues awaiting assignment
      - Click **"Assign"** button to quick-assign to a worker
      - Use checkbox + dropdown for bulk assignment
@@ -161,7 +165,6 @@ Copy the 6-digit code and enter it in the verification screen.
 4. **Field Force**: View worker performance
    - Active task counts per worker
    - Weekly resolution statistics
-   - Top performers leaderboard
 5. **City Analytics**: View city-wide metrics (links to `/analytics`)
 
 ### For Workers (Resolving Issues)
@@ -247,6 +250,9 @@ Here's how to test the full issue lifecycle:
 | `/api/v1/admin/worker-analytics` | GET | Detailed worker performance metrics |
 | `/api/v1/admin/assign?issue_id=&worker_id=` | POST | Quick-assign single issue |
 | `/api/v1/admin/bulk-assign` | POST | Assign multiple issues |
+| `/api/v1/admin/update-status?issue_id=&status=` | POST | Move issue to any status |
+| `/api/v1/admin/unassign?issue_id=` | POST | Remove worker, reset to REPORTED |
+| `/api/v1/admin/reassign?issue_id=&worker_id=` | POST | Change assigned worker |
 | `/api/v1/admin/approve?issue_id=` | POST | Approve resolved issue |
 | `/api/v1/admin/reject?issue_id=&reason=` | POST | Reject with reason |
 

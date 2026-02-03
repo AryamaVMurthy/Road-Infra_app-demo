@@ -334,3 +334,141 @@ def reject_issue(
     )
     session.commit()
     return {"message": "Issue rejected and returned to worker"}
+
+
+VALID_STATUSES = [
+    "REPORTED",
+    "ASSIGNED",
+    "ACCEPTED",
+    "IN_PROGRESS",
+    "RESOLVED",
+    "CLOSED",
+]
+
+
+@router.post("/update-status")
+def update_issue_status(
+    issue_id: UUID,
+    status: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if status not in VALID_STATUSES:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid status. Must be one of: {VALID_STATUSES}"
+        )
+
+    issue = session.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    old_status = issue.status
+    issue.status = status
+
+    if status == "REPORTED":
+        issue.worker_id = None
+        issue.accepted_at = None
+        issue.started_at = None
+        issue.resolved_at = None
+        issue.eta_hours = None
+    elif status in ["ASSIGNED"]:
+        issue.accepted_at = None
+        issue.started_at = None
+        issue.resolved_at = None
+    elif status == "ACCEPTED":
+        if not issue.accepted_at:
+            issue.accepted_at = datetime.utcnow()
+        issue.started_at = None
+        issue.resolved_at = None
+    elif status == "IN_PROGRESS":
+        if not issue.started_at:
+            issue.started_at = datetime.utcnow()
+        issue.resolved_at = None
+    elif status == "RESOLVED":
+        if not issue.resolved_at:
+            issue.resolved_at = datetime.utcnow()
+
+    session.add(issue)
+    AuditService.log(
+        session,
+        "STATUS_CHANGE",
+        "ISSUE",
+        issue_id,
+        current_user.id,
+        old_status,
+        status,
+    )
+    session.commit()
+    return {"message": f"Issue status updated to {status}"}
+
+
+@router.post("/unassign")
+def unassign_issue(
+    issue_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    issue = session.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    old_worker = str(issue.worker_id) if issue.worker_id else None
+    old_status = issue.status
+
+    issue.worker_id = None
+    issue.status = "REPORTED"
+    issue.accepted_at = None
+    issue.started_at = None
+    issue.resolved_at = None
+    issue.eta_hours = None
+
+    session.add(issue)
+    AuditService.log(
+        session,
+        "UNASSIGNMENT",
+        "ISSUE",
+        issue_id,
+        current_user.id,
+        f"worker:{old_worker},status:{old_status}",
+        "unassigned,REPORTED",
+    )
+    session.commit()
+    return {"message": "Issue unassigned and returned to REPORTED"}
+
+
+@router.post("/reassign")
+def reassign_issue(
+    issue_id: UUID,
+    worker_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    issue = session.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    worker = session.get(User, worker_id)
+    if not worker or worker.role != "WORKER":
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    old_worker = str(issue.worker_id) if issue.worker_id else None
+    old_status = issue.status
+
+    issue.worker_id = worker_id
+    issue.status = "ASSIGNED"
+    issue.accepted_at = None
+    issue.started_at = None
+    issue.resolved_at = None
+
+    session.add(issue)
+    AuditService.log(
+        session,
+        "REASSIGNMENT",
+        "ISSUE",
+        issue_id,
+        current_user.id,
+        f"worker:{old_worker},status:{old_status}",
+        f"worker:{worker_id},status:ASSIGNED",
+    )
+    session.commit()
+    return {"message": f"Issue reassigned to {worker.full_name or worker.email}"}

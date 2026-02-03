@@ -6,7 +6,7 @@ import {
     LayoutDashboard, Map as MapIcon, Users, LogOut, Filter, 
     ChevronDown, CheckCircle2, AlertCircle, Clock,
     CheckSquare, XCircle, Camera, Info, X, MapPin, ChevronRight, Activity, Globe,
-    UserPlus, TrendingUp, Zap, BarChart3, RefreshCw
+    UserPlus, TrendingUp, Zap, BarChart3, RefreshCw, MoreVertical, UserMinus, ArrowRight
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -52,9 +52,17 @@ const StatCard = ({ label, value, icon: Icon, colorClass, trend }) => (
     </div>
 )
 
-// Quick Assign Dropdown Component
-const QuickAssignDropdown = ({ issue, workers, onAssign }) => {
+const KANBAN_STATUSES = [
+    { value: 'REPORTED', label: 'Reported', color: 'bg-rose-500' },
+    { value: 'ASSIGNED', label: 'Assigned', color: 'bg-blue-500' },
+    { value: 'IN_PROGRESS', label: 'In Progress', color: 'bg-amber-500' },
+    { value: 'RESOLVED', label: 'Resolved', color: 'bg-emerald-500' },
+    { value: 'CLOSED', label: 'Closed', color: 'bg-slate-400' },
+]
+
+const IssueActionsDropdown = ({ issue, workers, onUpdate }) => {
     const [isOpen, setIsOpen] = useState(false)
+    const [activeSubmenu, setActiveSubmenu] = useState(null)
     const [loading, setLoading] = useState(false)
     const dropdownRef = useRef(null)
 
@@ -62,32 +70,74 @@ const QuickAssignDropdown = ({ issue, workers, onAssign }) => {
         const handleClickOutside = (e) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
                 setIsOpen(false)
+                setActiveSubmenu(null)
             }
         }
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
+    const handleReassign = async (workerId) => {
+        setLoading(true)
+        try {
+            await api.post(`/admin/reassign?issue_id=${issue.id}&worker_id=${workerId}`)
+            setIsOpen(false)
+            setActiveSubmenu(null)
+            onUpdate()
+        } catch (err) {
+            alert('Reassignment failed')
+        }
+        setLoading(false)
+    }
+
+    const handleUnassign = async () => {
+        setLoading(true)
+        try {
+            await api.post(`/admin/unassign?issue_id=${issue.id}`)
+            setIsOpen(false)
+            onUpdate()
+        } catch (err) {
+            alert('Unassignment failed')
+        }
+        setLoading(false)
+    }
+
+    const handleStatusChange = async (newStatus) => {
+        if (newStatus === issue.status) return
+        setLoading(true)
+        try {
+            await api.post(`/admin/update-status?issue_id=${issue.id}&status=${newStatus}`)
+            setIsOpen(false)
+            setActiveSubmenu(null)
+            onUpdate()
+        } catch (err) {
+            alert('Status update failed')
+        }
+        setLoading(false)
+    }
+
     const handleAssign = async (workerId) => {
         setLoading(true)
         try {
             await api.post(`/admin/assign?issue_id=${issue.id}&worker_id=${workerId}`)
             setIsOpen(false)
-            onAssign()
+            setActiveSubmenu(null)
+            onUpdate()
         } catch (err) {
             alert('Assignment failed')
         }
         setLoading(false)
     }
 
+    const hasWorker = !!issue.worker_id
+
     return (
         <div className="relative" ref={dropdownRef}>
             <button
-                onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}
-                className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-tight hover:bg-primary hover:text-white transition-all"
+                onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); setActiveSubmenu(null) }}
+                className="flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 hover:text-slate-700 transition-all"
             >
-                <UserPlus size={12} />
-                Assign
+                <MoreVertical size={16} />
             </button>
             
             <AnimatePresence>
@@ -96,39 +146,185 @@ const QuickAssignDropdown = ({ issue, workers, onAssign }) => {
                         initial={{ opacity: 0, y: -10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                        className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden"
+                        className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-visible"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="p-3 border-b border-slate-100 bg-slate-50">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assign to Worker</p>
-                        </div>
-                        <div className="max-h-64 overflow-y-auto">
-                            {workers.map(worker => (
-                                <button
-                                    key={worker.id}
-                                    onClick={() => handleAssign(worker.id)}
-                                    disabled={loading}
-                                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors disabled:opacity-50"
-                                >
+                        {!hasWorker ? (
+                            <div 
+                                className="relative"
+                                onMouseEnter={() => setActiveSubmenu('assign')}
+                                onMouseLeave={() => setActiveSubmenu(null)}
+                            >
+                                <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-black text-xs">
-                                            {worker.full_name?.[0] || 'W'}
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="text-sm font-bold text-slate-900">{worker.full_name || worker.email}</p>
-                                            <p className="text-[10px] text-slate-400">{worker.email}</p>
-                                        </div>
+                                        <UserPlus size={14} className="text-primary" />
+                                        <span className="text-sm font-bold text-slate-700">Assign Worker</span>
                                     </div>
-                                    <div className={cn(
-                                        "px-2 py-1 rounded-full text-[10px] font-black",
-                                        worker.active_task_count === 0 ? "bg-emerald-50 text-emerald-600" :
-                                        worker.active_task_count <= 2 ? "bg-blue-50 text-blue-600" :
-                                        "bg-amber-50 text-amber-600"
-                                    )}>
-                                        {worker.active_task_count} tasks
-                                    </div>
+                                    <ChevronRight size={14} className="text-slate-400" />
                                 </button>
-                            ))}
+                                
+                                <AnimatePresence>
+                                    {activeSubmenu === 'assign' && (
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -10 }}
+                                            className="absolute left-full top-0 ml-1 w-64 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
+                                        >
+                                            <div className="p-3 border-b border-slate-100 bg-slate-50">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Worker</p>
+                                            </div>
+                                            <div className="max-h-64 overflow-y-auto">
+                                                {workers.map(worker => (
+                                                    <button
+                                                        key={worker.id}
+                                                        onClick={() => handleAssign(worker.id)}
+                                                        disabled={loading}
+                                                        className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors disabled:opacity-50"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-black text-[10px]">
+                                                                {worker.full_name?.[0] || 'W'}
+                                                            </div>
+                                                            <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">{worker.full_name || worker.email}</span>
+                                                        </div>
+                                                        <span className={cn(
+                                                            "px-1.5 py-0.5 rounded text-[9px] font-black",
+                                                            worker.active_task_count === 0 ? "bg-emerald-50 text-emerald-600" :
+                                                            worker.active_task_count <= 2 ? "bg-blue-50 text-blue-600" :
+                                                            "bg-amber-50 text-amber-600"
+                                                        )}>
+                                                            {worker.active_task_count}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        ) : (
+                            <>
+                                <div 
+                                    className="relative"
+                                    onMouseEnter={() => setActiveSubmenu('reassign')}
+                                    onMouseLeave={() => setActiveSubmenu(null)}
+                                >
+                                    <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
+                                        <div className="flex items-center gap-3">
+                                            <UserPlus size={14} className="text-blue-500" />
+                                            <span className="text-sm font-bold text-slate-700">Reassign Worker</span>
+                                        </div>
+                                        <ChevronRight size={14} className="text-slate-400" />
+                                    </button>
+                                    
+                                    <AnimatePresence>
+                                        {activeSubmenu === 'reassign' && (
+                                            <motion.div
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -10 }}
+                                                className="absolute left-full top-0 ml-1 w-64 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
+                                            >
+                                                <div className="p-3 border-b border-slate-100 bg-slate-50">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reassign to</p>
+                                                </div>
+                                                <div className="max-h-64 overflow-y-auto">
+                                                    {workers.map(worker => (
+                                                        <button
+                                                            key={worker.id}
+                                                            onClick={() => handleReassign(worker.id)}
+                                                            disabled={loading || worker.id === issue.worker_id}
+                                                            className={cn(
+                                                                "w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors disabled:opacity-50",
+                                                                worker.id === issue.worker_id && "bg-primary/5"
+                                                            )}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-black text-[10px]">
+                                                                    {worker.full_name?.[0] || 'W'}
+                                                                </div>
+                                                                <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">{worker.full_name || worker.email}</span>
+                                                            </div>
+                                                            {worker.id === issue.worker_id ? (
+                                                                <span className="text-[9px] font-black text-primary uppercase">Current</span>
+                                                            ) : (
+                                                                <span className={cn(
+                                                                    "px-1.5 py-0.5 rounded text-[9px] font-black",
+                                                                    worker.active_task_count === 0 ? "bg-emerald-50 text-emerald-600" :
+                                                                    worker.active_task_count <= 2 ? "bg-blue-50 text-blue-600" :
+                                                                    "bg-amber-50 text-amber-600"
+                                                                )}>
+                                                                    {worker.active_task_count}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                                
+                                <button 
+                                    onClick={handleUnassign}
+                                    disabled={loading}
+                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-50 transition-colors text-left disabled:opacity-50"
+                                >
+                                    <UserMinus size={14} className="text-red-500" />
+                                    <span className="text-sm font-bold text-red-600">Unassign Worker</span>
+                                </button>
+                            </>
+                        )}
+                        
+                        <div className="border-t border-slate-100">
+                            <div 
+                                className="relative"
+                                onMouseEnter={() => setActiveSubmenu('status')}
+                                onMouseLeave={() => setActiveSubmenu(null)}
+                            >
+                                <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
+                                    <div className="flex items-center gap-3">
+                                        <ArrowRight size={14} className="text-slate-500" />
+                                        <span className="text-sm font-bold text-slate-700">Move to Status</span>
+                                    </div>
+                                    <ChevronRight size={14} className="text-slate-400" />
+                                </button>
+                                
+                                <AnimatePresence>
+                                    {activeSubmenu === 'status' && (
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -10 }}
+                                            className="absolute left-full top-0 ml-1 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
+                                        >
+                                            <div className="p-3 border-b border-slate-100 bg-slate-50">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Change Status</p>
+                                            </div>
+                                            <div className="py-1">
+                                                {KANBAN_STATUSES.map(status => (
+                                                    <button
+                                                        key={status.value}
+                                                        onClick={() => handleStatusChange(status.value)}
+                                                        disabled={loading || status.value === issue.status}
+                                                        className={cn(
+                                                            "w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors disabled:opacity-50 text-left",
+                                                            status.value === issue.status && "bg-primary/5"
+                                                        )}
+                                                    >
+                                                        <div className={cn("w-2 h-2 rounded-full", status.color)}></div>
+                                                        <span className="text-sm font-medium text-slate-700">{status.label}</span>
+                                                        {status.value === issue.status && (
+                                                            <CheckCircle2 size={12} className="text-primary ml-auto" />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         </div>
                     </motion.div>
                 )}
@@ -408,21 +604,21 @@ export default function AuthorityDashboard() {
                                             onClick={() => setReviewIssue(issue)}
                                             className={cn("bg-white p-6 rounded-[2rem] shadow-lg shadow-slate-200/40 border-2 transition-all relative group cursor-pointer ticket-card", selectedIssues.includes(issue.id) ? "border-primary" : "border-transparent")}
                                         >
-                                            {column.key === 'REPORTED' && (
-                                                <div className="absolute top-5 right-5 flex items-center gap-2">
-                                                    <QuickAssignDropdown 
-                                                        issue={issue} 
-                                                        workers={workers}
-                                                        onAssign={fetchData}
-                                                    />
+                                            <div className="absolute top-5 right-5 flex items-center gap-2">
+                                                <IssueActionsDropdown 
+                                                    issue={issue} 
+                                                    workers={workers}
+                                                    onUpdate={fetchData}
+                                                />
+                                                {column.key === 'REPORTED' && (
                                                     <input 
                                                         type="checkbox" checked={selectedIssues.includes(issue.id)}
                                                         className="w-5 h-5 rounded-md border-2 border-slate-200 checked:bg-primary transition-all cursor-pointer"
                                                         onChange={(e) => { e.stopPropagation(); toggleIssueSelection(issue.id); }}
                                                     />
-                                                </div>
-                                            )}
-                                            <div className="flex gap-2 mb-4 flex-wrap">
+                                                )}
+                                            </div>
+                                            <div className="flex gap-2 mb-4 flex-wrap pr-12">
                                                 <span className={cn("text-[10px] font-black px-2 py-0.5 rounded-full", issue.priority === 'P1' ? "bg-rose-50 text-rose-600" : issue.priority === 'P2' ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600")}>{issue.priority}</span>
                                                 {issue.eta_duration && (
                                                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 flex items-center gap-1">

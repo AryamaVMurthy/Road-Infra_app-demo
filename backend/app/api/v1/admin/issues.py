@@ -1,0 +1,86 @@
+"""
+Admin Issue Management Routes
+Endpoints for issue workflow and status management
+"""
+
+from typing import List
+from uuid import UUID
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
+
+from app.db.session import get_session
+from app.api.deps import get_current_user
+from app.models.domain import User, Issue, Category
+from app.schemas.issue import IssueRead
+from app.services.workflow_service import WorkflowService
+
+router = APIRouter()
+
+
+@router.get("/", response_model=List[IssueRead])
+def get_all_issues(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all issues with eager loaded relationships"""
+    statement = select(Issue).options(
+        selectinload(Issue.category), selectinload(Issue.worker)
+    )
+    return session.exec(statement).all()
+
+
+@router.post("/{issue_id}/status")
+def update_issue_status(
+    issue_id: UUID,
+    status: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Update issue status with proper workflow management"""
+    issue = session.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    WorkflowService.update_status(session, issue, status, current_user.id)
+    session.commit()
+    return {"message": f"Issue status updated to {status}"}
+
+
+@router.post("/{issue_id}/approve")
+def approve_issue(
+    issue_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Approve a resolved issue and close it"""
+    issue = session.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    WorkflowService.approve_resolution(session, issue, current_user.id)
+    session.commit()
+    return {"message": "Issue approved and closed"}
+
+
+@router.post("/{issue_id}/reject")
+def reject_issue(
+    issue_id: UUID,
+    reason: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Reject a resolved issue and return it to worker"""
+    issue = session.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    WorkflowService.reject_resolution(session, issue, reason, current_user.id)
+    session.commit()
+    return {"message": "Issue rejected and returned to worker"}
+
+
+@router.get("/categories")
+def get_categories(session: Session = Depends(get_session)):
+    """Get all active issue categories"""
+    return session.exec(select(Category).where(Category.is_active == True)).all()

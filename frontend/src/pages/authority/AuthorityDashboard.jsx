@@ -6,7 +6,7 @@ import {
     LayoutDashboard, Map as MapIcon, Users, LogOut, Filter, 
     ChevronDown, CheckCircle2, AlertCircle, Clock,
     CheckSquare, XCircle, Camera, Info, X, MapPin, ChevronRight, Activity, Globe,
-    UserPlus, TrendingUp, Zap, Award, BarChart3, RefreshCw
+    UserPlus, TrendingUp, Zap, BarChart3, RefreshCw
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -137,7 +137,6 @@ const QuickAssignDropdown = ({ issue, workers, onAssign }) => {
     )
 }
 
-// Worker Analytics Mini Card
 const WorkerAnalyticsMini = ({ analytics }) => {
     if (!analytics) return null
     
@@ -145,67 +144,38 @@ const WorkerAnalyticsMini = ({ analytics }) => {
         <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 text-white mb-8"
+            className="bg-white rounded-2xl p-5 border border-slate-100 shadow-lg shadow-slate-200/40 mb-6"
         >
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-                        <BarChart3 size={24} />
+            <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                        <BarChart3 size={18} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-black">Workforce Overview</h3>
-                        <p className="text-xs text-slate-400 uppercase tracking-widest">Real-time Status</p>
+                        <h3 className="text-sm font-black text-slate-900">Workforce Overview</h3>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-widest">Real-time</p>
+                    </div>
+                </div>
+                
+                <div className="flex-1 flex items-center gap-4 justify-end">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
+                        <p className="text-lg font-black text-emerald-600">{analytics.summary?.total_workers || 0}</p>
+                        <p className="text-[9px] text-slate-400 uppercase">Workers</p>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
+                        <p className="text-lg font-black text-amber-600">{analytics.summary?.total_active_tasks || 0}</p>
+                        <p className="text-[9px] text-slate-400 uppercase">Active</p>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
+                        <p className="text-lg font-black text-blue-600">{analytics.summary?.total_resolved || 0}</p>
+                        <p className="text-[9px] text-slate-400 uppercase">Resolved</p>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
+                        <p className="text-lg font-black text-purple-600">{analytics.summary?.avg_tasks_per_worker || 0}</p>
+                        <p className="text-[9px] text-slate-400 uppercase">Avg/Worker</p>
                     </div>
                 </div>
             </div>
-            
-            <div className="grid grid-cols-4 gap-4">
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                    <p className="text-2xl font-black text-emerald-400">{analytics.summary?.total_workers || 0}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Total Workers</p>
-                </div>
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                    <p className="text-2xl font-black text-amber-400">{analytics.summary?.total_active_tasks || 0}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Active Tasks</p>
-                </div>
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                    <p className="text-2xl font-black text-blue-400">{analytics.summary?.total_resolved || 0}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Resolved</p>
-                </div>
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                    <p className="text-2xl font-black text-purple-400">{analytics.summary?.avg_tasks_per_worker || 0}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Avg/Worker</p>
-                </div>
-            </div>
-            
-            {/* Top Performers */}
-            {analytics.workers && analytics.workers.length > 0 && (
-                <div className="mt-6 pt-6 border-t border-white/10">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Award size={14} className="text-amber-400" />
-                        Top Performers This Week
-                    </p>
-                    <div className="flex gap-3">
-                        {analytics.workers.slice(0, 3).map((worker, idx) => (
-                            <div key={worker.worker_id} className="flex-1 bg-white/5 rounded-xl p-3 border border-white/5">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className={cn(
-                                        "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black",
-                                        idx === 0 ? "bg-amber-500 text-amber-900" :
-                                        idx === 1 ? "bg-slate-400 text-slate-900" :
-                                        "bg-amber-700 text-amber-200"
-                                    )}>
-                                        {idx + 1}
-                                    </div>
-                                    <p className="text-sm font-bold truncate">{worker.worker_name}</p>
-                                </div>
-                                <p className="text-lg font-black text-emerald-400">{worker.tasks_this_week}</p>
-                                <p className="text-[9px] text-slate-500 uppercase">resolved this week</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
         </motion.div>
     )
 }

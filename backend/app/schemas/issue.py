@@ -16,7 +16,6 @@ class IssueRead(BaseModel):
     lng: float
     address: Optional[str] = None
     reporter_id: UUID
-    worker_id: Optional[UUID] = None
     org_id: Optional[UUID] = None
     priority: Optional[str] = "P3"
     report_count: int = 1
@@ -24,5 +23,7 @@ class IssueRead(BaseModel):
     updated_at: datetime
     rejection_reason: Optional[str] = None
     eta_duration: Optional[str] = None
+    accepted_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

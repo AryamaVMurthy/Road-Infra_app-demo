@@ -6,7 +6,12 @@ A full-stack application for reporting and managing city infrastructure issues (
 
 - **Citizen Portal**: Report infrastructure issues with GPS location and photo evidence
 - **Authority Dashboard**: View issues on map, assign to workers, approve resolutions
-- **Worker Dashboard**: Accept assigned tasks, submit resolution proof
+  - **Kanban Triage View**: Visual workflow with REPORTED → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED columns
+  - **Quick-Assign**: One-click worker assignment with real-time task count display
+  - **Worker Analytics**: Embedded workforce overview with top performers leaderboard
+  - **ETA Tracking**: Display estimated completion times on issue cards
+  - **Auto-Refresh**: Dashboard updates every 30 seconds with manual refresh option
+- **Worker Dashboard**: Accept assigned tasks with ETA, submit resolution proof
 - **Analytics Dashboard**: Real-time city health metrics, heatmaps, and trends
 - **Audit Trail**: Complete transparency with full mutation history
 
@@ -133,7 +138,10 @@ In DEV_MODE, OTPs are printed to the backend console instead of being emailed.
 ### Admin
 - `GET /api/v1/admin/issues` - List all issues
 - `GET /api/v1/admin/workers` - List all workers
-- `POST /api/v1/admin/bulk-assign` - Assign issues to worker
+- `GET /api/v1/admin/workers-with-stats` - Workers with active task counts (sorted by workload)
+- `GET /api/v1/admin/worker-analytics` - Detailed worker performance metrics
+- `POST /api/v1/admin/assign` - Quick-assign single issue to worker
+- `POST /api/v1/admin/bulk-assign` - Assign multiple issues to worker
 - `POST /api/v1/admin/approve` - Approve resolved issue
 - `POST /api/v1/admin/reject` - Reject with reason
 

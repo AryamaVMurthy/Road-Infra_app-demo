@@ -53,10 +53,18 @@ def seed_data():
 
         # Seed test users
         users = [
-            User(email="sysadmin@urbaninfra.gov.in", role="SYSADMIN"),
-            User(email="admin@ghmc.gov.in", role="ADMIN"),
-            User(email="worker@ghmc.gov.in", role="WORKER"),
-            User(email="resident@hyderabad.in", role="CITIZEN"),
+            User(
+                email="sysadmin@urbaninfra.gov.in",
+                role="SYSADMIN",
+                full_name="System Administrator",
+            ),
+            User(email="admin@ghmc.gov.in", role="ADMIN", full_name="GHMC Authority"),
+            User(email="worker@ghmc.gov.in", role="WORKER", full_name="Ramesh Kumar"),
+            User(email="worker2@ghmc.gov.in", role="WORKER", full_name="Suresh Reddy"),
+            User(email="worker3@ghmc.gov.in", role="WORKER", full_name="Venkat Rao"),
+            User(
+                email="resident@hyderabad.in", role="CITIZEN", full_name="Priya Sharma"
+            ),
         ]
         for u in users:
             session.add(u)

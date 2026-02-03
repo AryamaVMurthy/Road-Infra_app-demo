@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
 from app.db.session import get_session
 from app.models.domain import Issue, Evidence, User
 from app.services.minio_client import minio_client
@@ -25,7 +26,13 @@ def get_worker_tasks(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    return session.exec(select(Issue).where(Issue.worker_id == current_user.id)).all()
+    # Eagerly load relationships for worker_name and category_name
+    statement = (
+        select(Issue)
+        .where(Issue.worker_id == current_user.id)
+        .options(selectinload(Issue.category), selectinload(Issue.worker))
+    )
+    return session.exec(statement).all()
 
 
 @router.post("/tasks/{issue_id}/accept")

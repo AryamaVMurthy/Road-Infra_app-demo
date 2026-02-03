@@ -1,13 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, col
+from sqlmodel import Session, select, col, func
+from sqlalchemy.orm import selectinload
 from app.db.session import get_session
 from app.models.domain import Issue, User, Organization, Category, Invite
 from typing import List
 from uuid import UUID, uuid4
+from datetime import datetime, timedelta
 from app.api.deps import get_current_user
 from app.services.audit import AuditService
 from app.services.admin import AdminService
-from app.schemas.admin import BulkAssignRequest
+from app.schemas.admin import (
+    BulkAssignRequest,
+    WorkerWithStats,
+    WorkerPerformance,
+    WorkerAnalyticsResponse,
+)
 from app.schemas.issue import IssueRead
 
 router = APIRouter()
@@ -18,7 +25,11 @@ def get_all_issues(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    return session.exec(select(Issue)).all()
+    # Eagerly load relationships for worker_name and category_name
+    statement = select(Issue).options(
+        selectinload(Issue.category), selectinload(Issue.worker)
+    )
+    return session.exec(statement).all()
 
 
 @router.get("/workers", response_model=List[User])
@@ -27,6 +38,176 @@ def get_workers(
     current_user: User = Depends(get_current_user),
 ):
     return session.exec(select(User).where(User.role == "WORKER")).all()
+
+
+@router.get("/workers-with-stats", response_model=List[WorkerWithStats])
+def get_workers_with_stats(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all workers with their current task counts for assignment dropdown"""
+    workers = session.exec(select(User).where(User.role == "WORKER")).all()
+
+    result = []
+    for worker in workers:
+        # Count active tasks (not RESOLVED or CLOSED)
+        active_count = session.exec(
+            select(func.count(Issue.id)).where(
+                Issue.worker_id == worker.id,
+                Issue.status.in_(["ASSIGNED", "ACCEPTED", "IN_PROGRESS"]),
+            )
+        ).one()
+
+        # Count total assigned
+        total_assigned = session.exec(
+            select(func.count(Issue.id)).where(Issue.worker_id == worker.id)
+        ).one()
+
+        # Count resolved
+        resolved_count = session.exec(
+            select(func.count(Issue.id)).where(
+                Issue.worker_id == worker.id, Issue.status.in_(["RESOLVED", "CLOSED"])
+            )
+        ).one()
+
+        result.append(
+            WorkerWithStats(
+                id=worker.id,
+                email=worker.email,
+                full_name=worker.full_name,
+                status=worker.status,
+                active_task_count=active_count,
+                total_assigned=total_assigned,
+                resolved_count=resolved_count,
+            )
+        )
+
+    # Sort by active task count (least busy first)
+    result.sort(key=lambda w: w.active_task_count)
+    return result
+
+
+@router.get("/worker-analytics", response_model=WorkerAnalyticsResponse)
+def get_worker_analytics(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Get detailed worker analytics for dashboard"""
+    workers = session.exec(select(User).where(User.role == "WORKER")).all()
+
+    now = datetime.utcnow()
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+
+    worker_stats = []
+    total_active = 0
+    total_resolved = 0
+
+    for worker in workers:
+        # Pending acceptance (ASSIGNED)
+        pending = session.exec(
+            select(func.count(Issue.id)).where(
+                Issue.worker_id == worker.id, Issue.status == "ASSIGNED"
+            )
+        ).one()
+
+        # In progress (ACCEPTED or IN_PROGRESS)
+        in_progress = session.exec(
+            select(func.count(Issue.id)).where(
+                Issue.worker_id == worker.id,
+                Issue.status.in_(["ACCEPTED", "IN_PROGRESS"]),
+            )
+        ).one()
+
+        # Resolved
+        resolved = session.exec(
+            select(func.count(Issue.id)).where(
+                Issue.worker_id == worker.id, Issue.status == "RESOLVED"
+            )
+        ).one()
+
+        # Closed
+        closed = session.exec(
+            select(func.count(Issue.id)).where(
+                Issue.worker_id == worker.id, Issue.status == "CLOSED"
+            )
+        ).one()
+
+        # Tasks this week
+        tasks_week = session.exec(
+            select(func.count(Issue.id)).where(
+                Issue.worker_id == worker.id,
+                Issue.status.in_(["RESOLVED", "CLOSED"]),
+                Issue.resolved_at >= week_ago,
+            )
+        ).one()
+
+        # Tasks this month
+        tasks_month = session.exec(
+            select(func.count(Issue.id)).where(
+                Issue.worker_id == worker.id,
+                Issue.status.in_(["RESOLVED", "CLOSED"]),
+                Issue.resolved_at >= month_ago,
+            )
+        ).one()
+
+        # Calculate average resolution time (hours)
+        resolved_issues = session.exec(
+            select(Issue).where(
+                Issue.worker_id == worker.id,
+                Issue.status.in_(["RESOLVED", "CLOSED"]),
+                Issue.accepted_at.isnot(None),
+                Issue.resolved_at.isnot(None),
+            )
+        ).all()
+
+        avg_hours = None
+        if resolved_issues:
+            total_hours = sum(
+                (i.resolved_at - i.accepted_at).total_seconds() / 3600
+                for i in resolved_issues
+                if i.accepted_at and i.resolved_at
+            )
+            avg_hours = (
+                round(total_hours / len(resolved_issues), 1)
+                if resolved_issues
+                else None
+            )
+
+        active = pending + in_progress
+        total_active += active
+        total_resolved += resolved + closed
+
+        worker_stats.append(
+            WorkerPerformance(
+                worker_id=worker.id,
+                worker_name=worker.full_name or worker.email,
+                email=worker.email,
+                active_tasks=active,
+                pending_acceptance=pending,
+                in_progress=in_progress,
+                total_resolved=resolved,
+                total_closed=closed,
+                avg_resolution_hours=avg_hours,
+                tasks_this_week=tasks_week,
+                tasks_this_month=tasks_month,
+            )
+        )
+
+    # Sort by tasks this week (most productive first)
+    worker_stats.sort(key=lambda w: w.tasks_this_week, reverse=True)
+
+    return WorkerAnalyticsResponse(
+        workers=worker_stats,
+        summary={
+            "total_workers": len(workers),
+            "total_active_tasks": total_active,
+            "total_resolved": total_resolved,
+            "avg_tasks_per_worker": round(total_active / len(workers), 1)
+            if workers
+            else 0,
+        },
+    )
 
 
 @router.post("/invite-worker")

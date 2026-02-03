@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MoreVertical, ChevronRight, UserPlus, UserMinus, ArrowRight, Search, X } from 'lucide-react'
-import { cn } from '../../../utils/utils'
+import { cn } from '../../../../utils/utils'
 
 /**
  * KANBAN_STATUSES - Valid status values for issues

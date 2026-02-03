@@ -9,7 +9,7 @@ import { BarChart3 } from 'lucide-react'
  * @param {Array} analytics.workers - Individual worker statistics
  * @param {Object} analytics.summary - Aggregated summary stats
  */
-export const WorkerAnalyticsMini = ({ analytics }) => {
+export const AnalyticsPanel = ({ analytics }) => {
   if (!analytics) return null
   
   const summary = analytics.summary || {}
@@ -61,4 +61,4 @@ const StatBadge = ({ value, label, color }) => {
   )
 }
 
-export default WorkerAnalyticsMini
+export default AnalyticsPanel

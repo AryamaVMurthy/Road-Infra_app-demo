@@ -1,7 +1,7 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clock, X } from 'lucide-react'
-import { cn } from '../../../utils/utils'
+import { cn } from '../../../../utils/utils'
 
 /**
  * AcceptTaskModal - Modal for accepting a task with ETA

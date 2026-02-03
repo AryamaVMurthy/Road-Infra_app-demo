@@ -1,7 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { MapPin, Navigation2, Clock, CloudOff, Camera, ArrowRight } from 'lucide-react'
-import { cn } from '../../../utils/utils'
+import { cn } from '../../../../utils/utils'
 
 /**
  * TaskCard - Displays a single task for workers

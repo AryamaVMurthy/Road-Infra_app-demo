@@ -36,5 +36,5 @@ export const KanbanColumn = ({ title, color, count, children }) => {
   )
 }
 
-import { cn } from '../../../utils/utils'
+import { cn } from '../../../../utils/utils'
 export default KanbanColumn

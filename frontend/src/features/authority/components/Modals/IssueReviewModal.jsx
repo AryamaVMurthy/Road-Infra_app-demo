@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, AlertCircle, MapPin, Clock, User, MessageSquare } from 'lucide-react'
-import { cn } from '../../../utils/utils'
+import { cn } from '../../../../utils/utils'
 import { API_URL } from '../../../../services/api'
 
 /**

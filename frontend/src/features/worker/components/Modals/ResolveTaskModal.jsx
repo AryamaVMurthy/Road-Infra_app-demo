@@ -1,7 +1,7 @@
 import React, { useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, Upload, WifiOff, Loader2 } from 'lucide-react'
-import { cn } from '../../../utils/utils'
+import { cn } from '../../../../utils/utils'
 
 /**
  * ResolveTaskModal - Modal for submitting task resolution

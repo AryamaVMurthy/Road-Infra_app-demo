@@ -197,7 +197,7 @@ The data subsystem uses [PostgreSQL][2] with the [PostGIS][3] extension. This al
 
 The server-side code is written in [Python][4], using [FastAPI][5] as the server framework. FastAPI provides high performance, automatic OpenAPI documentation, and asynchronous I/O support. [SQLModel][6] is used for ORM, combining the power of SQLAlchemy with the simplicity of Pydantic.
 
-The client-side code uses the [React][7] framework with [Vite][8] as the build tool. The UI is built using [Tailwind CSS][9] and [Shadcn UI][10] for a clean, modern aesthetic. [Framer Motion][11] handles all animations and micro-interactions. Maps are enhanced with [Leaflet Geocoder][12] for address search and [Leaflet Heat][13] for analytics.
+The client-side code uses the [React][7] framework with [Vite][8] as the build tool. The UI is built using [Tailwind CSS][9] for styling and [Lucide React][10] for icons. [Framer Motion][11] handles all animations and micro-interactions. Maps are enhanced with [Leaflet Geocoder][12] for address search and [Leaflet Heat][13] for analytics. [Recharts][14] provides data visualization for the analytics dashboard.
 
 [1]: https://jwt.io
 [2]: https://postgresql.org
@@ -208,10 +208,11 @@ The client-side code uses the [React][7] framework with [Vite][8] as the build t
 [7]: https://react.dev
 [8]: https://vitejs.dev
 [9]: https://tailwindcss.com
-[10]: https://ui.shadcn.com
+[10]: https://lucide.dev
 [11]: https://framer.com/motion
 [12]: https://github.com/perliedman/leaflet-control-geocoder
 [13]: https://github.com/Leaflet/Leaflet.heat
+[14]: https://recharts.org
 
 ## Database
 

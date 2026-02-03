@@ -182,12 +182,12 @@ Using **Pillow** in `backend/app/services/exif.py`:
 ### 2.5 Frontend Component architecture
 
 #### **State Management (React)**
-- **Auth Store (Zustand)**: Manages the JWT, role detection, and logout logic.
+- **Auth Context (React useState/localStorage)**: Manages the JWT, role detection, and logout logic.
 - **Offline Queue (IndexedDB)**:
   - `reports`: Stores objects containing `FormData` blobs and metadata.
   - `synced`: Temporary log of successfully synced items for local UI updates.
 
-#### **Visual Layer (Shadcn UI)**
+#### **Visual Layer (Tailwind CSS + Lucide React)**
 - **Layout Personas**: Dynamic wrappers that switch between the Citizen's mobile-first layout and the Admin's sidebar-centric view.
 - **KanbanBoard**: Built using `framer-motion` for fluid drag-and-drop visuals, mapped to status columns.
 - **MapLayer**: A Leaflet wrapper that provides a unified interface for "Click-to-lock" (Citizen) and "Cluster-view" (Admin).

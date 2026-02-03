@@ -154,16 +154,17 @@ The system follows a **3-Tier Architecture** with clear separation of concerns:
 | **Frontend Framework** | React | 18.2 | Component-based UI development |
 | **Build Tool** | Vite | 5.0 | Fast HMR, ESM-based bundling |
 | **Styling** | Tailwind CSS | 3.3 | Utility-first CSS framework |
-| **UI Components** | Radix UI | Latest | Accessible component primitives |
 | **Animations** | Framer Motion | 12.x | Declarative animations |
 | **Maps** | Leaflet + React-Leaflet | 1.9/4.2 | Interactive mapping |
 | **Heatmaps** | Leaflet.heat | 0.2 | Density visualization |
 | **Geocoding** | Leaflet-control-geocoder | 3.3 | Address search |
 | **Charts** | Recharts | 2.9 | Data visualization |
 | **HTTP Client** | Axios | 1.6 | API communication |
+| **Data Fetching** | React Query | 3.39 | Server state management |
 | **Routing** | React Router DOM | 6.18 | Client-side routing |
-| **State Management** | Zustand | 4.4 | Lightweight state management |
+| **State Management** | React useState/useEffect | 18.2 | Built-in React state management |
 | **Icons** | Lucide React | 0.292 | Icon library |
+| **Utilities** | clsx + tailwind-merge | Latest | Classname utilities |
 | **Backend Framework** | FastAPI | Latest | High-performance Python API |
 | **ORM** | SQLModel | Latest | Pydantic + SQLAlchemy fusion |
 | **Database** | PostgreSQL | 14 | Primary relational database |
@@ -1128,8 +1129,8 @@ WHERE status != 'CLOSED';
 │  • Loading states                                                         │
 │  • Component-specific data                                                │
 │                                                                           │
-│  CONTEXT/ZUSTAND (Global State)                                           │
-│  ──────────────────────────────                                           │
+│  CONTEXT (Global State)                                              │
+│  ───────────────────────                                             │
 │  Used for:                                                                │
 │  • Authentication state                                                   │
 │  • User preferences                                                       │

@@ -5,7 +5,7 @@ A high-integrity, production-ready platform for GHMC municipal operations. The s
 
 ## 2. Production Architecture
 - **Backend**: FastAPI (Python 3.12) with modular service-layer architecture.
-- **Frontend**: High-fidelity React PWA using **Shadcn UI**, **Tailwind CSS**, and **Framer Motion**.
+- **Frontend**: High-fidelity React PWA using **Tailwind CSS**, **Framer Motion**, and **Lucide React** icons.
 - **Database**: **PostgreSQL 14 + PostGIS** for high-precision spatial operations.
 - **Storage**: **Minio** (S3-compatible) for multi-source image evidence.
 - **Resilience**: Integrated **IndexedDB** for offline submission logic.

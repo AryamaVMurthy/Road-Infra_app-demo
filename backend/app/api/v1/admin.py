@@ -368,21 +368,16 @@ def update_issue_status(
     if status == "REPORTED":
         issue.worker_id = None
         issue.accepted_at = None
-        issue.started_at = None
         issue.resolved_at = None
-        issue.eta_hours = None
+        issue.eta_duration = None
     elif status in ["ASSIGNED"]:
         issue.accepted_at = None
-        issue.started_at = None
         issue.resolved_at = None
     elif status == "ACCEPTED":
         if not issue.accepted_at:
             issue.accepted_at = datetime.utcnow()
-        issue.started_at = None
         issue.resolved_at = None
     elif status == "IN_PROGRESS":
-        if not issue.started_at:
-            issue.started_at = datetime.utcnow()
         issue.resolved_at = None
     elif status == "RESOLVED":
         if not issue.resolved_at:
@@ -418,9 +413,8 @@ def unassign_issue(
     issue.worker_id = None
     issue.status = "REPORTED"
     issue.accepted_at = None
-    issue.started_at = None
     issue.resolved_at = None
-    issue.eta_hours = None
+    issue.eta_duration = None
 
     session.add(issue)
     AuditService.log(

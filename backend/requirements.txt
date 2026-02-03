@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlmodel
+psycopg2-binary
+minio
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+python-dotenv
+httpx
+geoalchemy2
+shapely
+pydantic-settings
+Pillow
+fastapi-mail
+redis
+email-validator

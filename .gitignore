@@ -82,5 +82,7 @@ coverage/
 .coverage
 htmlcov/
 
-# Docker volumes (if local)
+# Docker local persistence
+docker_data/
 postgres_data/
+minio_data/

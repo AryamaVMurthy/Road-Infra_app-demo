@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: toto
       POSTGRES_DB: app
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./docker_data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -19,8 +19,11 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     volumes:
-      - minio_data:/data
+      - ./docker_data/minio:/data
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 5s
@@ -51,7 +54,3 @@ services:
       - "3001:80"
     depends_on:
       - backend
-
-volumes:
-  postgres_data:
-  minio_data:

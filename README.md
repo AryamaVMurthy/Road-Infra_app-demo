@@ -52,7 +52,15 @@ The first build takes 2-3 minutes. Subsequent starts are instant.
 | Frontend | Nginx serving React | `3001` |
 | Backend | FastAPI + Uvicorn | `8088` (internal) |
 | Database | PostgreSQL + PostGIS | `5432` (internal) |
-| Storage | MinIO (S3-compatible) | `9000` (internal) |
+| Storage | MinIO API | `9000` |
+| Storage Console | MinIO Dashboard | `9001` |
+
+### Persistence
+
+Data is stored in the `./docker_data` directory in the project root. This ensures all reports, users, and images persist even if containers are deleted.
+
+- `./docker_data/postgres`: Database records
+- `./docker_data/minio`: Uploaded images and evidence
 
 ---
 

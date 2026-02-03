@@ -15,6 +15,7 @@ export const authService = {
   },
   logout: () => {
     localStorage.removeItem('user')
+    window.location.href = '/login'
   },
   getCurrentUser: () => {
     const user = localStorage.getItem('user')

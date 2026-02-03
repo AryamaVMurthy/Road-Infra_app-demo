@@ -53,6 +53,7 @@ def seed_data():
 
         # Seed test users
         users = [
+            User(email="sysadmin@urbaninfra.gov.in", role="SYSADMIN"),
             User(email="admin@ghmc.gov.in", role="ADMIN"),
             User(email="worker@ghmc.gov.in", role="WORKER"),
             User(email="resident@hyderabad.in", role="CITIZEN"),

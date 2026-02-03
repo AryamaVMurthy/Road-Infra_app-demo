@@ -107,6 +107,7 @@ In DEV_MODE, OTPs are printed to the backend console instead of being emailed.
 
 | Email | Role | Dashboard |
 |-------|------|-----------|
+| `sysadmin@urbaninfra.gov.in` | SYSADMIN | `/admin` |
 | `admin@ghmc.gov.in` | ADMIN | `/authority` |
 | `worker@ghmc.gov.in` | WORKER | `/worker` |
 | `resident@hyderabad.in` | CITIZEN | `/citizen` |

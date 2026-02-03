@@ -1,9 +1,7 @@
 from sqlmodel import Session, create_engine, SQLModel
-from app.models.domain import Zone, Category
+from app.models.domain import Zone, Category, User
 from app.core.config import settings
 from uuid import uuid4
-
-
 from sqlalchemy import text
 
 
@@ -52,6 +50,15 @@ def seed_data():
         ]
         for z in zones:
             session.add(z)
+
+        # Seed test users
+        users = [
+            User(email="admin@ghmc.gov.in", role="ADMIN"),
+            User(email="worker@ghmc.gov.in", role="WORKER"),
+            User(email="resident@hyderabad.in", role="CITIZEN"),
+        ]
+        for u in users:
+            session.add(u)
 
         session.commit()
         print("Database seeded successfully.")

@@ -28,96 +28,70 @@ A full-stack application for reporting and managing city infrastructure issues (
 
 ## Prerequisites
 
-- **Docker** and **Docker Compose** (for PostgreSQL + PostGIS and MinIO)
-- **Python 3.12+**
-- **Node.js 18+** and **npm**
+- **Docker** and **Docker Compose** (v2.0+)
 
-## Quick Start
+That's it! Everything runs in containers.
 
-### 1. Clone the Repository
+## Quick Start (Docker - Recommended)
 
 ```bash
+# Clone and start
 git clone https://github.com/AryamaVMurthy/Road-Infra_app-demo.git
 cd Road-Infra_app-demo
+docker compose up --build
 ```
 
-### 2. Start Database Services
+Open **http://localhost:3001** - the app is ready!
+
+The first build takes 2-3 minutes. Subsequent starts are instant.
+
+### What's Running
+
+| Service | Container | Port |
+|---------|-----------|------|
+| Frontend | Nginx serving React | `3001` |
+| Backend | FastAPI + Uvicorn | `8088` (internal) |
+| Database | PostgreSQL + PostGIS | `5432` (internal) |
+| Storage | MinIO (S3-compatible) | `9000` (internal) |
+
+---
+
+## Alternative: Local Development Setup
+
+If you prefer hot-reload during development:
+
+### Prerequisites
+- Python 3.12+
+- Node.js 18+
+
+### 1. Start Database Services Only
 
 ```bash
-docker-compose up -d
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
-This starts:
-- PostgreSQL with PostGIS on port `5432`
-- MinIO object storage on ports `9000` (API) and `9001` (Console)
-
-### 3. Setup Backend
+### 2. Setup Backend
 
 ```bash
-# Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
 cd backend
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Initialize database (creates tables and seed data)
 python seed.py
-
-# Start backend server
-uvicorn app.main:app --host 0.0.0.0 --port 8088
+uvicorn app.main:app --host 0.0.0.0 --port 8088 --reload
 ```
 
-The backend API will be available at `http://localhost:8088`
-
-### 4. Setup Frontend
-
-In a new terminal:
+### 3. Setup Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:5173`
+Open **http://localhost:5173**
 
-## Environment Configuration
-
-### Backend (`backend/.env`)
-
-Create a `.env` file in the backend directory (optional - defaults work for local development):
-
-```env
-# Database
-POSTGRES_SERVER=localhost
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=toto
-POSTGRES_DB=app
-
-# MinIO
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=infrastructure-evidence
-
-# JWT
-SECRET_KEY=your-secret-key-change-in-production
-
-# Development Mode (skips actual email sending, prints OTP to console)
-DEV_MODE=True
-```
-
-### Frontend (`frontend/.env`)
-
-```env
-VITE_API_URL=http://localhost:8088/api/v1
-```
+---
 
 ## Test Users
 
@@ -180,18 +154,23 @@ In DEV_MODE, OTPs are printed to the backend console instead of being emailed.
 │   │   ├── schemas/         # Pydantic request/response schemas
 │   │   └── services/        # Business logic services
 │   ├── seed.py              # Database seeder
+│   ├── Dockerfile           # Backend container
 │   └── requirements.txt
 ├── frontend/
+│   ├── public/
+│   │   └── sw.js            # Service Worker for offline
 │   ├── src/
 │   │   ├── components/      # Reusable UI components
 │   │   ├── pages/           # Route pages by role
-│   │   │   ├── citizen/     # Citizen dashboard pages
-│   │   │   ├── authority/   # Admin dashboard pages
-│   │   │   ├── worker/      # Worker dashboard pages
-│   │   │   └── admin/       # Sysadmin pages
-│   │   └── services/        # API client, auth
+│   │   ├── hooks/           # Custom React hooks (offline sync)
+│   │   └── services/        # API client, auth, offline storage
+│   ├── Dockerfile           # Frontend container (Nginx)
+│   ├── nginx.conf           # Nginx config with API proxy
 │   └── package.json
-├── docker-compose.yml       # PostgreSQL + MinIO
+├── docker-compose.yml       # Full stack deployment
+├── docker-compose.dev.yml   # Dev mode (DB + MinIO only)
+├── DESIGN.md                # Technical architecture
+├── HANDOFF.md               # Quick reference guide
 └── README.md
 ```
 
@@ -215,8 +194,9 @@ REPORTED → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED
 ### Running Tests
 
 ```bash
-# Backend tests
+# Backend tests (requires local setup)
 cd backend
+source venv/bin/activate
 pytest
 
 # Frontend tests
@@ -224,38 +204,53 @@ cd frontend
 npm test
 ```
 
-### Building for Production
+### Rebuilding Containers
 
 ```bash
-# Frontend build
-cd frontend
-npm run build
+# Rebuild specific service
+docker-compose build backend
+docker-compose up -d backend
 
-# The dist/ folder can be served by any static file server
+# Rebuild all
+docker-compose up --build
 ```
 
 ## Troubleshooting
 
-### Database Connection Issues
+### Docker Issues
 ```bash
-# Check if PostgreSQL is running
-docker-compose ps
+# View all logs
+docker-compose logs
 
-# View logs
-docker-compose logs db
-```
+# View specific service logs
+docker-compose logs backend
+docker-compose logs frontend
 
-### MinIO Issues
-```bash
-# Access MinIO Console at http://localhost:9001
-# Login: minioadmin / minioadmin
-
-# Create bucket manually if needed
+# Rebuild from scratch
+docker-compose down -v
+docker-compose up --build
 ```
 
 ### OTP Not Received
 - In DEV_MODE, OTPs are printed to the backend console, not emailed
-- Check backend terminal output for: `[DEV MODE] Skipping email send. OTP for email: 123456`
+- Check logs: `docker-compose logs backend | grep OTP`
+
+### Database Connection Issues
+```bash
+# Check if PostgreSQL is healthy
+docker-compose ps
+
+# Reset database
+docker-compose down -v
+docker-compose up --build
+```
+
+### MinIO Issues
+```bash
+# Access MinIO Console (dev mode only)
+# http://localhost:9001
+# Login: minioadmin / minioadmin
+```
 
 ## License
 

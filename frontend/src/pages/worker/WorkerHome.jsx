@@ -15,6 +15,7 @@ import { LocateControl } from '../../components/LocateControl'
 import { SearchField } from '../../components/SearchField'
 import { offlineService } from '../../services/offline'
 import { useWorkerOfflineSync } from '../../hooks/useWorkerOfflineSync'
+import { useGeolocation, HYDERABAD_CENTER } from '../../hooks/useGeolocation'
 
 const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
@@ -114,7 +115,6 @@ export default function WorkerHome() {
   const [resolveTask, setResolveTask] = useState(null)
   const [eta, setEta] = useState('')
   const [loading, setLoading] = useState(true)
-  const [userLocation, setUserLocation] = useState([17.4447, 78.3483])
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [pendingResolutions, setPendingResolutions] = useState({})
   const [resolvePhoto, setResolvePhoto] = useState(null)
@@ -123,6 +123,9 @@ export default function WorkerHome() {
   const fileInputRef = useRef(null)
   const user = authService.getCurrentUser()
   const navigate = useNavigate()
+
+  const { position: geoPosition } = useGeolocation()
+  const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [HYDERABAD_CENTER.lat, HYDERABAD_CENTER.lng]
 
   const handleSyncComplete = useCallback((issueId, success) => {
     setPendingResolutions(prev => {
@@ -158,10 +161,6 @@ export default function WorkerHome() {
     fetchTasks();
     loadPendingResolutions();
     api.get('/analytics/heatmap').then(res => setHeatmapData(res.data)).catch(() => {});
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
-      () => {}
-    );
 
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);

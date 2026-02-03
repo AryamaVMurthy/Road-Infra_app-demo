@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import api from '../../services/api'
 import { useNavigate } from 'react-router-dom'
-import { Camera, MapPin, Check, ArrowLeft, ArrowRight, Upload, Map as MapIcon, Loader2, Info } from 'lucide-react'
+import { Camera, MapPin, Check, ArrowLeft, ArrowRight, Upload, Map as MapIcon, Loader2, Info, AlertCircle, Navigation } from 'lucide-react'
 import { authService } from '../../services/auth'
 import { offlineService } from '../../services/offline'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,6 +11,7 @@ import { cn } from '../../utils/utils'
 
 import { SearchField } from '../../components/SearchField'
 import { LocateControl } from '../../components/LocateControl'
+import { useGeolocation } from '../../hooks/useGeolocation'
 
 const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
@@ -55,15 +56,25 @@ export default function ReportIssue() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
+  const { 
+    position: geoPosition, 
+    loading: geoLoading, 
+    error: geoError,
+    refresh: refreshLocation,
+    isUsingFallback 
+  } = useGeolocation()
+
+  useEffect(() => {
+    if (geoPosition && !position) {
+      setPosition({ lat: geoPosition.lat, lng: geoPosition.lng })
+    }
+  }, [geoPosition, position])
+
   useEffect(() => {
     api.get('/admin/categories').then(res => setCategories(res.data)).catch(() => {
         setCategories([
             {id: '1', name: 'Pothole'}, {id: '2', name: 'Drainage'}, {id: '3', name: 'Garbage'}
         ])
-    })
-    
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude })
     })
   }, [])
 
@@ -124,24 +135,52 @@ export default function ReportIssue() {
                     <h2 className="text-3xl font-extrabold mb-2 text-slate-900">Pinpoint Location</h2>
                     <p className="text-slate-500 font-medium">Click on the map to mark the exact spot of the issue.</p>
                 </div>
-                <div className="h-[400px] w-full rounded-[2rem] overflow-hidden border-4 border-slate-100 mb-8 shadow-inner">
-                  {position && (
+                
+                {isUsingFallback && (
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 mb-4">
+                    <AlertCircle className="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
+                    <div>
+                      <p className="text-sm font-bold text-amber-800">Using default location</p>
+                      <p className="text-xs text-amber-600">{geoError} Please click on the map to set the correct location.</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="h-[400px] w-full rounded-[2rem] overflow-hidden border-4 border-slate-100 mb-8 shadow-inner relative">
+                  {geoLoading ? (
+                    <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
+                      <Loader2 className="animate-spin text-primary mb-4" size={40} />
+                      <p className="text-slate-500 font-medium">Getting your location...</p>
+                      <p className="text-slate-400 text-sm mt-1">Please allow location access when prompted</p>
+                    </div>
+                  ) : position ? (
                     <MapContainer center={position} zoom={17} className="h-full w-full">
                       <TileLayer url={MAP_TILES} attribution={MAP_ATTRIBUTION} />
                       <LocationMarker position={position} setPosition={setPosition} />
                       <SearchField />
                       <LocateControl onFound={setPosition} />
                     </MapContainer>
+                  ) : (
+                    <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
+                      <AlertCircle className="text-slate-400 mb-4" size={40} />
+                      <p className="text-slate-500 font-medium">Unable to load map</p>
+                      <button onClick={refreshLocation} className="mt-4 px-4 py-2 bg-primary text-white rounded-lg font-medium flex items-center gap-2">
+                        <Navigation size={16} /> Retry Location
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="bg-blue-50 p-6 rounded-2xl flex items-start gap-4 mb-8">
                     <div className="p-2 bg-primary text-white rounded-lg"><MapIcon size={20} /></div>
                     <div>
                         <p className="text-sm font-bold text-slate-800">Precision Lock</p>
-                        <p className="text-xs text-slate-500 font-medium">Current coordinates: {position?.lat.toFixed(6)}, {position?.lng.toFixed(6)}</p>
+                        <p className="text-xs text-slate-500 font-medium">
+                          Current coordinates: {position?.lat.toFixed(6)}, {position?.lng.toFixed(6)}
+                          {geoPosition?.accuracy && <span className="ml-2">(±{Math.round(geoPosition.accuracy)}m accuracy)</span>}
+                        </p>
                     </div>
                 </div>
-                <button onClick={() => setStep(2)} className="w-full py-5 bg-primary text-white rounded-[1.5rem] font-extrabold shadow-xl shadow-primary/20 hover:bg-blue-800 transition-all flex items-center justify-center gap-2">
+                <button onClick={() => setStep(2)} disabled={!position} className="w-full py-5 bg-primary text-white rounded-[1.5rem] font-extrabold shadow-xl shadow-primary/20 hover:bg-blue-800 transition-all flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:shadow-none">
                     Confirm & Proceed <ArrowRight size={20} />
                 </button>
               </motion.div>

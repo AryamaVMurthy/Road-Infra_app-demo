@@ -16,6 +16,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import { HeatmapLayer } from '../components/HeatmapLayer'
 import { LocateControl } from '../components/LocateControl'
 import { SearchField } from '../components/SearchField'
+import { useGeolocation, HYDERABAD_CENTER } from '../hooks/useGeolocation'
 
 
 const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
@@ -48,16 +49,10 @@ export default function AnalyticsDashboard() {
   const [issues, setIssues] = useState([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState('heatmap')
-  const [userLocation, setUserLocation] = useState([17.4447, 78.3483]) // Default to Hyderabad
   const navigate = useNavigate()
 
-  // Get user's current location on mount
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
-      (err) => console.log("Using default location")
-    )
-  }, [])
+  const { position: geoPosition } = useGeolocation()
+  const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [HYDERABAD_CENTER.lat, HYDERABAD_CENTER.lng]
 
   useEffect(() => {
     fetchAnalytics()

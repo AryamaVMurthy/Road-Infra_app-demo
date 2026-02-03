@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom'
 import { HeatmapLayer } from '../../components/HeatmapLayer'
 import { LocateControl } from '../../components/LocateControl'
 import { SearchField } from '../../components/SearchField'
+import { useGeolocation, HYDERABAD_CENTER } from '../../hooks/useGeolocation'
 
 const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
@@ -221,18 +222,15 @@ export default function AuthorityDashboard() {
   const [heatmapData, setHeatmapData] = useState([])
   const [rejectReason, setRejectReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [userLocation, setUserLocation] = useState([17.4447, 78.3483])
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
+  
+  const { position: geoPosition } = useGeolocation()
+  const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [HYDERABAD_CENTER.lat, HYDERABAD_CENTER.lng]
 
   useEffect(() => { 
     fetchData()
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
-      () => {}
-    )
     
-    // Auto-refresh every 30 seconds
     const interval = setInterval(() => {
         fetchData()
         setLastRefresh(new Date())

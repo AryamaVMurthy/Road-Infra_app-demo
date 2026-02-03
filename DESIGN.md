@@ -1,356 +1,364 @@
-# Design
+# Urban Infrastructure Reporting System - Technical Design Document
 
-This document outlines the architecture of the Urban Infrastructure Issue Reporting System, along with the tech stack used for the implementation, the database schema, and all API endpoints.
+## 1. System Overview
 
-## Architecture
+The Urban Infrastructure Issue Reporting System (UIRS) is a production-ready platform for GHMC (Greater Hyderabad Municipal Corporation) that enables citizens to report infrastructure issues with GPS-verified photo evidence. The system provides complete transparency through audit trails, automated duplicate detection, and offline-first resilience.
 
-The system is divided into three layers: auth, data, and modules.
+## 2. Architecture
 
-Each user interaction with a module is first authorized by the auth subsystem. Each user is given scoped access to the modules based on their level of authorization. Each module can also interact with any other module as needed.
-
-Each module contributes to the functionality of the system. For example, the `issue` module defines the lifecycle of an infrastructure report, and the `evidence` module enables the storage and validation of visual proof.
-
-Each service provides an integration with an external system via their API or specialized library. These services handle object storage, metadata extraction, and communication.
-
-```mermaid
-graph TB
-    Sources[External Data/Images]
-    User((User))
-
-    Sources -->|Upload| Mods
-    User -->|Token| Auth
-
-    Auth -->|Scoped Access| Mods
-
-    subgraph Mods[" "]
-        direction TB
-        Issue & Evidence & Category
-        Zone & Organization & Audit
-    end
-
-    Mods <--> Data(Postgres + PostGIS)
-    Mods <--> Services(Minio & Email & EXIF)
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         PRESENTATION TIER                                │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐       │
+│  │   Citizen   │ │  Authority  │ │   Worker    │ │  Analytics  │       │
+│  │   Portal    │ │  Dashboard  │ │    App      │ │  Dashboard  │       │
+│  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘       │
+│         └───────────────┴───────┬───────┴───────────────┘               │
+│                    React 18 + Vite + Tailwind CSS                       │
+│                    Service Worker + IndexedDB (Offline)                 │
+└─────────────────────────────────┼───────────────────────────────────────┘
+                                  │ HTTPS/REST API
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         APPLICATION TIER                                 │
+│  ┌────────────────────────────────────────────────────────────────┐     │
+│  │                     FastAPI Application                         │     │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │     │
+│  │  │   Auth   │ │  Issues  │ │  Admin   │ │ Analytics│          │     │
+│  │  │  Module  │ │  Module  │ │  Module  │ │  Module  │          │     │
+│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘          │     │
+│  │       └────────────┴─────┬──────┴────────────┘                 │     │
+│  │  ┌──────────────────────────────────────────────────────┐      │     │
+│  │  │              Service Layer (Business Logic)           │      │     │
+│  │  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐         │      │     │
+│  │  │  │ Email  │ │  EXIF  │ │ MinIO  │ │ Audit  │         │      │     │
+│  │  │  │Service │ │Service │ │Client  │ │Service │         │      │     │
+│  │  │  └────────┘ └────────┘ └────────┘ └────────┘         │      │     │
+│  │  └──────────────────────────────────────────────────────┘      │     │
+│  └────────────────────────────────────────────────────────────────┘     │
+│                    Python 3.12 + FastAPI + SQLModel                      │
+└─────────────────────────────────┼───────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           DATA TIER                                      │
+│  ┌─────────────────────────────┐    ┌─────────────────────────────┐    │
+│  │   PostgreSQL + PostGIS      │    │         MinIO               │    │
+│  │  • User Management          │    │   (Object Storage)          │    │
+│  │  • Issue Lifecycle          │    │  • Before Images            │    │
+│  │  • Geospatial Data          │    │  • After Images             │    │
+│  │  • Audit Logs               │    │  • EXIF Metadata            │    │
+│  └─────────────────────────────┘    └─────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Authentication
+## 3. Technology Stack
 
-Authentication is performed by a user exchanging their e-mail address for a one-time password (OTP). Upon successful verification of the OTP, the user receive a cryptographically signed JWT token that expires seven days from the time of issue. Each signed token contains the ID of the user, their role, and their associated organization ID. The token must be used by the user to authenticate themselves in every subsequent interaction with the system.
+| Layer | Technology | Version | Purpose |
+|-------|------------|---------|---------|
+| **Frontend Framework** | React | 18.2 | Component-based UI |
+| **Build Tool** | Vite | 5.0 | Fast HMR, ESM bundling |
+| **Styling** | Tailwind CSS | 3.3 | Utility-first CSS |
+| **Animations** | Framer Motion | 12.x | Declarative animations |
+| **Maps** | Leaflet + React-Leaflet | 1.9/4.2 | Interactive mapping |
+| **Heatmaps** | Leaflet.heat | 0.2 | Density visualization |
+| **Geocoding** | Leaflet-control-geocoder | 3.3 | Address search |
+| **Charts** | Recharts | 2.9 | Data visualization |
+| **HTTP Client** | Axios | 1.6 | API communication |
+| **Data Fetching** | React Query | 3.39 | Server state management |
+| **Routing** | React Router DOM | 6.18 | Client-side routing |
+| **Icons** | Lucide React | 0.292 | Icon library |
+| **Backend Framework** | FastAPI | Latest | High-performance Python API |
+| **ORM** | SQLModel | Latest | Pydantic + SQLAlchemy |
+| **Database** | PostgreSQL | 14 | Primary database |
+| **Geospatial** | PostGIS | 3.3 | Spatial extension |
+| **Object Storage** | MinIO | Latest | S3-compatible storage |
+| **Authentication** | python-jose | Latest | JWT tokens |
+| **Image Processing** | Pillow | Latest | EXIF extraction |
+| **ASGI Server** | Uvicorn | Latest | Production server |
 
-### Authorization
+## 4. Core Features
 
-Users are assigned roles: `sysadmin`, `admin`, `worker`, `citizen`. Each role has one or more scopes associated with it by default that give some capabilities to users assigned that role.
+### 4.1 Silent 5m Duplicate Aggregation
 
-| Scope                  | Description                                         |
-| ---------------------- | --------------------------------------------------- |
-| `system/manage`        | Manage organizations, zones, and global config.     |
-| `system/audit`         | View global audit trails across all organizations.  |
-| `issues/create`        | Create a new infrastructure report.                 |
-| `issues/fetch`         | List out all issues.                                |
-| `issues/triage`        | Modify issue priority and category.                 |
-| `issues/assign`        | Assign or unassign workers to an issue.             |
-| `tasks/manage`         | Accept, start, and resolve assigned tasks.          |
-| `evidence/verify`      | Review before/after resolution evidence.            |
-| `workers/manage`       | Invite and deactivate field force personnel.        |
+When a citizen reports an issue, the backend performs a PostGIS proximity check:
 
-Each scope will be suffixed by `/all` or `/own`. The former indicates that the user can access all resources within their organization (or the system for sysadmins), while the latter indicates the user can only access resources they have created or been assigned to.
+```python
+point_wkt = f"SRID=4326;POINT({lng} {lat})"
+statement = select(Issue).where(
+    Issue.status != "CLOSED",
+    func.ST_DWithin(Issue.location, func.ST_GeomFromText(point_wkt), 5.0 / 111320.0)
+)
+duplicate_issue = session.exec(statement).first()
 
-The `sysadmin` role will have all `system/*` and `issues/fetch/all` scopes. The `admin` role will have `issues/*`, `workers/*`, and `evidence/*` scopes for their specific organization. The `worker` role will have `tasks/manage` and `issues/fetch/own`. The `citizen` role will have `issues/create` and `issues/fetch/own`.
-
-### Data
-
-The data stored in the database includes spatial geometries (points and polygons), issue lifecycles, user profiles, and binary evidence paths. Geolocation data is ingested from browser APIs, and visual evidence is ingested from camera uploads.
-
-### Modules
-
-Each module makes up an important part of the overall system.
-
-#### Auth
-
-> This module enables all actions related to user identification, OTP generation, and session management.
-
-#### Issue
-
-> This module defines the state machine for infrastructure reports (Reported -> Assigned -> Accepted -> In Progress -> Resolved -> Closed).
-
-#### Evidence
-
-> This module manages the lifecycle of visual proof, including EXIF metadata validation and storage path mapping.
-
-#### Organization
-
-> This module manages municipal authorities and their associated zones.
-
-#### Zone
-
-> This module defines the geometric boundaries of administrative jurisdictions.
-
-#### Audit
-
-> This module records every mutation in the system for accountability and transparency.
-
-### Services
-
-Each service provides an integration with an external system.
-
-#### Storage (Minio)
-
-> This service provides S3-compatible object storage for all high-resolution evidence photos.
-
-#### Metadata (EXIF)
-
-> This service extracts GPS and timestamps from binary image data to verify the integrity of reports.
-
-#### Communication (Email)
-
-> This service handles the delivery of OTP codes to users.
-
-## Features
-
-The following diagram shows the primary resolution workflow.
-
-```mermaid
-graph LR
-    subgraph Citizen["Citizen Flow"]
-        direction TB
-        C1[Report Issue] --> C2[Pin Location]
-        C2 --> C3[Upload Evidence]
-    end
-
-    subgraph Authority["Authority Flow"]
-        direction TB
-        A1[Triage Issue] --> A2[Assign Worker]
-        A2 --> A3[Review Resolution]
-    end
-
-    subgraph Worker["Worker Flow"]
-        direction TB
-        W1[Accept Task] --> W2[Start Work]
-        W2 --> W3[Submit Resolution]
-    end
-
-    Citizen --> Authority
-    Authority --> Worker
-    Worker --> Authority
+if duplicate_issue:
+    duplicate_issue.report_count += 1
+    # Add new evidence, return existing issue_id
+else:
+    # Create new issue
 ```
 
-### Issue Reporting
+### 4.2 Offline-First Architecture
 
-1. Create a Report.
+The system uses Service Workers with Background Sync API for resilience in low-connectivity environments.
 
-- Citizen specifies a location on the map.
-- System performs a silent 5m duplicate check using PostGIS.
-- Uploads a photo; system extracts EXIF to verify coordinates.
+**Citizen Reports (Offline):**
+1. User submits report while offline
+2. Report saved to IndexedDB (`offlineReports` store)
+3. Service Worker registers `sync-reports` event
+4. When connectivity returns, Background Sync uploads pending reports
 
-2. View My Reports.
+**Worker Resolutions (Offline):**
+1. Worker resolves task while offline (tunnel, basement, remote area)
+2. Resolution photo saved to IndexedDB (`workerResolutions` store)
+3. UI shows optimistic "Pending Sync" badge on task card
+4. Service Worker registers `sync-resolutions` event
+5. Background Sync uploads resolution when device is back online
+6. Toast notification confirms sync completion
 
-- Citizens can track the real-time status of their own submissions.
+**IndexedDB Schema:**
+```javascript
+const DB_NAME = 'UrbanInfraDB';
+const DB_VERSION = 2;
 
-### Administrative Triage
+// Stores:
+// - offlineReports: Citizen issue reports
+// - workerResolutions: Worker task resolutions with photos
+```
 
-3. Kanban Dashboard.
+### 4.3 EXIF Verification
 
-- Admin views issues in status columns.
-- Issues are automatically flagged if they breach their category's SLA.
+All uploaded photos are validated for:
+- GPS coordinates (must match submitted location within 5m)
+- Timestamp (must be within 7 days)
+- Device metadata (logged for audit trail)
 
-4. Bulk Assignment.
+### 4.4 Issue State Machine
 
-- Admin selects multiple reports and assigns them to a specific field worker.
+```
+REPORTED → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED
+    ↓         ↓                       ↓            ↓
+ (Citizen)  (Admin)     ←←←←←←   (Worker)     (Admin approves)
+                                    ↓
+                               REJECTED → IN_PROGRESS (re-work)
+```
 
-5. Worker Management.
+| State | Actor | Action |
+|-------|-------|--------|
+| REPORTED | Citizen | Submits issue with photo and GPS |
+| ASSIGNED | Admin | Assigns to field worker |
+| ACCEPTED | Worker | Accepts with ETA |
+| IN_PROGRESS | Worker | Starts on-site work |
+| RESOLVED | Worker | Submits "after" photo proof |
+| CLOSED | Admin | Approves resolution |
 
-- Invite new workers to the organization.
-- Deactivate workers, which automatically unassigns their active tasks back to the pool.
+## 5. Database Schema
 
-### Field Force Execution
+### 5.1 Core Tables
 
-6. Task Acceptance.
+**user**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| email | TEXT | Unique, indexed |
+| role | TEXT | CITIZEN, ADMIN, WORKER, SYSADMIN |
+| org_id | UUID | FK to organization |
+| status | TEXT | ACTIVE, INACTIVE |
 
-- Worker views assigned tasks and provides an ETA.
+**issue**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| category_id | UUID | FK to category |
+| status | TEXT | Current state |
+| location | GEOMETRY(POINT) | PostGIS Point (SRID 4326) |
+| reporter_id | UUID | FK to user |
+| worker_id | UUID | FK to user (nullable) |
+| report_count | INTEGER | Aggregated duplicate count |
+| priority | TEXT | P1, P2, P3, P4 |
+| eta_duration | TEXT | Worker's ETA |
+| created_at | TIMESTAMP | Creation time |
+| updated_at | TIMESTAMP | Last update |
 
-7. Resolution Submission.
+**evidence**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| issue_id | UUID | FK to issue |
+| type | TEXT | REPORT or RESOLVE |
+| file_path | TEXT | MinIO path |
+| exif_timestamp | TIMESTAMP | From image metadata |
+| exif_lat | FLOAT | From image metadata |
+| exif_lng | FLOAT | From image metadata |
 
-- Worker captures an "After" photo on-site.
-- System enforces camera-only capture to prevent fraud.
+**auditlog**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| action | TEXT | STATUS_CHANGE, ASSIGNMENT, etc. |
+| entity_id | UUID | Affected record ID |
+| actor_id | UUID | User who performed action |
+| old_value | TEXT | Previous state |
+| new_value | TEXT | New state |
+| created_at | TIMESTAMP | When logged |
 
-### Analytics & Audit
+### 5.2 Spatial Indexes
 
-8. Heatmaps.
+```sql
+CREATE INDEX idx_issue_location ON issue USING GIST(location);
+CREATE INDEX idx_zone_boundary ON zone USING GIST(boundary);
+```
 
-- Real-time visualization of city-wide issue density using `leaflet.heat`.
-- Data served via PostGIS spatial aggregation from the `/analytics/heatmap` endpoint.
-
-9. Audit Trails.
-
-- Immutable log of every status change and administrative action.
-- System Admin interface provides a high-fidelity table with detailed Before/After state comparisons.
-
-10. Address Search (Geocoding).
-
-- Integrated `Leaflet Control Geocoder` in the reporting wizard.
-- Allows citizens to find locations via text search (e.g., landmarks or street names) in addition to map selection.
-
-## Technology
-
-The auth subsystem uses [JWT][1] tokens for authenticating users. These are secure, stateless tokens that carry user identity and roles.
-
-The data subsystem uses [PostgreSQL][2] with the [PostGIS][3] extension. This allows for industrial-grade spatial queries such as 5-meter proximity checks and zone intersection.
-
-The server-side code is written in [Python][4], using [FastAPI][5] as the server framework. FastAPI provides high performance, automatic OpenAPI documentation, and asynchronous I/O support. [SQLModel][6] is used for ORM, combining the power of SQLAlchemy with the simplicity of Pydantic.
-
-The client-side code uses the [React][7] framework with [Vite][8] as the build tool. The UI is built using [Tailwind CSS][9] for styling and [Lucide React][10] for icons. [Framer Motion][11] handles all animations and micro-interactions. Maps are enhanced with [Leaflet Geocoder][12] for address search and [Leaflet Heat][13] for analytics. [Recharts][14] provides data visualization for the analytics dashboard.
-
-[1]: https://jwt.io
-[2]: https://postgresql.org
-[3]: https://postgis.net
-[4]: https://python.org
-[5]: https://fastapi.tiangolo.com
-[6]: https://sqlmodel.tiangolo.com
-[7]: https://react.dev
-[8]: https://vitejs.dev
-[9]: https://tailwindcss.com
-[10]: https://lucide.dev
-[11]: https://framer.com/motion
-[12]: https://github.com/perliedman/leaflet-control-geocoder
-[13]: https://github.com/Leaflet/Leaflet.heat
-[14]: https://recharts.org
-
-## Database
-
-The data is stored in a PostgreSQL database with the PostGIS extension enabled.
-
-### Tables
-
-#### `user`
-
-| column          | type        | remarks                                         |
-| :-------------- | :---------- | :---------------------------------------------- |
-| `id`            | `uuid`      | primary key                                     |
-| `email`         | `text`      | unique, indexed                                 |
-| `full_name`     | `text`      | user's name                                     |
-| `role`          | `text`      | enum: `citizen`, `admin`, `worker`, `sysadmin`  |
-| `org_id`        | `uuid`      | foreign key to `organization.id`                |
-| `status`        | `text`      | default `ACTIVE`                                |
-| `last_login_at` | `timestamp` | updated on every sign-in                        |
-
-#### `organization`
-
-| column    | type   | remarks                    |
-| :-------- | :----- | :------------------------- |
-| `id`      | `uuid` | primary key                |
-| `name`    | `text` | authority name (e.g., GHMC) |
-| `zone_id` | `uuid` | foreign key to `zone.id`   |
-
-#### `zone`
-
-| column     | type       | remarks                      |
-| :--------- | :--------- | :--------------------------- |
-| `id`       | `uuid`     | primary key                  |
-| `name`     | `text`     | zone name                    |
-| `boundary` | `geometry` | PostGIS Polygon (SRID 4326) |
-
-#### `category`
-
-| column              | type      | remarks                      |
-| :------------------ | :-------- | :--------------------------- |
-| `id`                | `uuid`    | primary key                  |
-| `name`              | `text`    | e.g., "Pothole", "Drainage"  |
-| `default_priority`  | `text`    | enum: `P1`, `P2`, `P3`, `P4` |
-| `expected_sla_days` | `integer` | SLA duration in days         |
-
-#### `issue`
-
-| column             | type        | remarks                                     |
-| :----------------- | :---------- | :------------------------------------------ |
-| `id`               | `uuid`      | primary key                                 |
-| `category_id`      | `uuid`      | foreign key to `category.id`                |
-| `status`           | `text`      | current state in machine                    |
-| `location`         | `geometry`  | PostGIS Point (SRID 4326)                  |
-| `reporter_id`      | `uuid`      | foreign key to `user.id`                    |
-| `worker_id`        | `uuid`      | foreign key to `user.id`                    |
-| `org_id`           | `uuid`      | foreign key to `organization.id`            |
-| `priority`         | `text`      | current priority level                      |
-| `report_count`     | `integer`   | number of aggregated duplicate reports       |
-| `rejection_reason` | `text`      | reason provided by admin on rejection       |
-| `eta_duration`     | `text`      | estimated time provided by worker           |
-| `created_at`       | `timestamp` | default `now()`                             |
-| `updated_at`       | `timestamp` | last mutation time                          |
-
-#### `evidence`
-
-| column           | type        | remarks                                 |
-| :--------------- | :---------- | :-------------------------------------- |
-| `id`             | `uuid`      | primary key                             |
-| `issue_id`       | `uuid`      | foreign key to `issue.id`               |
-| `type`           | `text`      | enum: `REPORT`, `RESOLVE`               |
-| `file_path`      | `text`      | relative path in Minio bucket           |
-| `exif_timestamp` | `timestamp` | timestamp extracted from image metadata |
-| `exif_lat`       | `float`     | latitude extracted from image metadata  |
-| `exif_lng`       | `float`     | longitude extracted from image metadata |
-
-#### `otp`
-
-| column       | type        | remarks                       |
-| :----------- | :---------- | :---------------------------- |
-| `id`         | `integer`   | primary key                   |
-| `email`      | `text`      | target email                  |
-| `code`       | `text`      | 6-digit verification code     |
-| `expires_at` | `timestamp` | expiry time (usually +10m)    |
-| `created_at` | `timestamp` | default `now()`               |
-
-#### `auditlog`
-
-| column        | type        | remarks                                     |
-| :------------ | :---------- | :------------------------------------------ |
-| `id`          | `uuid`      | primary key                                 |
-| `action`      | `text`      | e.g., `STATUS_CHANGE`, `ASSIGNMENT`         |
-| `entity_type` | `text`      | e.g., `ISSUE`, `USER`                       |
-| `entity_id`   | `uuid`      | ID of the modified entity                   |
-| `actor_id`    | `uuid`      | ID of the user who performed the action     |
-| `old_value`   | `text`      | previous state                              |
-| `new_value`   | `text`      | new state                                   |
-| `created_at`  | `timestamp` | default `now()`                             |
-
-## API Endpoints
+## 6. API Endpoints
 
 ### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/auth/otp-request` | Generate and send OTP |
+| POST | `/api/v1/auth/login` | Verify OTP, return JWT |
 
-| method | endpoint             | description                    | scope           |
-| :----- | :------------------- | :----------------------------- | :-------------- |
-| `post` | `/auth/otp-request`  | generate and send OTP          | `none`          |
-| `post` | `/auth/login`        | verify OTP and return JWT token | `none`          |
-| `post` | `/auth/google-mock`  | simulated google oauth login   | `none`          |
+### Issues (Citizen)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/issues/report` | Submit new issue (multipart) |
+| GET | `/api/v1/issues/my-reports` | Get user's reports |
 
-### Issue Management (Citizen)
+### Admin (Authority)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/admin/issues` | List all issues |
+| GET | `/api/v1/admin/workers` | List workers |
+| POST | `/api/v1/admin/bulk-assign` | Assign issues to worker |
+| POST | `/api/v1/admin/approve` | Approve resolution |
+| POST | `/api/v1/admin/reject` | Reject with reason |
 
-| method | endpoint             | description                    | scope           |
-| :----- | :------------------- | :----------------------------- | :-------------- |
-| `post` | `/issues/report`     | submit new infrastructure issue | `issues/create` |
-| `get`  | `/issues/my-reports` | list issues reported by user   | `issues/fetch`  |
+### Worker
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/worker/tasks` | Get assigned tasks |
+| POST | `/api/v1/worker/tasks/{id}/accept` | Accept with ETA |
+| POST | `/api/v1/worker/tasks/{id}/start` | Start work |
+| POST | `/api/v1/worker/tasks/{id}/resolve` | Submit resolution (multipart) |
 
-### Administrative (Authority)
+### Analytics (Public)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/stats` | Dashboard statistics |
+| GET | `/api/v1/analytics/heatmap` | Geospatial density data |
+| GET | `/api/v1/analytics/issues-public` | Public issue list |
 
-| method | endpoint                    | description                    | scope              |
-| :----- | :-------------------------- | :----------------------------- | :----------------- |
-| `get`  | `/admin/issues`             | list all issues in organization | `issues/fetch/all` |
-| `get`  | `/admin/workers`            | list all field workers          | `workers/manage`   |
-| `post` | `/admin/bulk-assign`        | assign multiple issues to worker| `issues/assign`    |
-| `post` | `/admin/deactivate-worker`  | deactivate worker and reset tasks| `workers/manage`   |
-| `post` | `/admin/assign`             | assign single issue             | `issues/assign`    |
-| `post` | `/admin/update-priority`    | manual priority override        | `issues/triage`    |
-| `get`  | `/admin/categories`         | list active issue categories   | `issues/create`    |
+### Media
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/media/{issue_id}/before` | Before image |
+| GET | `/api/v1/media/{issue_id}/after` | After image |
 
-### Field Force (Worker)
+## 7. Frontend Architecture
 
-| method | endpoint                    | description                    | scope              |
-| :----- | :-------------------------- | :----------------------------- | :----------------- |
-| `get`  | `/worker/tasks`             | list tasks assigned to worker  | `issues/fetch/own` |
-| `post` | `/worker/tasks/:id/accept`  | acknowledge task with ETA      | `tasks/manage`     |
-| `post` | `/worker/tasks/:id/start`   | signal start of on-site work   | `tasks/manage`     |
-| `post` | `/worker/tasks/:id/resolve` | submit resolution with proof   | `tasks/manage`     |
+### 7.1 Component Structure
 
-### Media & Evidence
+```
+src/
+├── main.jsx                 # App entry, Service Worker registration
+├── App.jsx                  # Router configuration
+├── pages/
+│   ├── Login.jsx            # OTP authentication
+│   ├── AnalyticsDashboard.jsx
+│   ├── citizen/
+│   │   ├── CitizenHome.jsx
+│   │   ├── ReportIssue.jsx  # 3-step wizard
+│   │   └── MyReports.jsx
+│   ├── authority/
+│   │   └── AuthorityDashboard.jsx  # Map + Kanban
+│   ├── worker/
+│   │   └── WorkerHome.jsx   # Tasks + Offline resolve
+│   └── admin/
+│       └── AdminDashboard.jsx
+├── components/
+│   ├── LocateControl.jsx    # GPS button for maps
+│   ├── SearchField.jsx      # Geocoding search
+│   ├── HeatmapLayer.jsx     # Leaflet heatmap
+│   └── EvidenceGallery.jsx  # Before/after viewer
+├── services/
+│   ├── api.js               # Axios instance
+│   ├── auth.js              # JWT management
+│   └── offline.js           # IndexedDB operations
+├── hooks/
+│   ├── useOfflineSync.js    # Citizen report sync
+│   └── useWorkerOfflineSync.js  # Worker resolution sync
+└── public/
+    └── sw.js                # Service Worker
+```
 
-| method | endpoint                    | description                    | scope           |
-| :----- | :-------------------------- | :----------------------------- | :-------------- |
-| `get`  | `/media/:issue_id/before`   | retrieve original issue photo  | `evidence/verify` |
-| `get`  | `/media/:issue_id/after`    | retrieve resolution photo      | `evidence/verify` |
+### 7.2 State Management
+
+- **React useState/useEffect**: Component-local state
+- **React Query**: Server state caching
+- **localStorage**: JWT token persistence
+- **IndexedDB**: Offline data persistence
+
+### 7.3 Service Worker
+
+The Service Worker (`public/sw.js`) handles:
+- Static asset caching for offline app shell
+- Background Sync for pending uploads
+- Message passing for auth token retrieval
+- Client notifications on sync completion
+
+## 8. Security
+
+### 8.1 Authentication Flow
+1. User enters email → OTP sent (or printed in DEV_MODE)
+2. OTP verified → JWT issued (7-day expiry)
+3. JWT included in Authorization header for all API calls
+
+### 8.2 Authorization (RBAC)
+| Role | Permissions |
+|------|-------------|
+| CITIZEN | Create issues, view own reports |
+| WORKER | View/accept/resolve assigned tasks |
+| ADMIN | All issue management, worker assignment |
+| SYSADMIN | Full system access, analytics, audit |
+
+### 8.3 Data Protection
+- HTTPS enforced in production
+- Pydantic validation on all inputs
+- SQL injection prevented via ORM
+- File uploads restricted to image MIME types
+
+## 9. Deployment
+
+### Development
+```bash
+# Start database services
+docker-compose up -d
+
+# Backend
+cd backend && source ../venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8088
+
+# Frontend
+cd frontend && npm run dev
+```
+
+### Production Considerations
+- Use HTTPS for Service Worker support
+- Configure real SMTP for OTP delivery
+- Set up MinIO bucket policies
+- Enable PostgreSQL replication
+- Add CDN for static assets
+
+## 10. Testing Strategy
+
+| Layer | Tool | Focus |
+|-------|------|-------|
+| Backend Unit | pytest | Business logic, spatial queries |
+| Backend Integration | pytest | API endpoints, DB transactions |
+| Frontend Unit | Vitest | Component renders, hooks |
+| E2E | Playwright | Full user flows, offline scenarios |
+
+### Key Test Scenarios
+- Duplicate detection: 4.9m (should aggregate) vs 5.1m (should create new)
+- Offline sync: Network throttling, IndexedDB persistence
+- Concurrent access: Multiple workers accepting same task
+- Audit integrity: Every mutation creates exactly one AuditLog entry

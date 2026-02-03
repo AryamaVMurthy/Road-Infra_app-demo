@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import api from '../../services/api'
 import { 
-    Briefcase, Clock, MapPin, Camera, Navigation, 
-    LogOut, ArrowRight, Navigation2, Check, Loader2, Activity, Map as MapIcon, Globe,
-    WifiOff, CloudOff, Upload, X
+    Briefcase, Clock, LogOut, Loader2, Activity, Map as MapIcon, Globe
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -17,95 +15,14 @@ import { offlineService } from '../../services/offline'
 import { useWorkerOfflineSync } from '../../hooks/useWorkerOfflineSync'
 import { useGeolocation, HYDERABAD_CENTER } from '../../hooks/useGeolocation'
 
+import { TaskCard } from '../../features/worker/components/TaskList/TaskCard'
+import { AcceptTaskModal } from '../../features/worker/components/Modals/AcceptTaskModal'
+import { ResolveTaskModal } from '../../features/worker/components/Modals/ResolveTaskModal'
+import { Toast } from '../../features/common/components/Toast'
+import { OfflineBanner } from '../../features/common/components/OfflineBanner'
+
 const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-
-const TaskCard = ({ task, onSelect, onResolve, idx, hasPendingSync }) => {
-    const isCritical = task.priority === 'P1';
-    
-    return (
-        <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] relative overflow-hidden"
-        >
-            {hasPendingSync && (
-                <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-full text-xs font-bold">
-                    <CloudOff size={14} />
-                    Pending Sync
-                </div>
-            )}
-            
-            <div className="flex justify-between items-start mb-6">
-                <div className="space-y-3">
-                    <div className={cn(
-                        "inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                        isCritical ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-600"
-                    )}>
-                        <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isCritical ? "bg-rose-600" : "bg-blue-600")}></div>
-                        {task.priority} Priority
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-900 leading-tight">{task.category_name}</h3>
-                    <p className="flex items-center gap-2 text-sm font-bold text-slate-400">
-                        <MapPin size={14} className="text-primary" /> {task.address || 'Location Identified'}
-                    </p>
-                </div>
-                <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 border border-slate-100 shadow-inner">
-                    <Navigation2 size={24} />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Reports</p>
-                    <p className="text-2xl font-black text-slate-900">{task.report_count}</p>
-                </div>
-                <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                    <p className="text-2xl font-black text-primary">{task.status}</p>
-                </div>
-            </div>
-
-            <div className="flex gap-4">
-                {task.status === 'ASSIGNED' ? (
-                    <button 
-                        onClick={() => onSelect(task)}
-                        className="flex-1 py-5 bg-primary text-white rounded-[1.5rem] font-black shadow-xl shadow-primary/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 active:scale-95"
-                    >
-                        Accept Task <ArrowRight size={20} />
-                    </button>
-                ) : task.status === 'ACCEPTED' || task.status === 'IN_PROGRESS' ? (
-                    <button 
-                        onClick={() => onResolve(task)}
-                        disabled={hasPendingSync}
-                        className={cn(
-                            "flex-1 py-5 rounded-[1.5rem] font-black shadow-xl transition-all flex items-center justify-center gap-3 active:scale-95",
-                            hasPendingSync 
-                                ? "bg-amber-100 text-amber-600 cursor-not-allowed" 
-                                : "bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700"
-                        )}
-                    >
-                        <Camera size={24} /> {hasPendingSync ? 'Awaiting Sync' : 'Resolve Task'}
-                    </button>
-                ) : (
-                    <div className="flex-1 py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] font-black text-center">
-                        {task.status}
-                    </div>
-                )}
-            </div>
-            
-            {task.status === 'IN_PROGRESS' && !hasPendingSync && (
-                <div className="absolute top-8 right-8">
-                    <span className="flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                    </span>
-                </div>
-            )}
-        </motion.div>
-    )
-}
 
 export default function WorkerHome() {
   const [activeTab, setActiveTab] = useState('tasks') 
@@ -240,21 +157,7 @@ export default function WorkerHome() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      {/* Offline Banner */}
-      <AnimatePresence>
-        {!isOnline && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="bg-amber-500 text-white px-4 py-3 flex items-center justify-center gap-2 text-sm font-bold"
-          >
-            <WifiOff size={16} />
-            You're offline. Resolutions will sync when connected.
-            {pendingCount > 0 && <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{pendingCount} pending</span>}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <OfflineBanner isOnline={isOnline} pendingCount={pendingCount} />
 
       <header className="px-8 py-10 bg-white/80 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-5">
@@ -366,151 +269,25 @@ export default function WorkerHome() {
         </button>
       </nav>
 
-      {/* Accept Task Modal */}
-      <AnimatePresence>
-        {selectedTask && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[2000] flex items-end sm:items-center justify-center p-6">
-                <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl border border-slate-100">
-                    <div className="flex items-center gap-6 mb-10">
-                        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-primary shadow-inner">
-                            <Clock size={32} />
-                        </div>
-                        <div>
-                            <h3 className="text-2xl font-black text-slate-900">Task Acceptance</h3>
-                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">ID: {selectedTask.id.slice(0,8)}</p>
-                        </div>
-                    </div>
+      <AcceptTaskModal 
+        task={selectedTask}
+        eta={eta}
+        onEtaChange={setEta}
+        onConfirm={() => handleAccept(selectedTask.id)}
+        onCancel={() => setSelectedTask(null)}
+      />
 
-                    <div className="space-y-10">
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Expected Arrival (ETA)</label>
-                            <div className="grid grid-cols-3 gap-3">
-                                {['30m', '1h', '2h', '4h', '1d', '2d'].map(time => (
-                                    <button key={time} onClick={() => setEta(time)} className={cn("py-4 rounded-2xl font-black text-sm border-2 transition-all active:scale-95", eta === time ? "bg-primary border-primary text-white shadow-xl shadow-primary/20" : "bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100")}>{time}</button>
-                                ))}
-                            </div>
-                        </div>
+      <ResolveTaskModal 
+        task={resolveTask}
+        photo={resolvePhoto}
+        onPhotoChange={setResolvePhoto}
+        onSubmit={handleResolveSubmit}
+        onCancel={() => { setResolveTask(null); setResolvePhoto(null); }}
+        isOnline={isOnline}
+        isResolving={isResolving}
+      />
 
-                        <div className="flex gap-4">
-                            <button onClick={() => setSelectedTask(null)} className="flex-1 py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] font-black hover:bg-slate-200 hover:text-slate-900 transition-all">Dismiss</button>
-                            <button onClick={() => handleAccept(selectedTask.id)} disabled={!eta} className="flex-[2] py-5 bg-primary text-white rounded-[1.5rem] font-black shadow-xl shadow-primary/20 disabled:bg-slate-100 disabled:text-slate-300 disabled:shadow-none transition-all active:scale-95">Confirm & Accept</button>
-                        </div>
-                    </div>
-                </motion.div>
-            </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Resolve Task Modal */}
-      <AnimatePresence>
-        {resolveTask && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[2000] flex items-end sm:items-center justify-center p-6">
-                <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl border border-slate-100">
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-6">
-                            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shadow-inner">
-                                <Camera size={32} />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-900">Resolve Task</h3>
-                                <p className="text-sm font-bold text-slate-400">{resolveTask.category_name}</p>
-                            </div>
-                        </div>
-                        <button onClick={() => { setResolveTask(null); setResolvePhoto(null); }} className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200">
-                            <X size={20} />
-                        </button>
-                    </div>
-
-                    {!isOnline && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center gap-3">
-                            <WifiOff size={20} className="text-amber-600" />
-                            <p className="text-sm font-bold text-amber-700">Offline mode - resolution will sync automatically</p>
-                        </div>
-                    )}
-
-                    <div className="space-y-6">
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={handlePhotoCapture}
-                            className="hidden"
-                        />
-                        
-                        {resolvePhoto ? (
-                            <div className="relative">
-                                <img 
-                                    src={URL.createObjectURL(resolvePhoto)} 
-                                    alt="Resolution proof" 
-                                    className="w-full h-64 object-cover rounded-2xl border-4 border-emerald-200"
-                                />
-                                <button 
-                                    onClick={() => setResolvePhoto(null)}
-                                    className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center text-slate-500 hover:bg-red-50 hover:text-red-500"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
-                        ) : (
-                            <button 
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full h-48 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-400 hover:border-emerald-400 hover:text-emerald-500 transition-all"
-                            >
-                                <Camera size={48} />
-                                <span className="font-bold text-sm">Tap to capture resolution photo</span>
-                            </button>
-                        )}
-
-                        <button 
-                            onClick={handleResolveSubmit}
-                            disabled={!resolvePhoto || isResolving}
-                            className={cn(
-                                "w-full py-5 rounded-[1.5rem] font-black shadow-xl transition-all flex items-center justify-center gap-3 active:scale-95",
-                                resolvePhoto && !isResolving
-                                    ? "bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700"
-                                    : "bg-slate-100 text-slate-300 cursor-not-allowed shadow-none"
-                            )}
-                        >
-                            {isResolving ? (
-                                <>
-                                    <Loader2 size={20} className="animate-spin" />
-                                    {isOnline ? 'Submitting...' : 'Saving offline...'}
-                                </>
-                            ) : (
-                                <>
-                                    <Upload size={20} />
-                                    {isOnline ? 'Submit Resolution' : 'Save for Sync'}
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </motion.div>
-            </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toast && (
-            <motion.div 
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 50 }}
-                className={cn(
-                    "fixed bottom-36 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl font-bold shadow-2xl z-[3000] flex items-center gap-3",
-                    toast.type === 'success' && "bg-emerald-600 text-white",
-                    toast.type === 'error' && "bg-red-600 text-white",
-                    toast.type === 'info' && "bg-slate-800 text-white"
-                )}
-            >
-                {toast.type === 'success' && <Check size={20} />}
-                {toast.type === 'error' && <X size={20} />}
-                {toast.type === 'info' && <CloudOff size={20} />}
-                {toast.message}
-            </motion.div>
-        )}
-      </AnimatePresence>
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   )
 }

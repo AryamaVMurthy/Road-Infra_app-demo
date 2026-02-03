@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import api, { API_URL } from '../../services/api'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { 
-    LayoutDashboard, Map as MapIcon, Users, LogOut, Filter, 
-    ChevronDown, CheckCircle2, AlertCircle, Clock,
-    CheckSquare, XCircle, Camera, Info, X, MapPin, ChevronRight, Activity, Globe,
-    UserPlus, TrendingUp, Zap, BarChart3, RefreshCw, MoreVertical, UserMinus, ArrowRight
+    LayoutDashboard, Map as MapIcon, Users, LogOut, 
+    CheckCircle2, AlertCircle, Clock,
+    CheckSquare, Globe, RefreshCw, XCircle
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -18,363 +17,17 @@ import { LocateControl } from '../../components/LocateControl'
 import { SearchField } from '../../components/SearchField'
 import { useGeolocation, HYDERABAD_CENTER } from '../../hooks/useGeolocation'
 
+import { SidebarItem } from '../../features/common/components/SidebarItem'
+import { StatCard } from '../../features/common/components/StatCard'
+import { KanbanCard } from '../../features/authority/components/IssueKanban/Card'
+import { KanbanColumn } from '../../features/authority/components/IssueKanban/Column'
+import { IssueActionsDropdown } from '../../features/authority/components/IssueKanban/ActionsDropdown'
+import { IssueReviewModal } from '../../features/authority/components/Modals/IssueReviewModal'
+import { WorkersTable } from '../../features/authority/components/WorkerAnalytics/WorkersTable'
+import { AnalyticsPanel } from '../../features/authority/components/WorkerAnalytics/AnalyticsPanel'
+
 const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-
-const SidebarItem = ({ active, icon: Icon, label, onClick }) => (
-    <button 
-        onClick={onClick}
-        className={cn(
-            "w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition-all group",
-            active ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-        )}
-    >
-        <Icon size={22} className={cn("transition-transform group-hover:scale-110", active ? "text-white" : "text-slate-400")} />
-        <span className="text-sm">{label}</span>
-    </button>
-)
-
-const StatCard = ({ label, value, icon: Icon, colorClass, trend }) => (
-    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 flex items-center gap-6">
-        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center text-white", colorClass)}>
-            <Icon size={24} />
-        </div>
-        <div className="flex-1">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-            <p className="text-3xl font-extrabold text-slate-900">{value}</p>
-        </div>
-        {trend && (
-            <div className="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-                <TrendingUp size={14} />
-                {trend}
-            </div>
-        )}
-    </div>
-)
-
-const KANBAN_STATUSES = [
-    { value: 'REPORTED', label: 'Reported', color: 'bg-rose-500' },
-    { value: 'ASSIGNED', label: 'Assigned', color: 'bg-blue-500' },
-    { value: 'IN_PROGRESS', label: 'In Progress', color: 'bg-amber-500' },
-    { value: 'RESOLVED', label: 'Resolved', color: 'bg-emerald-500' },
-    { value: 'CLOSED', label: 'Closed', color: 'bg-slate-400' },
-]
-
-const IssueActionsDropdown = ({ issue, workers, onUpdate }) => {
-    const [isOpen, setIsOpen] = useState(false)
-    const [activeSubmenu, setActiveSubmenu] = useState(null)
-    const [loading, setLoading] = useState(false)
-    const dropdownRef = useRef(null)
-
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-                setIsOpen(false)
-                setActiveSubmenu(null)
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
-
-    const handleReassign = async (workerId) => {
-        setLoading(true)
-        try {
-            await api.post(`/admin/reassign?issue_id=${issue.id}&worker_id=${workerId}`)
-            setIsOpen(false)
-            setActiveSubmenu(null)
-            onUpdate()
-        } catch (err) {
-            alert('Reassignment failed')
-        }
-        setLoading(false)
-    }
-
-    const handleUnassign = async () => {
-        setLoading(true)
-        try {
-            await api.post(`/admin/unassign?issue_id=${issue.id}`)
-            setIsOpen(false)
-            onUpdate()
-        } catch (err) {
-            alert('Unassignment failed')
-        }
-        setLoading(false)
-    }
-
-    const handleStatusChange = async (newStatus) => {
-        if (newStatus === issue.status) return
-        setLoading(true)
-        try {
-            await api.post(`/admin/update-status?issue_id=${issue.id}&status=${newStatus}`)
-            setIsOpen(false)
-            setActiveSubmenu(null)
-            onUpdate()
-        } catch (err) {
-            alert('Status update failed')
-        }
-        setLoading(false)
-    }
-
-    const handleAssign = async (workerId) => {
-        setLoading(true)
-        try {
-            await api.post(`/admin/assign?issue_id=${issue.id}&worker_id=${workerId}`)
-            setIsOpen(false)
-            setActiveSubmenu(null)
-            onUpdate()
-        } catch (err) {
-            alert('Assignment failed')
-        }
-        setLoading(false)
-    }
-
-    const hasWorker = !!issue.worker_id
-
-    return (
-        <div className="relative" ref={dropdownRef}>
-            <button
-                onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); setActiveSubmenu(null) }}
-                className="flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 hover:text-slate-700 transition-all"
-            >
-                <MoreVertical size={16} />
-            </button>
-            
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                        className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-visible"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {!hasWorker ? (
-                            <div 
-                                className="relative"
-                                onMouseEnter={() => setActiveSubmenu('assign')}
-                                onMouseLeave={() => setActiveSubmenu(null)}
-                            >
-                                <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
-                                    <div className="flex items-center gap-3">
-                                        <UserPlus size={14} className="text-primary" />
-                                        <span className="text-sm font-bold text-slate-700">Assign Worker</span>
-                                    </div>
-                                    <ChevronRight size={14} className="text-slate-400" />
-                                </button>
-                                
-                                <AnimatePresence>
-                                    {activeSubmenu === 'assign' && (
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: -10 }}
-                                            className="absolute left-full top-0 ml-1 w-64 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
-                                        >
-                                            <div className="p-3 border-b border-slate-100 bg-slate-50">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Worker</p>
-                                            </div>
-                                            <div className="max-h-64 overflow-y-auto">
-                                                {workers.map(worker => (
-                                                    <button
-                                                        key={worker.id}
-                                                        onClick={() => handleAssign(worker.id)}
-                                                        disabled={loading}
-                                                        className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors disabled:opacity-50"
-                                                    >
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-black text-[10px]">
-                                                                {worker.full_name?.[0] || 'W'}
-                                                            </div>
-                                                            <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">{worker.full_name || worker.email}</span>
-                                                        </div>
-                                                        <span className={cn(
-                                                            "px-1.5 py-0.5 rounded text-[9px] font-black",
-                                                            worker.active_task_count === 0 ? "bg-emerald-50 text-emerald-600" :
-                                                            worker.active_task_count <= 2 ? "bg-blue-50 text-blue-600" :
-                                                            "bg-amber-50 text-amber-600"
-                                                        )}>
-                                                            {worker.active_task_count}
-                                                        </span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        ) : (
-                            <>
-                                <div 
-                                    className="relative"
-                                    onMouseEnter={() => setActiveSubmenu('reassign')}
-                                    onMouseLeave={() => setActiveSubmenu(null)}
-                                >
-                                    <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
-                                        <div className="flex items-center gap-3">
-                                            <UserPlus size={14} className="text-blue-500" />
-                                            <span className="text-sm font-bold text-slate-700">Reassign Worker</span>
-                                        </div>
-                                        <ChevronRight size={14} className="text-slate-400" />
-                                    </button>
-                                    
-                                    <AnimatePresence>
-                                        {activeSubmenu === 'reassign' && (
-                                            <motion.div
-                                                initial={{ opacity: 0, x: -10 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: -10 }}
-                                                className="absolute left-full top-0 ml-1 w-64 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
-                                            >
-                                                <div className="p-3 border-b border-slate-100 bg-slate-50">
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reassign to</p>
-                                                </div>
-                                                <div className="max-h-64 overflow-y-auto">
-                                                    {workers.map(worker => (
-                                                        <button
-                                                            key={worker.id}
-                                                            onClick={() => handleReassign(worker.id)}
-                                                            disabled={loading || worker.id === issue.worker_id}
-                                                            className={cn(
-                                                                "w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors disabled:opacity-50",
-                                                                worker.id === issue.worker_id && "bg-primary/5"
-                                                            )}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-black text-[10px]">
-                                                                    {worker.full_name?.[0] || 'W'}
-                                                                </div>
-                                                                <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">{worker.full_name || worker.email}</span>
-                                                            </div>
-                                                            {worker.id === issue.worker_id ? (
-                                                                <span className="text-[9px] font-black text-primary uppercase">Current</span>
-                                                            ) : (
-                                                                <span className={cn(
-                                                                    "px-1.5 py-0.5 rounded text-[9px] font-black",
-                                                                    worker.active_task_count === 0 ? "bg-emerald-50 text-emerald-600" :
-                                                                    worker.active_task_count <= 2 ? "bg-blue-50 text-blue-600" :
-                                                                    "bg-amber-50 text-amber-600"
-                                                                )}>
-                                                                    {worker.active_task_count}
-                                                                </span>
-                                                            )}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                                
-                                <button 
-                                    onClick={handleUnassign}
-                                    disabled={loading}
-                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-50 transition-colors text-left disabled:opacity-50"
-                                >
-                                    <UserMinus size={14} className="text-red-500" />
-                                    <span className="text-sm font-bold text-red-600">Unassign Worker</span>
-                                </button>
-                            </>
-                        )}
-                        
-                        <div className="border-t border-slate-100">
-                            <div 
-                                className="relative"
-                                onMouseEnter={() => setActiveSubmenu('status')}
-                                onMouseLeave={() => setActiveSubmenu(null)}
-                            >
-                                <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
-                                    <div className="flex items-center gap-3">
-                                        <ArrowRight size={14} className="text-slate-500" />
-                                        <span className="text-sm font-bold text-slate-700">Move to Status</span>
-                                    </div>
-                                    <ChevronRight size={14} className="text-slate-400" />
-                                </button>
-                                
-                                <AnimatePresence>
-                                    {activeSubmenu === 'status' && (
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: -10 }}
-                                            className="absolute left-full top-0 ml-1 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
-                                        >
-                                            <div className="p-3 border-b border-slate-100 bg-slate-50">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Change Status</p>
-                                            </div>
-                                            <div className="py-1">
-                                                {KANBAN_STATUSES.map(status => (
-                                                    <button
-                                                        key={status.value}
-                                                        onClick={() => handleStatusChange(status.value)}
-                                                        disabled={loading || status.value === issue.status}
-                                                        className={cn(
-                                                            "w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors disabled:opacity-50 text-left",
-                                                            status.value === issue.status && "bg-primary/5"
-                                                        )}
-                                                    >
-                                                        <div className={cn("w-2 h-2 rounded-full", status.color)}></div>
-                                                        <span className="text-sm font-medium text-slate-700">{status.label}</span>
-                                                        {status.value === issue.status && (
-                                                            <CheckCircle2 size={12} className="text-primary ml-auto" />
-                                                        )}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    )
-}
-
-const WorkerAnalyticsMini = ({ analytics }) => {
-    if (!analytics) return null
-    
-    return (
-        <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl p-5 border border-slate-100 shadow-lg shadow-slate-200/40 mb-6"
-        >
-            <div className="flex items-center gap-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                        <BarChart3 size={18} />
-                    </div>
-                    <div>
-                        <h3 className="text-sm font-black text-slate-900">Workforce Overview</h3>
-                        <p className="text-[9px] text-slate-400 uppercase tracking-widest">Real-time</p>
-                    </div>
-                </div>
-                
-                <div className="flex-1 flex items-center gap-4 justify-end">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
-                        <p className="text-lg font-black text-emerald-600">{analytics.summary?.total_workers || 0}</p>
-                        <p className="text-[9px] text-slate-400 uppercase">Workers</p>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
-                        <p className="text-lg font-black text-amber-600">{analytics.summary?.total_active_tasks || 0}</p>
-                        <p className="text-[9px] text-slate-400 uppercase">Active</p>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
-                        <p className="text-lg font-black text-blue-600">{analytics.summary?.total_resolved || 0}</p>
-                        <p className="text-[9px] text-slate-400 uppercase">Resolved</p>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
-                        <p className="text-lg font-black text-purple-600">{analytics.summary?.avg_tasks_per_worker || 0}</p>
-                        <p className="text-[9px] text-slate-400 uppercase">Avg/Worker</p>
-                    </div>
-                </div>
-            </div>
-        </motion.div>
-    )
-}
 
 export default function AuthorityDashboard() {
   const [activeTab, setActiveTab] = useState('map') 
@@ -560,8 +213,7 @@ export default function AuthorityDashboard() {
 
             {activeTab === 'kanban' && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col h-full gap-8">
-                    {/* Worker Analytics Mini Section */}
-                    <WorkerAnalyticsMini analytics={workerAnalytics} />
+                    <AnalyticsPanel analytics={workerAnalytics} />
                     
                     {selectedIssues.length > 0 && (
                         <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="flex items-center gap-4 px-6 py-2 bg-primary rounded-2xl shadow-xl shadow-primary/30">
@@ -583,67 +235,37 @@ export default function AuthorityDashboard() {
                     
                     <div className="flex gap-8 overflow-x-auto pb-6 h-full">
                         {[
-                            { key: 'REPORTED', label: 'REPORTED', statuses: ['REPORTED'], color: 'bg-rose-500' },
-                            { key: 'ASSIGNED', label: 'ASSIGNED', statuses: ['ASSIGNED', 'ACCEPTED'], color: 'bg-blue-500' },
-                            { key: 'IN_PROGRESS', label: 'IN PROGRESS', statuses: ['IN_PROGRESS'], color: 'bg-amber-500' },
-                            { key: 'RESOLVED', label: 'RESOLVED', statuses: ['RESOLVED'], color: 'bg-emerald-500' },
-                            { key: 'CLOSED', label: 'CLOSED', statuses: ['CLOSED'], color: 'bg-slate-400' },
+                            { key: 'REPORTED', label: 'REPORTED', statuses: ['REPORTED'], color: 'rose' },
+                            { key: 'ASSIGNED', label: 'ASSIGNED', statuses: ['ASSIGNED', 'ACCEPTED'], color: 'blue' },
+                            { key: 'IN_PROGRESS', label: 'IN PROGRESS', statuses: ['IN_PROGRESS'], color: 'amber' },
+                            { key: 'RESOLVED', label: 'RESOLVED', statuses: ['RESOLVED'], color: 'emerald' },
+                            { key: 'CLOSED', label: 'CLOSED', statuses: ['CLOSED'], color: 'slate' },
                         ].map(column => (
-                            <div key={column.key} className="w-80 flex-shrink-0 flex flex-col gap-6">
-                                <div className="flex items-center justify-between px-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className={cn("w-2 h-2 rounded-full", column.color)}></div>
-                                        <h3 className="font-black text-slate-600 text-sm tracking-widest">{column.label}</h3>
-                                    </div>
-                                    <span className="px-2 py-0.5 bg-slate-200 rounded-md text-[10px] font-black text-slate-500">{issues.filter(i => column.statuses.includes(i.status)).length}</span>
-                                </div>
-                                <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                                    {issues.filter(i => column.statuses.includes(i.status)).map(issue => (
-                                        <motion.div 
-                                            key={issue.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                                            onClick={() => setReviewIssue(issue)}
-                                            className={cn("bg-white p-6 rounded-[2rem] shadow-lg shadow-slate-200/40 border-2 transition-all relative group cursor-pointer ticket-card", selectedIssues.includes(issue.id) ? "border-primary" : "border-transparent")}
-                                        >
-                                            <div className="absolute top-5 right-5 flex items-center gap-2">
-                                                <IssueActionsDropdown 
-                                                    issue={issue} 
-                                                    workers={workers}
-                                                    onUpdate={fetchData}
-                                                />
-                                                {column.key === 'REPORTED' && (
-                                                    <input 
-                                                        type="checkbox" checked={selectedIssues.includes(issue.id)}
-                                                        className="w-5 h-5 rounded-md border-2 border-slate-200 checked:bg-primary transition-all cursor-pointer"
-                                                        onChange={(e) => { e.stopPropagation(); toggleIssueSelection(issue.id); }}
-                                                    />
-                                                )}
-                                            </div>
-                                            <div className="flex gap-2 mb-4 flex-wrap pr-12">
-                                                <span className={cn("text-[10px] font-black px-2 py-0.5 rounded-full", issue.priority === 'P1' ? "bg-rose-50 text-rose-600" : issue.priority === 'P2' ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600")}>{issue.priority}</span>
-                                                {issue.eta_duration && (
-                                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 flex items-center gap-1">
-                                                        <Clock size={10} />
-                                                        ETA: {issue.eta_duration}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <h4 className="font-black text-slate-900 text-lg mb-2 leading-tight group-hover:text-primary transition-colors">{issue.category_name}</h4>
-                                            <p className="text-xs font-medium text-slate-400 line-clamp-2 mb-6">Issue #{issue.id.slice(0,8)} at {issue.address || 'Confirmed GPS Location'}.</p>
-                                            <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                                                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                                    <Clock size={12} className="text-slate-300" />
-                                                    <span>{new Date(issue.created_at).toLocaleDateString()}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    {issue.worker_name && (
-                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate max-w-[80px]">{issue.worker_name}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </div>
+                            <KanbanColumn 
+                                key={column.key} 
+                                title={column.label} 
+                                color={column.color} 
+                                count={issues.filter(i => column.statuses.includes(i.status)).length}
+                            >
+                                {issues.filter(i => column.statuses.includes(i.status)).map(issue => (
+                                    <KanbanCard 
+                                        key={issue.id} 
+                                        issue={issue}
+                                        selected={selectedIssues.includes(issue.id)}
+                                        onClick={() => setReviewIssue(issue)}
+                                        onSelectToggle={toggleIssueSelection}
+                                        showCheckbox={column.key === 'REPORTED'}
+                                        actions={
+                                            <IssueActionsDropdown 
+                                                issue={issue} 
+                                                workers={workers}
+                                                onUpdate={fetchData}
+                                                api={api}
+                                            />
+                                        }
+                                    />
+                                ))}
+                            </KanbanColumn>
                         ))}
                     </div>
                 </motion.div>
@@ -651,178 +273,19 @@ export default function AuthorityDashboard() {
 
             {activeTab === 'workers' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-                    {/* Worker Analytics Mini Section */}
-                    <WorkerAnalyticsMini analytics={workerAnalytics} />
-                    
-                    <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden">
-                        <div className="p-8 border-b bg-slate-50/50 flex items-center justify-between">
-                            <h3 className="text-xl font-black text-slate-900">Active Field Force</h3>
-                            <div className="text-sm text-slate-500">
-                                {workers.length} workers • {workers.reduce((sum, w) => sum + w.active_task_count, 0)} active tasks
-                            </div>
-                        </div>
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                                <tr>
-                                    <th className="px-8 py-6">Member</th>
-                                    <th className="px-8 py-6">Status</th>
-                                    <th className="px-8 py-6">Active Tasks</th>
-                                    <th className="px-8 py-6">Resolved</th>
-                                    <th className="px-8 py-6">This Week</th>
-                                    <th className="px-8 py-6">Performance</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {workers.map(worker => {
-                                    // Find analytics for this worker
-                                    const analytics = workerAnalytics?.workers?.find(w => w.worker_id === worker.id)
-                                    return (
-                                        <tr key={worker.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-primary font-black shadow-sm">{worker.full_name?.[0] || 'W'}</div>
-                                                    <div>
-                                                        <p className="font-black text-slate-900">{worker.full_name || 'Unknown'}</p>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{worker.email}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <span className={cn(
-                                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                                                    worker.status === 'ACTIVE' ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"
-                                                )}>
-                                                    {worker.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={cn(
-                                                        "text-lg font-black",
-                                                        worker.active_task_count === 0 ? "text-slate-300" :
-                                                        worker.active_task_count <= 2 ? "text-blue-600" :
-                                                        "text-amber-600"
-                                                    )}>
-                                                        {worker.active_task_count}
-                                                    </span>
-                                                    <span className="text-xs text-slate-400">tasks</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <span className="text-lg font-black text-emerald-600">{worker.resolved_count}</span>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <span className="text-lg font-black text-purple-600">{analytics?.tasks_this_week || 0}</span>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                {analytics?.avg_resolution_hours ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <Zap size={14} className="text-amber-500" />
-                                                        <span className="text-sm font-bold text-slate-600">
-                                                            {analytics.avg_resolution_hours}h avg
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-slate-400">No data</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                    <AnalyticsPanel analytics={workerAnalytics} />
+                    <WorkersTable workers={workers} analytics={workerAnalytics} />
                 </motion.div>
             )}
            </AnimatePresence>
 
-           <AnimatePresence>
-            {reviewIssue && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[2000] flex items-center justify-center p-12">
-                    <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-[3rem] w-full max-w-6xl flex flex-col h-[85vh] shadow-2xl overflow-hidden">
-                        <div className="p-8 border-b flex justify-between items-center bg-white sticky top-0 z-10">
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Infrastructure Intelligence Console</h3>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    Incident Ticket #{reviewIssue.id.slice(0,8)} • Category: {reviewIssue.category_name}
-                                    {reviewIssue.eta_duration && (
-                                        <span className="ml-4 text-amber-600">• ETA: {reviewIssue.eta_duration}</span>
-                                    )}
-                                </p>
-                            </div>
-                            <button onClick={() => setReviewIssue(null)} className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 hover:text-red-500 flex items-center justify-center transition-all">✕</button>
-                        </div>
-                        <div className="flex-1 flex flex-col lg:flex-row gap-8 p-10 overflow-auto bg-slate-50/50">
-                            <div className="flex-1 flex flex-col gap-6">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-rose-100 text-rose-600 rounded-lg flex items-center justify-center font-black text-[10px]">INITIAL</div>
-                                        <h4 className="font-black text-slate-900">Before Reconstruction</h4>
-                                    </div>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase">{new Date(reviewIssue.created_at).toLocaleString()}</span>
-                                </div>
-                                <div className="flex-1 bg-white rounded-[2.5rem] overflow-hidden border-8 border-white shadow-2xl">
-                                    <img src={`${API_URL}/media/${reviewIssue.id}/before`} className="w-full h-full object-cover" alt="Before" />
-                                </div>
-                            </div>
-                            <div className="flex-1 flex flex-col gap-6">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center font-black text-[10px]">FIELD</div>
-                                        <h4 className="font-black text-slate-900">Resolution Verification</h4>
-                                    </div>
-                                    <span className="text-[10px] font-black text-emerald-500 uppercase">Real-Time Capture</span>
-                                </div>
-                                <div className="flex-1 bg-white rounded-[2.5rem] overflow-hidden border-8 border-emerald-50 shadow-2xl flex items-center justify-center">
-                                    {reviewIssue.status === 'RESOLVED' || reviewIssue.status === 'CLOSED' ? (
-                                        <img src={`${API_URL}/media/${reviewIssue.id}/after`} className="w-full h-full object-cover" alt="After" />
-                                    ) : (
-                                        <div className="text-center p-10 space-y-4">
-                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 shadow-inner"><Camera size={28} /></div>
-                                            <p className="text-sm font-black text-slate-300 uppercase tracking-widest">Resolution Proof Pending</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {/* Issue Details Panel */}
-                        <div className="px-10 py-4 bg-slate-50 border-t border-slate-100">
-                            <div className="flex items-center gap-8 text-sm">
-                                <div>
-                                    <span className="text-slate-400 text-xs uppercase font-bold">Assigned to:</span>
-                                    <span className="ml-2 font-black text-slate-700">{reviewIssue.worker_name || 'Unassigned'}</span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-400 text-xs uppercase font-bold">Status:</span>
-                                    <span className="ml-2 font-black text-primary">{reviewIssue.status}</span>
-                                </div>
-                                {reviewIssue.eta_duration && (
-                                    <div>
-                                        <span className="text-slate-400 text-xs uppercase font-bold">ETA:</span>
-                                        <span className="ml-2 font-black text-amber-600">{reviewIssue.eta_duration}</span>
-                                    </div>
-                                )}
-                                {reviewIssue.accepted_at && (
-                                    <div>
-                                        <span className="text-slate-400 text-xs uppercase font-bold">Accepted:</span>
-                                        <span className="ml-2 font-black text-slate-700">{new Date(reviewIssue.accepted_at).toLocaleString()}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        
-                        <div className="p-10 border-t flex items-center gap-8 bg-white">
-                            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Instructional feedback for the team..." className="flex-1 p-5 bg-slate-50 border-transparent rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all resize-none h-20 shadow-inner" />
-                            <div className="flex gap-4">
-                                <button onClick={() => handleReject(reviewIssue.id)} disabled={submitting || !rejectReason} className="px-10 py-5 bg-rose-50 text-rose-600 font-black rounded-2xl hover:bg-rose-100 transition-all active:scale-95 border border-rose-100 shadow-sm disabled:opacity-50">Reject Proof</button>
-                                <button onClick={() => handleApprove(reviewIssue.id)} disabled={submitting || (reviewIssue.status !== 'RESOLVED')} className="px-10 py-5 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50">Approve & Archive</button>
-                            </div>
-                        </div>
-                    </motion.div>
-                </motion.div>
-            )}
-           </AnimatePresence>
+           <IssueReviewModal 
+                issue={reviewIssue}
+                onClose={() => setReviewIssue(null)}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                submitting={submitting}
+           />
         </main>
       </div>
     </div>

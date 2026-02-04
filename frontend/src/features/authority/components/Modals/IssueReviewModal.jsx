@@ -150,7 +150,7 @@ const PhotoPanel = ({ title, subtitle, imageUrl, timestamp, color, label, placeh
           <h4 className="font-black text-slate-900 text-sm sm:text-base">{title}</h4>
         </div>
         <span className="text-[10px] font-black text-slate-400 uppercase">
-          {timestamp ? new Date(timestamp).toLocaleString() : subtitle}
+          {timestamp ? new Date(timestamp).toLocaleDateString() : subtitle}
         </span>
       </div>
 
@@ -187,28 +187,52 @@ const PhotoPanel = ({ title, subtitle, imageUrl, timestamp, color, label, placeh
  * IssueDetails - Displays issue metadata
  */
 const IssueDetails = ({ issue }) => (
-  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-    <DetailItem 
-      icon={MapPin}
-      label="Location"
-      value={issue.address || 'GPS Coordinates'}
-    />
-    <DetailItem 
-      icon={User}
-      label="Reporter"
-      value={issue.worker_name || 'Unknown'}
-    />
-    <DetailItem 
-      icon={Clock}
-      label="Status"
-      value={issue.status}
-      highlight
-    />
-    <DetailItem 
-      icon={MessageSquare}
-      label="Priority"
-      value={issue.priority}
-    />
+  <div className="space-y-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <DetailItem 
+        icon={MapPin}
+        label="Location"
+        value={issue.address || 'GPS Coordinates'}
+      />
+      <DetailItem 
+        icon={User}
+        label="Assigned Worker"
+        value={issue.worker_name || 'Unassigned'}
+      />
+      <DetailItem 
+        icon={Clock}
+        label="Status"
+        value={issue.status}
+        highlight
+      />
+      <DetailItem 
+        icon={MessageSquare}
+        label="Priority"
+        value={issue.priority}
+      />
+    </div>
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
+      <DetailItem 
+        icon={Clock}
+        label="Registered"
+        value={issue.created_at ? new Date(issue.created_at).toLocaleDateString() : '-'}
+      />
+      <DetailItem 
+        icon={Clock}
+        label="Accepted"
+        value={issue.accepted_at ? new Date(issue.accepted_at).toLocaleDateString() : '-'}
+      />
+      <DetailItem 
+        icon={Clock}
+        label="ETA"
+        value={issue.eta_date ? new Date(issue.eta_date).toLocaleDateString() : '-'}
+      />
+      <DetailItem 
+        icon={Clock}
+        label="Resolved"
+        value={issue.resolved_at ? new Date(issue.resolved_at).toLocaleDateString() : '-'}
+      />
+    </div>
   </div>
 )
 

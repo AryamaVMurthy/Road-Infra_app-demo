@@ -218,7 +218,7 @@ export default function AdminDashboard() {
                             <tbody className="divide-y divide-slate-50">
                                 {audits.map(log => (
                                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-8 py-6 text-xs font-bold text-slate-500">{new Date(log.created_at).toLocaleString()}</td>
+                                        <td className="px-8 py-6 text-xs font-bold text-slate-500">{new Date(log.created_at).toLocaleDateString()}</td>
                                         <td className="px-8 py-6"><span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-[10px] font-black">{log.action}</span></td>
                                         <td className="px-8 py-6 text-xs font-medium text-slate-600">#{log.entity_id.slice(0,8)}</td>
                                         <td className="px-8 py-6 text-xs font-black text-primary uppercase tracking-tight">#{log.actor_id.slice(0,8)}</td>

@@ -55,7 +55,7 @@ const TimelineItem = ({ log, isLast }) => (
         <div className="pb-10 pt-1">
             <p className="text-xs font-black text-slate-900 uppercase tracking-[0.15em] mb-1.5">{log.action.replace('_', ' ')}</p>
             <p className="text-[12px] font-bold text-slate-400 mb-4 flex items-center gap-2">
-                <Clock size={12} /> {new Date(log.created_at).toLocaleString()}
+                <Clock size={12} /> {new Date(log.created_at).toLocaleDateString()}
             </p>
             {log.new_value && (
                 <div className="inline-flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-[11px] font-bold">

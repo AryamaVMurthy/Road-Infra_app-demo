@@ -79,16 +79,28 @@ export const KanbanCard = ({
         Issue #{issue.id.slice(0,8)} at {issue.address || 'Confirmed GPS Location'}.
       </p>
 
-      {/* Footer with date and worker */}
-      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-          <Clock size={12} className="text-slate-300" />
-          <span>{new Date(issue.created_at).toLocaleDateString()}</span>
+      {/* Footer with dates and worker */}
+      <div className="flex flex-col gap-2 pt-4 border-t border-slate-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+            <Clock size={12} className="text-slate-300" />
+            <span>Registered: {new Date(issue.created_at).toLocaleDateString()}</span>
+          </div>
+          {issue.worker_name && (
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate max-w-[80px]">
+              {issue.worker_name}
+            </span>
+          )}
         </div>
-        {issue.worker_name && (
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate max-w-[80px]">
-            {issue.worker_name}
-          </span>
+        {(issue.accepted_at || issue.resolved_at) && (
+          <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+            {issue.accepted_at && (
+              <span>Accepted: {new Date(issue.accepted_at).toLocaleDateString()}</span>
+            )}
+            {issue.resolved_at && (
+              <span className="text-emerald-600">Resolved: {new Date(issue.resolved_at).toLocaleDateString()}</span>
+            )}
+          </div>
         )}
       </div>
     </motion.div>

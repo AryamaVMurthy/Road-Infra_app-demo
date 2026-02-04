@@ -189,12 +189,28 @@ export default function AuthorityDashboard() {
                                                     <p className="font-black text-slate-900">{issue.category_name}</p>
                                                     <span className="text-[9px] font-black uppercase text-primary px-1.5 py-0.5 bg-primary/5 rounded">{issue.status}</span>
                                                 </div>
-                                                {issue.eta_date && (
-                                                    <div className="flex items-center gap-1 text-amber-600 text-[10px] font-bold">
+                                                <div className="text-[10px] text-slate-500 space-y-1">
+                                                    <div className="flex items-center gap-1">
                                                         <Clock size={10} />
-                                                        ETA: {new Date(issue.eta_date).toLocaleDateString()}
+                                                        Registered: {new Date(issue.created_at).toLocaleDateString()}
                                                     </div>
-                                                )}
+                                                    {issue.eta_date && (
+                                                        <div className="flex items-center gap-1 text-amber-600 font-bold">
+                                                            <Clock size={10} />
+                                                            ETA: {new Date(issue.eta_date).toLocaleDateString()}
+                                                        </div>
+                                                    )}
+                                                    {issue.accepted_at && (
+                                                        <div className="flex items-center gap-1">
+                                                            Accepted: {new Date(issue.accepted_at).toLocaleDateString()}
+                                                        </div>
+                                                    )}
+                                                    {issue.resolved_at && (
+                                                        <div className="flex items-center gap-1 text-emerald-600 font-bold">
+                                                            Resolved: {new Date(issue.resolved_at).toLocaleDateString()}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <div className="aspect-video bg-slate-100 rounded-lg overflow-hidden border">
                                                     <img src={`${API_URL}/media/${issue.id}/before`} className="w-full h-full object-cover" alt="Issue" />
                                                 </div>

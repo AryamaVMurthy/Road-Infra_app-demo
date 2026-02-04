@@ -18,12 +18,9 @@ from .workers import router as workers_router
 # Create main admin router
 router = APIRouter()
 
-# Include sub-routers with prefixes
-router.include_router(analytics_router, prefix="/analytics", tags=["admin-analytics"])
-router.include_router(
-    assignments_router, prefix="/assignments", tags=["admin-assignments"]
-)
-router.include_router(issues_router, prefix="/issues", tags=["admin-issues"])
-router.include_router(workers_router, prefix="/workers", tags=["admin-workers"])
+router.include_router(analytics_router, tags=["admin-analytics"])
+router.include_router(assignments_router, tags=["admin-assignments"])
+router.include_router(issues_router, tags=["admin-issues"])
+router.include_router(workers_router, tags=["admin-workers"])
 
 __all__ = ["router"]

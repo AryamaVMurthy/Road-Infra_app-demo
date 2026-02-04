@@ -23,7 +23,7 @@ test.describe('Offline Sync Rigorous Flow', () => {
     execSync('export PYTHONPATH=$PYTHONPATH:$(pwd)/../backend && ../venv/bin/python3 ../backend/reset_db.py');
     
     // 2. Login
-    await page.goto('http://localhost:5173/login');
+    await page.goto('http://localhost:3001/login');
     await page.fill('input[type="email"]', email);
     await page.click('text=Request Access');
     await page.waitForTimeout(1000);

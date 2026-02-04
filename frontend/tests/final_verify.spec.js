@@ -11,7 +11,7 @@ test.describe('Final Purposeful UI Verification', () => {
   for (const p of personas) {
     test(`${p.name} dashboard and analytics load correctly`, async ({ page }) => {
       // 1. Mock Login
-      await page.goto('http://localhost:5173/login');
+      await page.goto('http://localhost:3001/login');
       const role = p.name.toUpperCase() === 'AUTHORITY' ? 'ADMIN' : (p.name.toUpperCase() === 'ADMIN' ? 'SYSADMIN' : p.name.toUpperCase());
       
       await page.evaluate(({role, email}) => {
@@ -24,7 +24,7 @@ test.describe('Final Purposeful UI Verification', () => {
       }, {role, email: p.email});
 
       // 2. Load Dashboard
-      await page.goto(`http://localhost:5173${p.url}`);
+      await page.goto(`http://localhost:3001${p.url}`);
       await page.waitForTimeout(2000);
       
       // Check for common error text

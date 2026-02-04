@@ -21,7 +21,7 @@ test.describe('Citizen Rigorous Flow', () => {
     });
 
     // 1. Login
-    await page.goto('http://localhost:5173/login');
+    await page.goto('http://localhost:3001/login');
     await page.fill('input[type="email"]', email);
     await page.click('text=Request Access');
     await page.waitForTimeout(1000);
@@ -66,7 +66,7 @@ test.describe('Citizen Rigorous Flow', () => {
     console.log("Report submitted, verified in my-reports");
 
     // 3. Second Report (Duplicate)
-    await page.goto('http://localhost:5173/citizen/report');
+    await page.goto('http://localhost:3001/citizen/report');
     await page.waitForTimeout(2000);
     await page.click('button:has-text("Confirm & Proceed")');
     

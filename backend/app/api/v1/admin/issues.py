@@ -18,7 +18,7 @@ from app.services.workflow_service import WorkflowService
 router = APIRouter()
 
 
-@router.get("/", response_model=List[IssueRead])
+@router.get("/issues", response_model=List[IssueRead])
 def get_all_issues(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -30,7 +30,7 @@ def get_all_issues(
     return session.exec(statement).all()
 
 
-@router.post("/{issue_id}/status")
+@router.post("/update-status")
 def update_issue_status(
     issue_id: UUID,
     status: str,
@@ -47,7 +47,7 @@ def update_issue_status(
     return {"message": f"Issue status updated to {status}"}
 
 
-@router.post("/{issue_id}/approve")
+@router.post("/approve")
 def approve_issue(
     issue_id: UUID,
     session: Session = Depends(get_session),
@@ -63,7 +63,7 @@ def approve_issue(
     return {"message": "Issue approved and closed"}
 
 
-@router.post("/{issue_id}/reject")
+@router.post("/reject")
 def reject_issue(
     issue_id: UUID,
     reason: str,

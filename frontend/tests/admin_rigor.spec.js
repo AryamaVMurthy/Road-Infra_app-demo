@@ -21,7 +21,7 @@ test.describe('Admin Rigorous Flow', () => {
     page.on('console', msg => console.log('BROWSER:', msg.text()));
     page.on('pageerror', err => console.log('BROWSER_ERROR:', err.message, err.stack));
     // 2. Login
-    await page.goto('http://localhost:5173/login');
+    await page.goto('http://localhost:3001/login');
     await page.fill('input[type="email"]', email);
     await page.click('text=Request Access');
 
@@ -37,9 +37,14 @@ test.describe('Admin Rigorous Flow', () => {
     await page.waitForSelector('.ticket-card');
     
     const checkboxes = page.locator('input[type="checkbox"]');
-    console.log(`Found ${await checkboxes.count()} checkboxes`);
-    await checkboxes.nth(0).check();
-    await checkboxes.nth(1).check();
+    const count = await checkboxes.count();
+    console.log(`Found ${count} checkboxes`);
+    for (let i = 0; i < count; i++) {
+        console.log(`Checkbox ${i} visible: ${await checkboxes.nth(i).isVisible()}`);
+    }
+    await checkboxes.nth(0).click({ force: true });
+    await page.waitForTimeout(500);
+    await checkboxes.nth(1).click({ force: true });
     
     await page.selectOption('select', { index: 1 });
     

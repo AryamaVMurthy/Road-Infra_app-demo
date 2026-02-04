@@ -19,7 +19,7 @@ from app.services.audit import AuditService
 router = APIRouter()
 
 
-@router.get("/", response_model=List[User])
+@router.get("/workers", response_model=List[User])
 def get_workers(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -28,7 +28,7 @@ def get_workers(
     return WorkerService.get_all_workers(session)
 
 
-@router.get("/with-stats", response_model=List[WorkerWithStats])
+@router.get("/workers-with-stats", response_model=List[WorkerWithStats])
 def get_workers_with_stats(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -37,7 +37,7 @@ def get_workers_with_stats(
     return AnalyticsService.get_workers_with_stats(session)
 
 
-@router.post("/{worker_id}/deactivate")
+@router.post("/deactivate-worker")
 def deactivate_worker(
     worker_id: UUID,
     session: Session = Depends(get_session),

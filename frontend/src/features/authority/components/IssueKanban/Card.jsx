@@ -45,8 +45,8 @@ export const KanbanCard = ({
             type="checkbox" 
             checked={selected}
             className="w-5 h-5 rounded-md border-2 border-slate-200 checked:bg-primary transition-all cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
             onChange={(e) => { 
-              e.stopPropagation()
               onSelectToggle?.(issue.id)
             }}
           />

@@ -11,7 +11,7 @@ test.describe('City Analytics End-to-End', () => {
     execSync(`docker exec spec_requirements-db-1 psql -U postgres -d app -c "${sql}"`);
     
     // 2. Login
-    await page.goto('http://localhost:5173/login');
+    await page.goto('http://localhost:3001/login');
     await page.fill('input[type="email"]', email);
     await page.click('text=Request Access');
     await page.waitForTimeout(1000);
@@ -35,10 +35,15 @@ test.describe('City Analytics End-to-End', () => {
 
     // 4. Verify Dashboards and Charts
     await expect(page.locator('h1')).toContainText('City Health Intelligence', { timeout: 10000 });
-    await expect(page.locator('.recharts-surface')).count().then(c => expect(c).toBeGreaterThan(0));
+    const charts = page.locator('.recharts-surface');
+    await expect(charts.first()).toBeVisible({ timeout: 10000 });
+    expect(await charts.count()).toBeGreaterThan(0);
 
     // 5. Test Geocoding (Search Location)
+    const geocoderIcon = page.locator('.leaflet-control-geocoder-icon');
+    await geocoderIcon.click();
     const searchInput = page.locator('.leaflet-control-geocoder-form input');
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill('Hyderabad');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(2000);

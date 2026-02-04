@@ -5,7 +5,7 @@ test('Citizen flow: Login and Report Issue', async ({ page }) => {
   const email = 'citizen_e2e@test.com';
   
   // 1. Login Flow
-  await page.goto('http://localhost:5173/login');
+  await page.goto('http://localhost:3001/login');
   await page.fill('input[type="email"]', email);
   await page.click('button:has-text("Request OTP")');
   

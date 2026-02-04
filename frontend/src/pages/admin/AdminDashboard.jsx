@@ -152,7 +152,7 @@ export default function AdminDashboard() {
                                             dataKey="value"
                                             stroke="none"
                                         >
-                                            {data?.category_split.map((entry, index) => (
+                                            {(data?.category_split || []).map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][index % 4]} />
                                             ))}
                                         </Pie>
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
                                 </ResponsiveContainer>
                             </div>
                             <div className="space-y-4 mt-8">
-                                {data?.category_split.map((d, i) => (
+                                {(data?.category_split || []).map((d, i) => (
                                     <div key={d.name} className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: ['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][i % 4]}}></div>

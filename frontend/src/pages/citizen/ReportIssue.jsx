@@ -165,7 +165,7 @@ export default function ReportIssue() {
                     <MapContainer center={position} zoom={17} className="h-full w-full">
                       <TileLayer url={MAP_TILES} attribution={MAP_ATTRIBUTION} />
                       <LocationMarker position={position} setPosition={setPosition} />
-                      <SearchField />
+                      <SearchField onFound={setPosition} />
                       <LocateControl onFound={setPosition} />
                     </MapContainer>
                   ) : (

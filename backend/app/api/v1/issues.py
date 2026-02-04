@@ -77,6 +77,7 @@ async def report_issue(
             issue_id=duplicate_issue.id,
             type="REPORT",
             file_path=file_path,
+            reporter_id=reporter.id,
             exif_timestamp=exif_data["timestamp"],
             exif_lat=exif_data["lat"],
             exif_lng=exif_data["lng"],
@@ -106,6 +107,7 @@ async def report_issue(
             issue_id=new_issue.id,
             type="REPORT",
             file_path=file_path,
+            reporter_id=reporter.id,
             exif_timestamp=exif_data["timestamp"],
             exif_lat=exif_data["lat"],
             exif_lng=exif_data["lng"],
@@ -127,4 +129,18 @@ def get_my_reports(email: str, session: Session = Depends(get_session)):
     user = session.exec(statement).first()
     if not user:
         return []
-    return user.reported_issues
+
+    # Get all issues where user is the reporter OR has provided evidence
+    # (Handling duplicates where reporter_id might be different but evidence exists)
+    from sqlalchemy import or_
+    from sqlalchemy.orm import selectinload
+
+    statement = (
+        select(Issue)
+        .join(Evidence, isouter=True)
+        .where(or_(Issue.reporter_id == user.id, Evidence.reporter_id == user.id))
+        .options(selectinload(Issue.category), selectinload(Issue.worker))
+        .distinct()
+    )
+
+    return session.exec(statement).all()

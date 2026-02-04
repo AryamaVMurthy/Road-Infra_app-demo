@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../utils/utils'
 import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
 import { HeatmapLayer } from '../components/HeatmapLayer'
 import { LocateControl } from '../components/LocateControl'
 import { SearchField } from '../components/SearchField'
@@ -186,7 +187,7 @@ export default function AnalyticsDashboard() {
                                     dataKey="value"
                                     stroke="none"
                                 >
-                                    {data?.category_split.map((entry, index) => (
+                                    {(data?.category_split || []).map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][index % 4]} />
                                     ))}
                                 </Pie>
@@ -195,7 +196,7 @@ export default function AnalyticsDashboard() {
                         </ResponsiveContainer>
                     </div>
                     <div className="grid grid-cols-2 gap-4 mt-8">
-                        {data?.category_split.map((d, i) => (
+                        {(data?.category_split || []).map((d, i) => (
                             <div key={d.name} className="flex items-center gap-3">
                                 <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: ['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][i % 4]}}></div>
                                 <span className="text-xs font-black text-slate-600 truncate uppercase tracking-tighter">{d.name}</span>

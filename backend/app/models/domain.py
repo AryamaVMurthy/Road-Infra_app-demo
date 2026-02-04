@@ -135,6 +135,7 @@ class EvidenceBase(SQLModel):
     issue_id: UUID = Field(foreign_key="issue.id")
     type: str  # REPORT, RESOLVE
     file_path: str
+    reporter_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     exif_timestamp: Optional[datetime] = None
     exif_lat: Optional[float] = None
     exif_lng: Optional[float] = None

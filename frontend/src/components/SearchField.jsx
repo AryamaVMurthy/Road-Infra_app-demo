@@ -4,7 +4,7 @@ import "leaflet-control-geocoder";
 import { useMap } from "react-leaflet";
 import { useEffect } from "react";
 
-export function SearchField() {
+export function SearchField({ onFound }) {
   const map = useMap();
 
   useEffect(() => {
@@ -19,6 +19,7 @@ export function SearchField() {
         const latlng = e.geocode.center;
         map.setView(latlng, 18);
         L.marker(latlng).addTo(map).bindPopup(e.geocode.name).openPopup();
+        if (onFound) onFound(latlng);
       })
       .addTo(map);
 

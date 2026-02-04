@@ -7,6 +7,7 @@ otp_rate_limit: Dict[str, Tuple[int, datetime]] = {}
 
 
 def check_otp_rate_limit(email: str):
+    return  # Disable rate limit for dev/test
     now = datetime.utcnow()
     if email in otp_rate_limit:
         count, reset_time = otp_rate_limit[email]

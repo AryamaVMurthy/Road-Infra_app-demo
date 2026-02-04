@@ -11,14 +11,14 @@ test.describe('Worker Rigorous Flow', () => {
     // 2. Login
     await page.goto('http://localhost:5173/login');
     await page.fill('input[type="email"]', email);
-    await page.click('button:has-text("Request OTP")');
+    await page.click('button:has-text("Request Access")');
     await page.waitForTimeout(1000);
     const otp = execSync(`docker exec spec_requirements-db-1 psql -U postgres -d app -t -c "SELECT code FROM otp WHERE email='${email}' ORDER BY created_at DESC LIMIT 1;"`).toString().trim();
-    await page.fill('input[placeholder*="OTP"]', otp);
-    await page.click('button:has-text("Login")');
+    await page.fill('input[placeholder*="code"]', otp);
+    await page.click('button:has-text("Verify & Sign In")');
 
     // 3. Task List
-    await page.waitForSelector('text=Current Tasks');
+    await page.waitForSelector('text=Assigned Tasks');
     
     // Check if we can accept (assuming a task exists)
     const acceptBtn = page.locator('button:has-text("Accept Task")');

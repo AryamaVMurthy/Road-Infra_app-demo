@@ -54,7 +54,8 @@ export default function Login() {
           <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center text-white shadow-xl shadow-primary/20 mb-6">
             <ShieldCheck size={40} />
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-3">MARG</h1>
+          <h1 className="text-6xl font-black tracking-tighter text-slate-900 mb-2">MARG</h1>
+          <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px]">Monitoring Application for Road Governance</p>
         </div>
 
         <AnimatePresence mode="wait">

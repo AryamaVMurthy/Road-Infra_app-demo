@@ -244,6 +244,52 @@ def load_mock_data():
         session.commit()
         print(f"✅ Created {issue_count} issues")
 
+        # Ensure EVERY worker has at least 3 completed issues in their history
+        print("\n📜 Ensuring each worker has completed history...")
+        history_count = 0
+        for worker in all_workers:
+            # Check how many completed issues this worker has
+            completed = session.exec(
+                select(Issue).where(
+                    Issue.worker_id == worker.id,
+                    Issue.status.in_(["RESOLVED", "CLOSED"]),
+                )
+            ).all()
+
+            # If less than 3, create more CLOSED issues for this worker
+            needed = 3 - len(completed)
+            for _ in range(max(0, needed)):
+                loc = random.choice(HYDERABAD_LOCATIONS)
+                category = random.choice(categories)
+                created_at = random_date(90)  # Older issues for history
+                accepted_at = created_at + timedelta(hours=random.randint(1, 6))
+                resolved_at = accepted_at + timedelta(hours=random.randint(2, 24))
+                closed_at = resolved_at + timedelta(hours=random.randint(1, 12))
+
+                history_issue = Issue(
+                    category_id=category.id,
+                    status="CLOSED",
+                    location=create_point_wkt(loc["lat"], loc["lng"]),
+                    address=loc["address"],
+                    reporter_id=citizen.id,
+                    worker_id=worker.id,
+                    priority=random.choice(PRIORITIES),
+                    report_count=random.randint(1, 3),
+                    eta_duration=random.choice(ETA_OPTIONS),
+                    accepted_at=accepted_at,
+                    resolved_at=resolved_at,
+                    created_at=created_at,
+                    updated_at=closed_at,
+                )
+                session.add(history_issue)
+                history_count += 1
+
+        session.commit()
+        if history_count > 0:
+            print(
+                f"   + Added {history_count} completed issues to ensure worker history"
+            )
+
         # Summary by status
         print("\n📊 Issue Distribution:")
         for status in STATUS_DISTRIBUTION.keys():

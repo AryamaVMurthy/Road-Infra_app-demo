@@ -99,9 +99,6 @@ STATUS_DISTRIBUTION = {
 PRIORITIES = ["P1", "P2", "P3"]
 PRIORITY_WEIGHTS = [15, 35, 50]  # P1 is 15%, P2 is 35%, P3 is 50%
 
-# ETA options in hours
-ETA_OPTIONS = ["2h", "4h", "6h", "8h", "12h", "24h", "48h"]
-
 
 def create_point_wkt(lat: float, lng: float) -> str:
     """Create PostGIS point WKT string."""
@@ -206,14 +203,14 @@ def load_mock_data():
                 worker = None
                 accepted_at = None
                 resolved_at = None
-                eta = None
+                eta_date = None
 
                 if status != "REPORTED":
                     worker = random.choice(all_workers)
 
                 if status in ["ACCEPTED", "IN_PROGRESS", "RESOLVED", "CLOSED"]:
                     accepted_at = created_at + timedelta(hours=random.randint(1, 12))
-                    eta = random.choice(ETA_OPTIONS)
+                    eta_date = accepted_at + timedelta(days=random.randint(1, 7))
                     updated_at = accepted_at
 
                 if status in ["RESOLVED", "CLOSED"]:
@@ -232,7 +229,7 @@ def load_mock_data():
                     worker_id=worker.id if worker else None,
                     priority=priority,
                     report_count=random.randint(1, 5),
-                    eta_duration=eta,
+                    eta_date=eta_date,
                     accepted_at=accepted_at,
                     resolved_at=resolved_at,
                     created_at=created_at,
@@ -265,6 +262,7 @@ def load_mock_data():
                 accepted_at = created_at + timedelta(hours=random.randint(1, 6))
                 resolved_at = accepted_at + timedelta(hours=random.randint(2, 24))
                 closed_at = resolved_at + timedelta(hours=random.randint(1, 12))
+                eta_date = accepted_at + timedelta(days=random.randint(1, 5))
 
                 history_issue = Issue(
                     category_id=category.id,
@@ -275,7 +273,7 @@ def load_mock_data():
                     worker_id=worker.id,
                     priority=random.choice(PRIORITIES),
                     report_count=random.randint(1, 3),
-                    eta_duration=random.choice(ETA_OPTIONS),
+                    eta_date=eta_date,
                     accepted_at=accepted_at,
                     resolved_at=resolved_at,
                     created_at=created_at,

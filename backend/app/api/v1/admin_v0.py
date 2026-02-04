@@ -369,7 +369,7 @@ def update_issue_status(
         issue.worker_id = None
         issue.accepted_at = None
         issue.resolved_at = None
-        issue.eta_duration = None
+        issue.eta_date = None
     elif status in ["ASSIGNED"]:
         issue.accepted_at = None
         issue.resolved_at = None
@@ -414,7 +414,7 @@ def unassign_issue(
     issue.status = "REPORTED"
     issue.accepted_at = None
     issue.resolved_at = None
-    issue.eta_duration = None
+    issue.eta_date = None
 
     session.add(issue)
     AuditService.log(

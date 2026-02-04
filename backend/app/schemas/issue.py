@@ -22,7 +22,7 @@ class IssueRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     rejection_reason: Optional[str] = None
-    eta_duration: Optional[str] = None
+    eta_date: Optional[datetime] = None
     accepted_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
 

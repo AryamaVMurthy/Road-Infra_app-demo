@@ -61,10 +61,10 @@ export const KanbanCard = ({
         )}>
           {issue.priority}
         </span>
-        {issue.eta_duration && (
+        {issue.eta_date && (
           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 flex items-center gap-1">
             <Clock size={10} />
-            ETA: {issue.eta_duration}
+            ETA: {new Date(issue.eta_date).toLocaleDateString()}
           </span>
         )}
       </div>

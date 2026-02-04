@@ -14,6 +14,7 @@ from app.services.exif import ExifService
 from app.services.workflow_service import WorkflowService
 from uuid import UUID, uuid4
 from typing import List
+from datetime import datetime
 import io
 
 from app.api.deps import get_current_user
@@ -27,7 +28,6 @@ def get_worker_tasks(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    # Eagerly load relationships for worker_name and category_name
     statement = (
         select(Issue)
         .where(Issue.worker_id == current_user.id)
@@ -39,16 +39,16 @@ def get_worker_tasks(
 @router.post("/tasks/{issue_id}/accept")
 def accept_task(
     issue_id: UUID,
-    eta: str,
+    eta_date: str,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Accept a task with ETA"""
     issue = session.get(Issue, issue_id)
     if not issue or issue.worker_id != current_user.id:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    WorkflowService.accept_task(session, issue, eta, current_user.id)
+    parsed_eta = datetime.fromisoformat(eta_date.replace("Z", "+00:00"))
+    WorkflowService.accept_task(session, issue, parsed_eta, current_user.id)
     session.commit()
     return {"message": "Task accepted"}
 

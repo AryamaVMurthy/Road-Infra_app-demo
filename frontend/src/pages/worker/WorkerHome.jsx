@@ -103,10 +103,12 @@ export default function WorkerHome() {
 
   const handleAccept = async (taskId) => {
     try {
-        await api.post(`/worker/tasks/${taskId}/accept?eta=${eta}`);
+        const etaDate = new Date(eta).toISOString();
+        await api.post(`/worker/tasks/${taskId}/accept?eta_date=${encodeURIComponent(etaDate)}`);
         showToast('Task successfully accepted.', 'success');
         fetchTasks();
         setSelectedTask(null);
+        setEta('');
     } catch (err) { 
       showToast('Failed to synchronize status.', 'error'); 
     }
@@ -236,12 +238,69 @@ export default function WorkerHome() {
                 </div>
             </motion.div>
           ) : (
-            <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-24 h-24 bg-white rounded-[2.5rem] flex items-center justify-center text-slate-200 mb-8 border border-slate-100 shadow-xl">
-                    <Clock size={48} />
+            <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                <div className="flex items-center justify-between px-2 mb-2">
+                    <div className="space-y-1">
+                        <h2 className="text-3xl font-black text-slate-900">Service History</h2>
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Completed Tasks</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-2xl font-black text-emerald-600">{tasks.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Resolved</p>
+                    </div>
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 mb-3">Service History</h3>
-                <p className="text-slate-400 font-bold max-w-[280px]">Completed resolutions will appear here after administrative approval.</p>
+
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                        <Loader2 className="animate-spin text-primary" size={32} />
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading history...</p>
+                    </div>
+                ) : tasks.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length === 0 ? (
+                    <div className="bg-white rounded-[3rem] p-12 text-center border border-slate-100 shadow-xl">
+                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200">
+                            <Clock size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 mb-2">No History Yet</h3>
+                        <p className="text-slate-400 font-bold text-sm">Completed resolutions will appear here after administrative approval.</p>
+                    </div>
+                ) : (
+                    tasks.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').map((task, idx) => (
+                        <motion.div 
+                            key={task.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-lg"
+                        >
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-3 h-3 rounded-full ${task.status === 'CLOSED' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{task.status}</span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-400">
+                                    {task.resolved_at ? new Date(task.resolved_at).toLocaleDateString() : ''}
+                                </span>
+                            </div>
+                            <h4 className="text-lg font-black text-slate-900 mb-2">{task.category_name}</h4>
+                            <p className="text-sm text-slate-500 mb-3">{task.address || 'Location not specified'}</p>
+                            <div className="flex items-center gap-4 text-xs text-slate-400">
+                                <span className={`px-2 py-1 rounded-lg font-bold ${
+                                    task.priority === 'P1' ? 'bg-red-50 text-red-600' :
+                                    task.priority === 'P2' ? 'bg-amber-50 text-amber-600' :
+                                    'bg-slate-50 text-slate-600'
+                                }`}>
+                                    {task.priority}
+                                </span>
+                                {task.eta_date && (
+                                    <span className="flex items-center gap-1">
+                                        <Clock size={12} />
+                                        ETA: {new Date(task.eta_date).toLocaleDateString()}
+                                    </span>
+                                )}
+                            </div>
+                        </motion.div>
+                    ))
+                )}
             </motion.div>
           )}
         </AnimatePresence>

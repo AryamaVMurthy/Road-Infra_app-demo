@@ -189,10 +189,10 @@ export default function AuthorityDashboard() {
                                                     <p className="font-black text-slate-900">{issue.category_name}</p>
                                                     <span className="text-[9px] font-black uppercase text-primary px-1.5 py-0.5 bg-primary/5 rounded">{issue.status}</span>
                                                 </div>
-                                                {issue.eta_duration && (
+                                                {issue.eta_date && (
                                                     <div className="flex items-center gap-1 text-amber-600 text-[10px] font-bold">
                                                         <Clock size={10} />
-                                                        ETA: {issue.eta_duration}
+                                                        ETA: {new Date(issue.eta_date).toLocaleDateString()}
                                                     </div>
                                                 )}
                                                 <div className="aspect-video bg-slate-100 rounded-lg overflow-hidden border">

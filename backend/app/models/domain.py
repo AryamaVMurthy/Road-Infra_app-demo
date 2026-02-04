@@ -79,7 +79,7 @@ class IssueBase(SQLModel):
     priority: Optional[str] = "P3"
     report_count: int = 1
     rejection_reason: Optional[str] = None
-    eta_duration: Optional[str] = None
+    eta_date: Optional[datetime] = None
     accepted_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
 

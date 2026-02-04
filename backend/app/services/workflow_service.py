@@ -57,7 +57,7 @@ class WorkflowService:
             issue.worker_id = None
             issue.accepted_at = None
             issue.resolved_at = None
-            issue.eta_duration = None
+            issue.eta_date = None
         elif new_status in ["ASSIGNED"]:
             issue.accepted_at = None
             issue.resolved_at = None
@@ -152,7 +152,7 @@ class WorkflowService:
         issue.status = "REPORTED"
         issue.accepted_at = None
         issue.resolved_at = None
-        issue.eta_duration = None
+        issue.eta_date = None
 
         session.add(issue)
 
@@ -172,12 +172,12 @@ class WorkflowService:
     def accept_task(
         session: Session,
         issue: Issue,
-        eta_duration: str,
+        eta_date: datetime,
         worker_id: UUID,
     ) -> Issue:
-        """Worker accepts a task with ETA"""
+        """Worker accepts a task with ETA date"""
         issue.status = "ACCEPTED"
-        issue.eta_duration = eta_duration
+        issue.eta_date = eta_date
         issue.accepted_at = datetime.utcnow()
         session.add(issue)
 

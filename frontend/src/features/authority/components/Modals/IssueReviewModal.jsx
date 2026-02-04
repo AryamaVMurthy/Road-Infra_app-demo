@@ -49,8 +49,8 @@ export const IssueReviewModal = ({ issue, onClose, onApprove, onReject, submitti
               </h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
                 Incident Ticket #{issue.id.slice(0,8)} • Category: {issue.category_name}
-                {issue.eta_duration && (
-                  <span className="ml-4 text-amber-600">• ETA: {issue.eta_duration}</span>
+                {issue.eta_date && (
+                  <span className="ml-4 text-amber-600">• ETA: {new Date(issue.eta_date).toLocaleDateString()}</span>
                 )}
               </p>
             </div>

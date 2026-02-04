@@ -13,6 +13,8 @@ import { SearchField } from '../../components/SearchField'
 import { LocateControl } from '../../components/LocateControl'
 import { useGeolocation } from '../../hooks/useGeolocation'
 
+import { Toast } from '../../features/common/components/Toast'
+
 const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
@@ -54,7 +56,13 @@ export default function ReportIssue() {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState(null)
   const navigate = useNavigate()
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 4000)
+  }
 
   const { 
     position: geoPosition, 
@@ -97,19 +105,19 @@ export default function ReportIssue() {
     try {
       if (!navigator.onLine) {
           await offlineService.saveReport(reportData)
-          alert('Offline: Report saved and will be synced.')
-          navigate('/citizen/my-reports')
+          showToast('Offline: Report saved and will be synced.', 'info')
+          setTimeout(() => navigate('/citizen/my-reports'), 2000)
       } else {
           const formData = new FormData()
           Object.keys(reportData).forEach(key => formData.append(key, reportData[key]))
           await api.post('/issues/report', formData)
-          alert('Successfully reported!')
-          navigate('/citizen/my-reports')
+          showToast('Successfully reported!', 'success')
+          setTimeout(() => navigate('/citizen/my-reports'), 2000)
       }
     } catch (err) {
-      alert('Failed to submit. Saving locally...')
+      showToast('Failed to submit. Saving locally...', 'error')
       await offlineService.saveReport(reportData)
-      navigate('/citizen/my-reports')
+      setTimeout(() => navigate('/citizen/my-reports'), 2000)
     }
     setLoading(false)
   }
@@ -255,6 +263,7 @@ export default function ReportIssue() {
                 Your report will be automatically grouped with others in the same area to ensure faster processing.
             </p>
         </div>
+        <Toast toast={toast} onClose={() => setToast(null)} />
       </main>
     </div>
   )

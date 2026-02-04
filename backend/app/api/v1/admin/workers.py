@@ -24,7 +24,7 @@ def get_workers(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Get all workers"""
+    """Retrieve all workers in the system"""
     return WorkerService.get_all_workers(session)
 
 

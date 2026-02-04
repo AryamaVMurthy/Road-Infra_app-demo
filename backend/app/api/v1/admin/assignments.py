@@ -25,10 +25,22 @@ def assign_issue(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Assign an issue to a worker"""
+    """Assign a specific issue to a field worker. Validates both entities before update."""
+    # Validate issue existence
+    issue = session.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    # Validate worker existence
+    worker = session.get(User, worker_id)
+    if not worker or worker.role != "WORKER":
+        raise HTTPException(status_code=404, detail="Worker not found or invalid role")
+
     AdminService.assign_issue(session, issue_id, worker_id, current_user.id)
     session.commit()
-    return {"message": "Issue assigned successfully"}
+    return {
+        "message": f"Issue assigned successfully to {worker.full_name or worker.email}"
+    }
 
 
 @router.post("/bulk-assign")

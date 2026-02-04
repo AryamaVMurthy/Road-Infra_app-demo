@@ -45,6 +45,15 @@ export default function WorkerHome() {
   const { position: geoPosition } = useGeolocation()
   const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]
 
+  /**
+   * Centralized helper to reset the resolution workflow state
+   */
+  const resetResolveState = useCallback(() => {
+    setResolveTask(null)
+    setResolvePhoto(null)
+    setResolveEtaDate('')
+  }, [])
+
   const handleSyncComplete = useCallback((issueId, success) => {
     setPendingResolutions(prev => {
       const updated = { ...prev };
@@ -128,9 +137,7 @@ export default function WorkerHome() {
         });
         setPendingResolutions(prev => ({ ...prev, [resolveTask.id]: true }));
         showToast('Resolution saved offline. Will sync when connected.', 'info');
-        setResolveTask(null);
-        setResolvePhoto(null);
-        setResolveEtaDate('');
+        resetResolveState();
       } catch (err) {
         showToast('Failed to save offline resolution.', 'error');
       }
@@ -144,9 +151,7 @@ export default function WorkerHome() {
       await api.post(`/worker/tasks/${resolveTask.id}/resolve`, formData);
       showToast('Task resolved successfully!', 'success');
       fetchTasks();
-      setResolveTask(null);
-      setResolvePhoto(null);
-      setResolveEtaDate('');
+      resetResolveState();
     } catch (err) {
       showToast('Failed to resolve task.', 'error');
     }
@@ -342,7 +347,7 @@ export default function WorkerHome() {
         photo={resolvePhoto}
         onPhotoChange={setResolvePhoto}
         onSubmit={handleResolveSubmit}
-        onCancel={() => { setResolveTask(null); setResolvePhoto(null); setResolveEtaDate(''); }}
+        onCancel={resetResolveState}
         isOnline={isOnline}
         isResolving={isResolving}
         etaDate={resolveEtaDate}

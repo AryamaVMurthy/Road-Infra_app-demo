@@ -93,6 +93,7 @@ def update_issue_priority(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    """Update issue priority (P1-P4) with audit logging"""
     if priority not in ["P1", "P2", "P3", "P4"]:
         raise HTTPException(
             status_code=400, detail="Invalid priority. Must be P1, P2, P3, or P4"

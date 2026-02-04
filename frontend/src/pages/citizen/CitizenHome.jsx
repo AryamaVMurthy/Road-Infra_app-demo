@@ -121,7 +121,7 @@ export default function CitizenHome() {
       </main>
 
       <footer className="py-12 border-t border-slate-100 text-center">
-         <p className="text-sm text-slate-400 font-medium">© 2026 UrbanInfra • Government of Telangana • Built for GHMC</p>
+          <p className="text-sm text-slate-400 font-medium">© 2026 MARG • Government of Telangana • Built for GHMC</p>
       </footer>
     </div>
   )

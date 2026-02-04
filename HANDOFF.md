@@ -1,4 +1,4 @@
-# Urban Infrastructure Reporting System - Handoff Document
+# MARG (Monitoring Application for Road Governance) - Handoff Document
 
 ## Quick Start
 
@@ -222,4 +222,4 @@ Access console at `http://localhost:9001` (minioadmin/minioadmin)
 
 ## Contact
 
-Built for DASS course project - GHMC Infrastructure Reporting System.
+Built for DASS course project - MARG (Monitoring Application for Road Governance).

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'urban-infra-v1';
-const DB_NAME = 'UrbanInfraDB';
+const CACHE_NAME = 'marg-cache-v1';
+const DB_NAME = 'MARG_DB';
 const RESOLUTIONS_STORE = 'workerResolutions';
 const API_BASE = '/api/v1';
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mock Data Loader for Urban Infrastructure Reporting System
+Mock Data Loader for MARG (Monitoring Application for Road Governance)
 
 Generates realistic test data:
 - 8 workers across different zones

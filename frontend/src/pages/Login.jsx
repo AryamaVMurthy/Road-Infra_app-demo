@@ -54,7 +54,7 @@ export default function Login() {
           <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center text-white shadow-xl shadow-primary/20 mb-6">
             <ShieldCheck size={40} />
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-3">UrbanInfra</h1>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-3">MARG</h1>
           <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Government Infrastructure Portal</p>
         </div>
 

@@ -5,7 +5,7 @@ from pydantic import AnyHttpUrl, field_validator
 
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "Urban Infrastructure Issue Reporting"
+    PROJECT_NAME: str = "MARG (Monitoring Application for Road Governance)"
 
     # BACKEND_CORS_ORIGINS is a JSON-formatted list of strings
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     # Mail Config
     MAIL_USERNAME: str = "test@example.com"
     MAIL_PASSWORD: str = "password"
-    MAIL_FROM: str = "info@urbaninfra.com"
+    MAIL_FROM: str = "info@marg.gov.in"
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "smtp.example.com"
     MAIL_STARTTLS: bool = True

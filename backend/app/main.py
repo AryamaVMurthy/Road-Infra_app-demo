@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.services.minio_client import init_minio
 
 app = FastAPI(
-    title="Urban Infrastructure Issue Reporting API",
+    title="MARG (Monitoring Application for Road Governance) API",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
 
@@ -30,4 +30,6 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to the Urban Infrastructure Issue Reporting API"}
+    return {
+        "message": "Welcome to the MARG (Monitoring Application for Road Governance) API"
+    }

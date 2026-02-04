@@ -1,4 +1,4 @@
-# Urban Infrastructure Reporting System
+# MARG (Monitoring Application for Road Governance)
 
 A full-stack application for reporting and managing city infrastructure issues (potholes, drainage problems, street lights, garbage) in Hyderabad, India. Built for GHMC (Greater Hyderabad Municipal Corporation).
 
@@ -125,7 +125,7 @@ Copy the 6-digit code and enter it in the verification screen.
 | `worker@ghmc.gov.in` | WORKER | `/worker` | Accept tasks, set ETA, submit resolution proof |
 | `worker2@ghmc.gov.in` | WORKER | `/worker` | Same as above (additional worker) |
 | `worker3@ghmc.gov.in` | WORKER | `/worker` | Same as above (additional worker) |
-| `sysadmin@urbaninfra.gov.in` | SYSADMIN | `/admin` | Platform monitoring |
+| `sysadmin@marg.gov.in` | SYSADMIN | `/admin` | Platform monitoring |
 | Any email (e.g., `test@example.com`) | CITIZEN | `/citizen` | Report issues, track status |
 
 ---

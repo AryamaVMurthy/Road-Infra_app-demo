@@ -9,7 +9,7 @@ echo "Setting up backend..."
 if [ ! -f .env ]; then
   cat <<EOF > .env
 API_V1_STR=/api/v1
-PROJECT_NAME="Urban Infrastructure Issue Reporting"
+PROJECT_NAME="MARG (Monitoring Application for Road Governance)"
 BACKEND_CORS_ORIGINS=["http://localhost:5173", "http://localhost:3000"]
 POSTGRES_SERVER=localhost
 POSTGRES_USER=postgres

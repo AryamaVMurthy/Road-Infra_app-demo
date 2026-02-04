@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Urban Infrastructure Reporting',
-        short_name: 'UrbanReport',
-        description: 'Report and track infrastructure issues in your city',
+        name: 'MARG (Monitoring Application for Road Governance)',
+        short_name: 'MARG',
+        description: 'Monitoring Application for Road Governance',
         theme_color: '#ffffff',
         icons: [
           {

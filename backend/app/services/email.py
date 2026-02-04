@@ -24,7 +24,7 @@ class EmailService:
             return True
 
         message = MessageSchema(
-            subject="Urban Infrastructure - Your OTP",
+            subject="MARG - Your OTP",
             recipients=[email],
             body=f"Your OTP code is: {otp}. It expires in 10 minutes.",
             subtype="plain",

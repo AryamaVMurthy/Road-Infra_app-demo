@@ -1,4 +1,4 @@
-const DB_NAME = 'UrbanInfraDB';
+const DB_NAME = 'MARG_DB';
 const REPORTS_STORE = 'offlineReports';
 const RESOLUTIONS_STORE = 'workerResolutions';
 const DB_VERSION = 2;

@@ -1,8 +1,8 @@
-# Urban Infrastructure Reporting System - Technical Design Document
+# MARG (Monitoring Application for Road Governance) - Technical Design Document
 
 ## 1. System Overview
 
-The Urban Infrastructure Issue Reporting System (UIRS) is a full-stack platform for GHMC that enables citizens to report infrastructure issues with GPS-verified photo evidence, and provides authorities with transparent, auditable workflows for assignment, resolution, and analytics. The system is offline-capable for field workers, supports silent duplicate aggregation, and publishes public analytics with heatmaps.
+The MARG (Monitoring Application for Road Governance) is a full-stack platform for GHMC that enables citizens to report infrastructure issues with GPS-verified photo evidence, and provides authorities with transparent, auditable workflows for assignment, resolution, and analytics. The system is offline-capable for field workers, supports silent duplicate aggregation, and publishes public analytics with heatmaps.
 
 ---
 

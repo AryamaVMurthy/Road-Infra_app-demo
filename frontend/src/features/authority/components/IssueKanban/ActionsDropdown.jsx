@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MoreVertical, ChevronRight, UserPlus, UserMinus, ArrowRight, Search, X } from 'lucide-react'
+import { MoreVertical, ChevronRight, UserPlus, UserMinus, ArrowRight, Search, X, Flag } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
 
-/**
- * KANBAN_STATUSES - Valid status values for issues
- */
 const KANBAN_STATUSES = [
   { value: 'REPORTED', label: 'Reported', color: 'bg-rose-500' },
   { value: 'ASSIGNED', label: 'Assigned', color: 'bg-blue-500' },
   { value: 'IN_PROGRESS', label: 'In Progress', color: 'bg-amber-500' },
   { value: 'RESOLVED', label: 'Resolved', color: 'bg-emerald-500' },
   { value: 'CLOSED', label: 'Closed', color: 'bg-slate-400' },
+]
+
+const PRIORITIES = [
+  { value: 'P1', label: 'P1 - Critical', color: 'bg-rose-500' },
+  { value: 'P2', label: 'P2 - High', color: 'bg-amber-500' },
+  { value: 'P3', label: 'P3 - Medium', color: 'bg-blue-500' },
+  { value: 'P4', label: 'P4 - Low', color: 'bg-slate-400' },
 ]
 
 /**
@@ -96,9 +100,20 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
     setLoading(false)
   }
 
-  /**
-   * Handle initial assignment
-   */
+  const handlePriorityChange = async (newPriority) => {
+    if (newPriority === issue.priority) return
+    setLoading(true)
+    try {
+      await api.post(`/admin/update-priority?issue_id=${issue.id}&priority=${newPriority}`)
+      setIsOpen(false)
+      setActiveSubmenu(null)
+      onUpdate()
+    } catch (err) {
+      alert('Priority update failed')
+    }
+    setLoading(false)
+  }
+
   const handleAssign = async (workerId) => {
     setLoading(true)
     try {
@@ -178,6 +193,18 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
                 onHover={() => setActiveSubmenu('status')}
                 onLeave={() => setActiveSubmenu(null)}
                 isActive={activeSubmenu === 'status'}
+                loading={loading}
+              />
+            </div>
+
+            {/* Priority Change Section */}
+            <div className="border-t border-slate-100">
+              <PrioritySection
+                currentPriority={issue.priority}
+                onPriorityChange={handlePriorityChange}
+                onHover={() => setActiveSubmenu('priority')}
+                onLeave={() => setActiveSubmenu(null)}
+                isActive={activeSubmenu === 'priority'}
                 loading={loading}
               />
             </div>
@@ -329,6 +356,61 @@ const StatusSection = ({
               >
                 <div className={cn("w-2 h-2 rounded-full", status.color)}></div>
                 <span className="text-sm font-medium text-slate-700">{status.label}</span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+)
+
+const PrioritySection = ({ 
+  currentPriority, 
+  onPriorityChange,
+  onHover,
+  onLeave,
+  isActive,
+  loading 
+}) => (
+  <div 
+    className="relative"
+    onMouseEnter={onHover}
+    onMouseLeave={onLeave}
+  >
+    <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
+      <div className="flex items-center gap-3">
+        <Flag size={14} className="text-amber-500" />
+        <span className="text-sm font-bold text-slate-700">Change Priority</span>
+      </div>
+      <ChevronRight size={14} className="text-slate-400" />
+    </button>
+    
+    <AnimatePresence>
+      {isActive && (
+        <motion.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 10 }}
+          className="absolute right-full top-0 mr-1 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
+          style={{ zIndex: 9999 }}
+        >
+          <div className="p-3 border-b border-slate-100 bg-slate-50">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Set Priority</p>
+          </div>
+          <div className="py-1">
+            {PRIORITIES.map(priority => (
+              <button
+                key={priority.value}
+                onClick={() => onPriorityChange(priority.value)}
+                disabled={loading || priority.value === currentPriority}
+                className={cn(
+                  "w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors disabled:opacity-50 text-left",
+                  priority.value === currentPriority && "bg-primary/5"
+                )}
+              >
+                <div className={cn("w-2 h-2 rounded-full", priority.color)}></div>
+                <span className="text-sm font-medium text-slate-700">{priority.label}</span>
               </button>
             ))}
           </div>

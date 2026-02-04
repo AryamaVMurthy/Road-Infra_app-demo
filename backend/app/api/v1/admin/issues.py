@@ -84,3 +84,38 @@ def reject_issue(
 def get_categories(session: Session = Depends(get_session)):
     """Get all active issue categories"""
     return session.exec(select(Category).where(Category.is_active == True)).all()
+
+
+@router.post("/update-priority")
+def update_issue_priority(
+    issue_id: UUID,
+    priority: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if priority not in ["P1", "P2", "P3", "P4"]:
+        raise HTTPException(
+            status_code=400, detail="Invalid priority. Must be P1, P2, P3, or P4"
+        )
+
+    issue = session.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    old_priority = issue.priority
+    issue.priority = priority
+    session.add(issue)
+
+    from app.services.audit import AuditService
+
+    AuditService.log(
+        session,
+        "PRIORITY_CHANGE",
+        "ISSUE",
+        issue_id,
+        current_user.id,
+        old_priority,
+        priority,
+    )
+    session.commit()
+    return {"message": f"Issue priority updated to {priority}"}

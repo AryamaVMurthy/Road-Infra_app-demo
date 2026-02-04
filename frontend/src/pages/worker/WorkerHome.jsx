@@ -32,6 +32,7 @@ export default function WorkerHome() {
   const [selectedTask, setSelectedTask] = useState(null)
   const [resolveTask, setResolveTask] = useState(null)
   const [eta, setEta] = useState('')
+  const [resolveEtaDate, setResolveEtaDate] = useState('')
   const [loading, setLoading] = useState(true)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [pendingResolutions, setPendingResolutions] = useState({})
@@ -129,6 +130,7 @@ export default function WorkerHome() {
         showToast('Resolution saved offline. Will sync when connected.', 'info');
         setResolveTask(null);
         setResolvePhoto(null);
+        setResolveEtaDate('');
       } catch (err) {
         showToast('Failed to save offline resolution.', 'error');
       }
@@ -144,6 +146,7 @@ export default function WorkerHome() {
       fetchTasks();
       setResolveTask(null);
       setResolvePhoto(null);
+      setResolveEtaDate('');
     } catch (err) {
       showToast('Failed to resolve task.', 'error');
     }
@@ -341,9 +344,11 @@ export default function WorkerHome() {
         photo={resolvePhoto}
         onPhotoChange={setResolvePhoto}
         onSubmit={handleResolveSubmit}
-        onCancel={() => { setResolveTask(null); setResolvePhoto(null); }}
+        onCancel={() => { setResolveTask(null); setResolvePhoto(null); setResolveEtaDate(''); }}
         isOnline={isOnline}
         isResolving={isResolving}
+        etaDate={resolveEtaDate}
+        onEtaDateChange={setResolveEtaDate}
       />
 
       <Toast toast={toast} onClose={() => setToast(null)} />

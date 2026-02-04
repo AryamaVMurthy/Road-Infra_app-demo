@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MoreVertical, ChevronRight, UserPlus, UserMinus, ArrowRight, Search, X } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
@@ -190,34 +191,38 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
 /**
  * AssignSection - Component for assigning a new worker
  */
-const AssignSection = ({ workers, onAssign, onHover, onLeave, isActive, loading, searchQuery, onSearchChange }) => (
-  <div 
-    className="relative"
-    onMouseEnter={onHover}
-    onMouseLeave={onLeave}
-  >
-    <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
-      <div className="flex items-center gap-3">
-        <UserPlus size={14} className="text-primary" />
-        <span className="text-sm font-bold text-slate-700">Assign Worker</span>
-      </div>
-      <ChevronRight size={14} className="text-slate-400" />
-    </button>
-    
-    <AnimatePresence>
-      {isActive && (
-        <WorkerSubmenu 
-          workers={workers}
-          onSelect={onAssign}
-          loading={loading}
-          title="Select Worker"
-          searchQuery={searchQuery}
-          onSearchChange={onSearchChange}
-        />
-      )}
-    </AnimatePresence>
-  </div>
-)
+const AssignSection = ({ workers, onAssign, onHover, onLeave, isActive, loading, searchQuery, onSearchChange }) => {
+  const buttonRef = useRef(null)
+  return (
+    <div 
+      className="relative"
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+    >
+      <button ref={buttonRef} className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
+        <div className="flex items-center gap-3">
+          <UserPlus size={14} className="text-primary" />
+          <span className="text-sm font-bold text-slate-700">Assign Worker</span>
+        </div>
+        <ChevronRight size={14} className="text-slate-400" />
+      </button>
+      
+      <AnimatePresence>
+        {isActive && (
+          <WorkerSubmenu 
+            workers={workers}
+            onSelect={onAssign}
+            loading={loading}
+            title="Select Worker"
+            searchQuery={searchQuery}
+            onSearchChange={onSearchChange}
+            parentRef={buttonRef}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 /**
  * ReassignSection - Component for reassigning or unassigning
@@ -233,37 +238,40 @@ const ReassignSection = ({
   loading,
   searchQuery,
   onSearchChange
-}) => (
-  <>
-    <div 
-      className="relative"
-      onMouseEnter={onHoverReassign}
-      onMouseLeave={onLeaveReassign}
-    >
-      <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
-        <div className="flex items-center gap-3">
-          <UserPlus size={14} className="text-blue-500" />
-          <span className="text-sm font-bold text-slate-700">Reassign Worker</span>
-        </div>
-        <ChevronRight size={14} className="text-slate-400" />
-      </button>
+}) => {
+  const buttonRef = useRef(null)
+  return (
+    <>
+      <div 
+        className="relative"
+        onMouseEnter={onHoverReassign}
+        onMouseLeave={onLeaveReassign}
+      >
+        <button ref={buttonRef} className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
+          <div className="flex items-center gap-3">
+            <UserPlus size={14} className="text-blue-500" />
+            <span className="text-sm font-bold text-slate-700">Reassign Worker</span>
+          </div>
+          <ChevronRight size={14} className="text-slate-400" />
+        </button>
+        
+        <AnimatePresence>
+          {isReassignActive && (
+            <WorkerSubmenu 
+              workers={workers}
+              onSelect={onReassign}
+              loading={loading}
+              title="Reassign to"
+              currentWorkerId={currentWorkerId}
+              searchQuery={searchQuery}
+              onSearchChange={onSearchChange}
+              parentRef={buttonRef}
+            />
+          )}
+        </AnimatePresence>
+      </div>
       
-      <AnimatePresence>
-        {isReassignActive && (
-          <WorkerSubmenu 
-            workers={workers}
-            onSelect={onReassign}
-            loading={loading}
-            title="Reassign to"
-            currentWorkerId={currentWorkerId}
-            searchQuery={searchQuery}
-            onSearchChange={onSearchChange}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-    
-    <button 
+      <button 
       onClick={onUnassign}
       disabled={loading}
       className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-50 transition-colors text-left disabled:opacity-50"
@@ -272,7 +280,8 @@ const ReassignSection = ({
       <span className="text-sm font-bold text-red-600">Unassign Worker</span>
     </button>
   </>
-)
+  )
+}
 
 const StatusSection = ({ 
   currentStatus, 
@@ -298,10 +307,11 @@ const StatusSection = ({
     <AnimatePresence>
       {isActive && (
         <motion.div
-          initial={{ opacity: 0, x: -10 }}
+          initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -10 }}
-          className="absolute left-full top-0 ml-1 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-[120]"
+          exit={{ opacity: 0, x: 10 }}
+          className="absolute right-full top-0 mr-1 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
+          style={{ zIndex: 9999 }}
         >
           <div className="p-3 border-b border-slate-100 bg-slate-50">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Change Status</p>
@@ -328,7 +338,7 @@ const StatusSection = ({
   </div>
 )
 
-const WorkerSubmenu = ({ workers, onSelect, loading, title, currentWorkerId, searchQuery, onSearchChange }) => {
+const WorkerSubmenu = ({ workers, onSelect, loading, title, currentWorkerId, searchQuery, onSearchChange, parentRef }) => {
   const filteredWorkers = workers.filter(worker => {
     const query = searchQuery.toLowerCase()
     const name = (worker.full_name || '').toLowerCase()
@@ -336,13 +346,37 @@ const WorkerSubmenu = ({ workers, onSelect, loading, title, currentWorkerId, sea
     return name.includes(query) || email.includes(query)
   })
 
-  return (
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const submenuRef = useRef(null)
+
+  useEffect(() => {
+    if (parentRef?.current) {
+      const rect = parentRef.current.getBoundingClientRect()
+      const submenuWidth = 288
+      let left = rect.left - submenuWidth - 4
+      if (left < 10) {
+        left = rect.right + 4
+      }
+      setPosition({
+        top: rect.top,
+        left: left
+      })
+    }
+  }, [parentRef])
+
+  return createPortal(
     <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -10 }}
-      className="absolute left-full top-0 ml-1 w-72 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-[150]"
-      style={{ zIndex: 150 }}
+      ref={submenuRef}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="fixed w-72 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
+      style={{ 
+        zIndex: 99999,
+        top: position.top,
+        left: position.left
+      }}
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="p-3 border-b border-slate-100 bg-slate-50">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
@@ -439,7 +473,8 @@ const WorkerSubmenu = ({ workers, onSelect, loading, title, currentWorkerId, sea
           </p>
         </div>
       )}
-    </motion.div>
+    </motion.div>,
+    document.body
   )
 }
 

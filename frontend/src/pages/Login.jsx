@@ -55,7 +55,6 @@ export default function Login() {
             <ShieldCheck size={40} />
           </div>
           <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-3">MARG</h1>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Government Infrastructure Portal</p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -140,9 +139,6 @@ export default function Login() {
         </AnimatePresence>
         
         <div className="mt-12 pt-10 border-t border-slate-100 text-center">
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] leading-relaxed">
-              Official GHMC Infrastructure Monitoring Network
-            </p>
         </div>
       </motion.div>
     </div>

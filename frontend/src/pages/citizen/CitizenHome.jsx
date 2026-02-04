@@ -48,7 +48,7 @@ export default function CitizenHome() {
              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
                 <MapPin size={20} />
              </div>
-             <h1 className="text-xl font-extrabold tracking-tight">CitizenPortal</h1>
+             <h1 className="text-xl font-extrabold tracking-tight">MARG</h1>
           </div>
           <div className="flex items-center gap-4">
              <button onClick={() => authService.logout()} className="flex items-center gap-2 px-4 py-2 text-red-600 bg-red-50 rounded-full font-bold text-sm hover:bg-red-100 transition-all">
@@ -65,9 +65,6 @@ export default function CitizenHome() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-12"
         >
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold uppercase tracking-wider mb-6">
-               <Info size={12} /> Live Updates from GHMC
-            </div>
             <h2 className="text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
                 Namaste, <span className="text-primary">{user.sub.split('@')[0]}</span>.
             </h2>
@@ -121,7 +118,7 @@ export default function CitizenHome() {
       </main>
 
       <footer className="py-12 border-t border-slate-100 text-center">
-          <p className="text-sm text-slate-400 font-medium">© 2026 MARG • Government of Telangana • Built for GHMC</p>
+          <p className="text-sm text-slate-400 font-medium">© 2026 MARG</p>
       </footer>
     </div>
   )

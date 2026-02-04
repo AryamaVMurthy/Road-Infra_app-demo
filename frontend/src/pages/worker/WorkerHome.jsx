@@ -170,7 +170,7 @@ export default function WorkerHome() {
               <Briefcase size={28} />
            </div>
            <div>
-              <h1 className="text-xl font-black text-slate-900 leading-none tracking-tight">Field Force</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-none tracking-tight">MARG</h1>
               <div className="flex items-center gap-2 mt-1.5">
                 <div className={cn("w-2 h-2 rounded-full", isOnline ? "bg-emerald-500" : "bg-amber-500")}></div>
                 <p className="text-[10px] font-black text-slate-400 tracking-widest uppercase">
@@ -191,7 +191,6 @@ export default function WorkerHome() {
                 <div className="flex items-center justify-between px-2 mb-2">
                     <div className="space-y-1">
                         <h2 className="text-3xl font-black text-slate-900">Assigned Tasks</h2>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Region: Gachibowli Zone</p>
                     </div>
                     <div className="text-right">
                         <p className="text-2xl font-black text-primary">{tasks.length}</p>
@@ -229,7 +228,6 @@ export default function WorkerHome() {
             <motion.div key="map" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="h-[70vh] space-y-8">
                 <div className="flex items-center justify-between px-2">
                     <h2 className="text-3xl font-black text-slate-900">Workzone Map</h2>
-                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Active Infrastructure Heatmap</p>
                 </div>
                 <div className="h-full w-full rounded-[3rem] overflow-hidden border-8 border-white shadow-2xl relative">
                     <MapContainer center={userLocation} zoom={12} className="h-full w-full">

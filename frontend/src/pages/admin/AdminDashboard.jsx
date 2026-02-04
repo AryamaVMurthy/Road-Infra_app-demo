@@ -85,10 +85,9 @@ export default function AdminDashboard() {
            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-950 shadow-xl shadow-white/10">
              <Shield size={28} />
            </div>
-           <div>
-             <h1 className="text-xl font-black tracking-tight leading-none">SysAdmin</h1>
-             <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mt-1">Platform Engine</p>
-           </div>
+            <div>
+              <h1 className="text-xl font-black tracking-tight leading-none">MARG</h1>
+            </div>
         </div>
 
         <nav className="flex-1 space-y-3">
@@ -117,7 +116,6 @@ export default function AdminDashboard() {
         <header className="h-28 px-12 flex items-center justify-between bg-white/50 backdrop-blur-md">
             <div>
                 <h2 className="text-3xl font-black text-slate-900 tracking-tight capitalize">{activeTab.replace('-', ' ')}</h2>
-                <p className="text-sm font-medium text-slate-400">Monitoring Municipal Operations across Hyderabad.</p>
             </div>
             <div className="flex items-center gap-4 pl-6 border-l border-slate-200">
                 <div className="text-right">

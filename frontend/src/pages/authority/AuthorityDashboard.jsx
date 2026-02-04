@@ -121,8 +121,7 @@ export default function AuthorityDashboard() {
              <LayoutDashboard size={24} />
           </div>
           <div>
-             <h1 className="text-lg font-black tracking-tight text-slate-900 leading-none">Authority</h1>
-             <p className="text-[10px] font-bold text-primary tracking-widest uppercase mt-1">Gachibowli Admin</p>
+             <h1 className="text-lg font-black tracking-tight text-slate-900 leading-none">MARG</h1>
           </div>
         </div>
 
@@ -155,7 +154,7 @@ export default function AuthorityDashboard() {
                     <RefreshCw size={18} />
                 </button>
                 <div className="text-right">
-                    <p className="text-sm font-bold text-slate-900">Municipal Admin</p>
+                    <p className="text-sm font-bold text-slate-900">Admin</p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Live Session</p>
                 </div>
                 <div className="w-12 h-12 bg-slate-100 rounded-2xl border-2 border-white shadow-md flex items-center justify-center text-primary font-black">AD</div>

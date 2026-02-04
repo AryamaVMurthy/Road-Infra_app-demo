@@ -94,9 +94,6 @@ export default function AnalyticsDashboard() {
             </button>
             <div>
                 <h1 className="text-2xl font-black tracking-tight text-slate-900">City Health Intelligence</h1>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Municipal Control Plane
-                </p>
             </div>
         </div>
         <div className="flex items-center gap-4">
@@ -295,9 +292,6 @@ export default function AnalyticsDashboard() {
       </main>
 
       <footer className="py-12 border-t border-slate-100 text-center">
-         <p className="text-sm font-bold text-slate-400 uppercase tracking-widest italic opacity-50 font-sans">
-             Powered by PostGIS & FastAPI • Infrastructure Monitoring Platform
-         </p>
       </footer>
     </div>
   )

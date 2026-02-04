@@ -32,22 +32,15 @@ def seed_data():
         for c in categories:
             session.add(c)
 
-        # Seed GHMC Zones
-        # Polygons for roughly Banjara Hills, Jubilee Hills, etc.
-        zones = [
-            Zone(
-                name="Banjara Hills",
-                boundary="SRID=4326;POLYGON((78.43 17.41, 78.45 17.41, 78.45 17.43, 78.43 17.43, 78.43 17.41))",
-            ),
-            Zone(
-                name="Jubilee Hills",
-                boundary="SRID=4326;POLYGON((78.39 17.41, 78.41 17.41, 78.41 17.43, 78.39 17.43, 78.39 17.41))",
-            ),
-            Zone(
-                name="Gachibowli",
-                boundary="SRID=4326;POLYGON((78.33 17.43, 78.35 17.43, 78.35 17.45, 78.33 17.45, 78.33 17.43))",
-            ),
-        ]
+# Seed Jurisdictions
+def seed_zones(session: Session):
+    zones = [
+        {"name": "Central Zone"},
+        {"name": "North Zone"},
+        {"name": "South Zone"},
+        {"name": "East Zone"},
+        {"name": "West Zone"},
+    ]
         for z in zones:
             session.add(z)
 
@@ -58,13 +51,13 @@ def seed_data():
                 role="SYSADMIN",
                 full_name="System Administrator",
             ),
-            User(email="admin@ghmc.gov.in", role="ADMIN", full_name="GHMC Authority"),
-            User(email="worker@ghmc.gov.in", role="WORKER", full_name="Ramesh Kumar"),
-            User(email="worker2@ghmc.gov.in", role="WORKER", full_name="Suresh Reddy"),
-            User(email="worker3@ghmc.gov.in", role="WORKER", full_name="Venkat Rao"),
-            User(
-                email="resident@hyderabad.in", role="CITIZEN", full_name="Priya Sharma"
-            ),
+        User(email="admin@authority.gov.in", role="ADMIN", full_name="Authority Admin"),
+        User(email="worker@authority.gov.in", role="WORKER", full_name="Field Worker"),
+        User(email="worker2@authority.gov.in", role="WORKER", full_name="Field Worker 2"),
+        User(email="worker3@authority.gov.in", role="WORKER", full_name="Field Worker 3"),
+        User(
+            email="citizen@example.com", role="CITIZEN", full_name="Citizen"
+        ),
         ]
         for u in users:
             session.add(u)

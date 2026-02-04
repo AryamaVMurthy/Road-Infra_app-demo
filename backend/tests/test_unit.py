@@ -31,7 +31,7 @@ def test_audit_log_creation(session):
 
 
 def test_exif_proximity_edge_cases():
-    # Hyderabad roughly 17.4N, 78.4E
+    # Coordinates roughly 17.4N, 78.4E
     # 1 degree lat is ~111km. 1m is ~0.000009 degrees.
     lat1, lng1 = 17.444700, 78.348300
 

@@ -6,7 +6,7 @@ import path from 'path';
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage();
-  const email = 'worker@ghmc.gov.in';
+  const email = 'worker@authority.gov.in';
   const otp = '333406'; // Reuse previous OTP if still valid, or I'll request a new one
   
   console.log('Logging in as worker...');

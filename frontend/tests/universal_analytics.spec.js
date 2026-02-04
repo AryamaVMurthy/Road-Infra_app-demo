@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { execSync } from 'child_process';
 
 test.describe('Universal Analytics Rigor', () => {
-  const emails = ['citizen_ana@test.com', 'worker_ana@ghmc.gov.in', 'admin_ana@ghmc.gov.in', 'sysadmin_ana@test.com'];
+  const emails = ['citizen_ana@test.com', 'worker_ana@authority.gov.in', 'admin_ana@authority.gov.in', 'sysadmin_ana@test.com'];
 
   for (const email of emails) {
     test(`Persona ${email} can access and view Big Analytics`, async ({ page }) => {

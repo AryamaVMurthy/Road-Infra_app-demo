@@ -63,7 +63,7 @@ def test_report_issue_integration(client, session):
             "lat": 17.4447,
             "lng": 78.3483,
             "reporter_email": "reporter@example.com",
-            "address": "Banjara Hills",
+            "address": "Main Road",
         },
         files={"photo": ("test.jpg", file_content, "image/jpeg")},
     )

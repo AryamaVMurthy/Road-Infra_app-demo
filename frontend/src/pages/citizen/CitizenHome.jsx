@@ -104,7 +104,7 @@ export default function CitizenHome() {
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="space-y-2">
                     <h3 className="text-3xl font-black tracking-tight">Citizen Impact Dashboard</h3>
-                    <p className="text-slate-400 font-medium">Your data helps build a more resilient Hyderabad.</p>
+                    <p className="text-slate-400 font-medium">Your data helps build a more resilient city.</p>
                 </div>
                 <button 
                     onClick={() => navigate('/analytics')}

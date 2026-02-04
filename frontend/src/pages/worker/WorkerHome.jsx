@@ -14,7 +14,7 @@ import { LocateControl } from '../../components/LocateControl'
 import { SearchField } from '../../components/SearchField'
 import { offlineService } from '../../services/offline'
 import { useWorkerOfflineSync } from '../../hooks/useWorkerOfflineSync'
-import { useGeolocation, HYDERABAD_CENTER } from '../../hooks/useGeolocation'
+import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
 
 import { TaskCard } from '../../features/worker/components/TaskList/TaskCard'
 import { AcceptTaskModal } from '../../features/worker/components/Modals/AcceptTaskModal'
@@ -43,7 +43,7 @@ export default function WorkerHome() {
   const navigate = useNavigate()
 
   const { position: geoPosition } = useGeolocation()
-  const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [HYDERABAD_CENTER.lat, HYDERABAD_CENTER.lng]
+  const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]
 
   const handleSyncComplete = useCallback((issueId, success) => {
     setPendingResolutions(prev => {

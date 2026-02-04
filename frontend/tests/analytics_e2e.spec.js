@@ -44,7 +44,7 @@ test.describe('City Analytics End-to-End', () => {
     await geocoderIcon.click();
     const searchInput = page.locator('.leaflet-control-geocoder-form input');
     await expect(searchInput).toBeVisible({ timeout: 5000 });
-    await searchInput.fill('Hyderabad');
+    await searchInput.fill('Main Road');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(2000);
     console.log("Geocoding verified via text entry");

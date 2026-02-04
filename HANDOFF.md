@@ -36,9 +36,9 @@ Access the app at `http://localhost:5173`
 
 | Email | Role | Dashboard |
 |-------|------|-----------|
-| `admin@ghmc.gov.in` | ADMIN | `/authority` |
-| `worker@ghmc.gov.in` | WORKER | `/worker` |
-| `resident@hyderabad.in` | CITIZEN | `/citizen` |
+| `admin@authority.gov.in` | ADMIN | `/authority` |
+| `worker@authority.gov.in` | WORKER | `/worker` |
+| `citizen@example.com` | CITIZEN | `/citizen` |
 
 **Login Flow**: Enter email → Check backend console for OTP → Enter 6-digit code
 
@@ -206,7 +206,7 @@ Access console at `http://localhost:9001` (minioadmin/minioadmin)
 ### Maps Not Loading
 - Check network for tile requests
 - Verify geolocation permissions granted
-- Default fallback: Hyderabad center [17.4447, 78.3483]
+- Default fallback: default center coordinates
 
 ## Files Modified in Latest Update
 

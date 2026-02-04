@@ -307,7 +307,7 @@ export default function MyReports() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Issue Custodian</p>
-                                    <p className="text-lg font-black text-slate-900">{selectedReport.worker_name || 'GHMC Dispatcher'}</p>
+                                    <p className="text-lg font-black text-slate-900">{selectedReport.worker_name || 'Authority Dispatcher'}</p>
                                 </div>
                             </div>
                             <div className="flex gap-4 w-full sm:w-auto">
@@ -329,7 +329,7 @@ export default function MyReports() {
                 <div>
                     <h3 className="text-2xl font-black text-slate-900 mb-2">Community Impact</h3>
                     <p className="text-[15px] text-slate-600 font-medium leading-relaxed max-w-2xl">
-                        By reporting issues, you are helping GHMC optimize resources and fix infrastructure more efficiently. Thank you for making our city safer.
+                        By reporting issues, you are helping the authority optimize resources and fix infrastructure more efficiently. Thank you for making our city safer.
                     </p>
                 </div>
             </div>

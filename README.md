@@ -1,6 +1,6 @@
 # MARG (Monitoring Application for Road Governance)
 
-A full-stack application for reporting and managing city infrastructure issues (potholes, drainage problems, street lights, garbage) in Hyderabad, India. Built for GHMC (Greater Hyderabad Municipal Corporation).
+A full-stack application for reporting and managing city infrastructure issues (potholes, drainage problems, street lights, garbage). Built for Municipal Authorities.
 
 ## Features
 
@@ -101,7 +101,7 @@ docker compose logs -f backend
 ```
 Look for:
 ```
-[DEV MODE] Skipping email send. OTP for admin@ghmc.gov.in: 845669
+[DEV MODE] Skipping email send. OTP for admin@authority.gov.in: 845669
 ```
 
 **Option B: Search logs for OTP**
@@ -121,10 +121,10 @@ Copy the 6-digit code and enter it in the verification screen.
 
 | Email | Role | Dashboard URL | Capabilities |
 |-------|------|---------------|--------------|
-| `admin@ghmc.gov.in` | ADMIN | `/authority` | Assign issues, approve resolutions, view analytics |
-| `worker@ghmc.gov.in` | WORKER | `/worker` | Accept tasks, set ETA, submit resolution proof |
-| `worker2@ghmc.gov.in` | WORKER | `/worker` | Same as above (additional worker) |
-| `worker3@ghmc.gov.in` | WORKER | `/worker` | Same as above (additional worker) |
+| `admin@authority.gov.in` | ADMIN | `/authority` | Assign issues, approve resolutions, view analytics |
+| `worker@authority.gov.in` | WORKER | `/worker` | Accept tasks, set ETA, submit resolution proof |
+| `worker2@authority.gov.in` | WORKER | `/worker` | Same as above (additional worker) |
+| `worker3@authority.gov.in` | WORKER | `/worker` | Same as above (additional worker) |
 | `sysadmin@marg.gov.in` | SYSADMIN | `/admin` | Platform monitoring |
 | Any email (e.g., `test@example.com`) | CITIZEN | `/citizen` | Report issues, track status |
 
@@ -144,7 +144,7 @@ Copy the 6-digit code and enter it in the verification screen.
 
 ### For Authority/Admin (Managing Issues)
 
-1. **Login** as `admin@ghmc.gov.in`
+1. **Login** as `admin@authority.gov.in`
 2. **Operations Map**: View all issues on interactive map
    - Toggle between Markers and Heatmap view
    - Click markers to see issue details
@@ -169,7 +169,7 @@ Copy the 6-digit code and enter it in the verification screen.
 
 ### For Workers (Resolving Issues)
 
-1. **Login** as `worker@ghmc.gov.in` (or worker2/worker3)
+1. **Login** as `worker@authority.gov.in` (or worker2/worker3)
 2. **View Tasks**: See assigned issues on your dashboard
 3. **Accept Task**:
    - Click on an assigned task
@@ -199,7 +199,7 @@ Here's how to test the full issue lifecycle:
 ### 2. Assign to Worker (as Admin)
 ```bash
 # Login as admin
-# Email: admin@ghmc.gov.in
+# Email: admin@authority.gov.in
 # Get OTP: docker compose logs backend | grep OTP
 ```
 - Go to **Kanban Triage**
@@ -209,7 +209,7 @@ Here's how to test the full issue lifecycle:
 ### 3. Accept & Resolve (as Worker)
 ```bash
 # Login as worker
-# Email: worker@ghmc.gov.in
+# Email: worker@authority.gov.in
 # Get OTP: docker compose logs backend | grep OTP
 ```
 - See assigned task

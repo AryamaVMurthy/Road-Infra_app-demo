@@ -2,7 +2,7 @@
 
 ## 1. System Overview
 
-The MARG (Monitoring Application for Road Governance) is a full-stack platform for GHMC that enables citizens to report infrastructure issues with GPS-verified photo evidence, and provides authorities with transparent, auditable workflows for assignment, resolution, and analytics. The system is offline-capable for field workers, supports silent duplicate aggregation, and publishes public analytics with heatmaps.
+The MARG (Monitoring Application for Road Governance) is a full-stack platform for Municipal Authorities that enables citizens to report infrastructure issues with GPS-verified photo evidence, and provides authorities with transparent, auditable workflows for assignment, resolution, and analytics. The system is offline-capable for field workers, supports silent duplicate aggregation, and publishes public analytics with heatmaps.
 
 ---
 
@@ -137,7 +137,7 @@ AuditLog (entity_id → Issue/User/etc.)
 - **leaflet.heat** for heatmap layer (`HeatmapLayer.jsx`)
 - **leaflet-control-geocoder** for address search (`SearchField.jsx`)
 - **LocateControl.jsx** adds GPS button and accuracy ring
-- **Geolocation Hook**: `useGeolocation.js` (fallback to Hyderabad if denied)
+- **Geolocation Hook**: `useGeolocation.js` (fallback to default center if denied)
 
 ### 5.3 Backend Geospatial Stack
 - **PostGIS** stores issue location as POINT geometry.

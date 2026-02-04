@@ -247,10 +247,11 @@ export default function ReportIssue() {
                     </div>
                 </div>
                 <button 
-                    onClick={handleSubmit} disabled={loading || !selectedCategory}
-                    className="w-full py-5 bg-primary text-white rounded-[1.5rem] font-extrabold shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+                    type="submit" 
+                    disabled={loading}
+                    className="w-full py-5 px-8 bg-primary text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-primary/20 disabled:bg-slate-200 disabled:shadow-none active:scale-[0.98]"
                 >
-                    {loading ? <Loader2 className="animate-spin" /> : <>Submit Report to GHMC <Check size={20} /></>}
+                    {loading ? <Loader2 className="animate-spin" /> : <>Submit Report <Check size={20} /></>}
                 </button>
               </motion.div>
             )}

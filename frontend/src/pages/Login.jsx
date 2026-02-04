@@ -73,7 +73,7 @@ export default function Login() {
                   <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
                   <input
                     type="email"
-                    placeholder="name@ghmc.gov.in"
+                    placeholder="name@authority.gov.in"
                     className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-primary focus:ring-0 transition-all outline-none font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-medium"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

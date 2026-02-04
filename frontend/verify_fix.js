@@ -41,7 +41,7 @@ import path from 'path';
   };
 
   // 1. Worker Login (Test if dashboard loads)
-  const workerEmail = 'worker@ghmc.gov.in';
+  const workerEmail = 'worker@authority.gov.in';
   console.log('--- TESTING WORKER DASHBOARD ---');
   await page.goto('http://localhost:3001/login');
   await page.fill('input[type="email"]', workerEmail);
@@ -71,7 +71,7 @@ import path from 'path';
   }
 
   // 2. Admin Login (Test if dashboard loads)
-  const adminEmail = 'admin@ghmc.gov.in';
+  const adminEmail = 'admin@authority.gov.in';
   console.log('--- TESTING ADMIN DASHBOARD ---');
   await page.goto('http://localhost:3001/login');
   await page.fill('input[type="email"]', adminEmail);

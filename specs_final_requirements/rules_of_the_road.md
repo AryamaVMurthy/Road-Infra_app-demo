@@ -81,7 +81,7 @@
 - Invites can be revoked to block registration.
 - Invite lifecycle: INVITED -> ACTIVE -> INACTIVE.
 - Invites expire after a configured window (default 7 days) and can be re-sent.
-- Optional allowed-domain restriction (e.g., *@ghmc.gov.in) can be enforced.
+- Optional allowed-domain restriction (e.g., *@authority.gov.in) can be enforced.
 
 ---
 

@@ -19,7 +19,7 @@ describe('Login Component', () => {
         <Login />
       </BrowserRouter>
     )
-    expect(screen.getByPlaceholderText(/ghmc.gov.in/i)).toBeDefined()
+    expect(screen.getByPlaceholderText(/authority.gov.in/i)).toBeDefined()
     expect(screen.getByText(/Request Access/i)).toBeDefined()
   })
 
@@ -30,7 +30,7 @@ describe('Login Component', () => {
       </BrowserRouter>
     )
     
-    const emailInput = screen.getByPlaceholderText(/ghmc.gov.in/i)
+    const emailInput = screen.getByPlaceholderText(/authority.gov.in/i)
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
     
     const requestBtn = screen.getByText(/Request Access/i)

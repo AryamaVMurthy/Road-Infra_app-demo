@@ -36,9 +36,9 @@ def test_bulk_assignment_rigor(client, session):
     # Setup
     cat = Category(name="Pothole")
     session.add(cat)
-    admin = User(email="admin@ghmc.gov.in", role="ADMIN")
+    admin = User(email="admin@authority.gov.in", role="ADMIN")
     session.add(admin)
-    worker = User(email="worker1@ghmc.gov.in", role="WORKER")
+    worker = User(email="worker1@authority.gov.in", role="WORKER")
     session.add(worker)
 
     issues = []
@@ -56,7 +56,7 @@ def test_bulk_assignment_rigor(client, session):
         session.refresh(i)
 
     # Login as admin (Mock)
-    token_resp = client.post("/api/v1/auth/google-mock?email=admin@ghmc.gov.in")
+    token_resp = client.post("/api/v1/auth/google-mock?email=admin@authority.gov.in")
     token = token_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 

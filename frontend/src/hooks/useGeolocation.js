@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
-// IIIT Hyderabad, Gachibowli - default fallback location
-const IIIT_HYDERABAD = { lat: 17.4455, lng: 78.3489 };
-const HYDERABAD_CENTER = IIIT_HYDERABAD;
+// Default fallback location
+const DEFAULT_CENTER = { lat: 17.4455, lng: 78.3489 };
 
 // Geolocation options for high accuracy
 const GEO_OPTIONS = {
@@ -12,18 +11,18 @@ const GEO_OPTIONS = {
 };
 
 /**
- * Custom hook for geolocation with Hyderabad-specific defaults
+ * Custom hook for geolocation with default center fallback
  * 
  * @param {Object} options
  * @param {boolean} options.autoFetch - Automatically fetch location on mount (default: true)
- * @param {Object} options.fallback - Fallback coordinates if geolocation fails (default: Hyderabad center)
+ * @param {Object} options.fallback - Fallback coordinates if geolocation fails (default: city center)
  * @param {boolean} options.watch - Continuously watch position changes (default: false)
  * 
  * @returns {Object} { position, error, loading, refresh, isSupported }
  */
 export function useGeolocation({
   autoFetch = true,
-  fallback = HYDERABAD_CENTER,
+  fallback = DEFAULT_CENTER,
   watch = false,
 } = {}) {
   const [position, setPosition] = useState(null);
@@ -47,16 +46,16 @@ export function useGeolocation({
     let errorMessage;
     switch (err.code) {
       case err.PERMISSION_DENIED:
-        errorMessage = 'Location permission denied. Using Hyderabad center.';
+        errorMessage = 'Location permission denied. Using default center.';
         break;
       case err.POSITION_UNAVAILABLE:
-        errorMessage = 'Location unavailable. Using Hyderabad center.';
+        errorMessage = 'Location unavailable. Using default center.';
         break;
       case err.TIMEOUT:
-        errorMessage = 'Location request timed out. Using Hyderabad center.';
+        errorMessage = 'Location request timed out. Using default center.';
         break;
       default:
-        errorMessage = 'Unknown error getting location. Using Hyderabad center.';
+        errorMessage = 'Unknown error getting location. Using default center.';
     }
     
     console.warn('Geolocation error:', errorMessage, err);
@@ -111,4 +110,4 @@ export function useGeolocation({
 }
 
 // Export constants for use in components
-export { HYDERABAD_CENTER, GEO_OPTIONS };
+export { DEFAULT_CENTER, GEO_OPTIONS };

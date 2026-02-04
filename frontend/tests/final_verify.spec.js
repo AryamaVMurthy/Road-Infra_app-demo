@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 const personas = [
   { name: 'Citizen', email: 'citizen@test.com', url: '/citizen', trigger: 'text=City Analytics' },
-  { name: 'Authority', email: 'admin@ghmc.gov.in', url: '/authority', trigger: 'text=City Analytics' },
-  { name: 'Worker', email: 'worker@ghmc.gov.in', url: '/worker', trigger: 'text=City Health' },
+  { name: 'Authority', email: 'admin@authority.gov.in', url: '/authority', trigger: 'text=City Analytics' },
+  { name: 'Worker', email: 'worker@authority.gov.in', url: '/worker', trigger: 'text=City Health' },
   { name: 'Admin', email: 'sysadmin@test.com', url: '/admin', trigger: 'text=Full Analytics' }
 ];
 

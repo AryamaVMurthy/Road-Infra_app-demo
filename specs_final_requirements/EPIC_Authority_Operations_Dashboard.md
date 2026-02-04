@@ -308,7 +308,7 @@ Invite, manage, and deactivate workers while preserving historical work records.
 - A worker cannot be in INVITED state for multiple organizations simultaneously.
  - Invite lifecycle: INVITED -> ACTIVE -> INACTIVE.
  - Invites expire after a configured window (default 7 days) and can be re-sent.
- - Optional allowed-domain restriction can be enforced per authority (e.g., *@ghmc.gov.in).
+ - Optional allowed-domain restriction can be enforced per authority (e.g., *@authority.gov.in).
 
 ## Workflow & Entity State Lifecycle
 **Lifecycle:** INVITED -> ACTIVE -> INACTIVE.

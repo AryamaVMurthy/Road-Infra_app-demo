@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { execSync } from 'child_process';
 
 test.describe('Worker Rigorous Flow', () => {
-  const email = 'worker_rigor@ghmc.gov.in';
+  const email = 'worker_rigor@authority.gov.in';
 
   test('Accepts task with ETA and completes work', async ({ page }) => {
     // 1. Setup worker user and assigned task

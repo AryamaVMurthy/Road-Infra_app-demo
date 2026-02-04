@@ -75,7 +75,7 @@ Allow workers to register using a pre-invited email and auto-join their organiza
 - Return HTTP 403 for workers without an invited/active status.
 - Invite lifecycle: INVITED -> ACTIVE -> INACTIVE.
 - Invites expire after a configured window (default 7 days) and can be re-sent.
-- Optional allowed-domain restriction can be enforced (e.g., *@ghmc.gov.in).
+- Optional allowed-domain restriction can be enforced (e.g., *@authority.gov.in).
 
 ## Edge Cases
 - If an invite is expired or revoked, registration is blocked.

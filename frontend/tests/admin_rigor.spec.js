@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { execSync } from 'child_process';
 
 test.describe('Admin Rigorous Flow', () => {
-  const email = 'admin_rigor@ghmc.gov.in';
+  const email = 'admin_rigor@authority.gov.in';
 
   test.beforeAll(async () => {
     execSync('export PYTHONPATH=$PYTHONPATH:$(pwd)/../backend && ../venv/bin/python3 ../backend/reset_db.py');

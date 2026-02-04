@@ -5,7 +5,7 @@ Mock Data Loader for MARG (Monitoring Application for Road Governance)
 Generates realistic test data:
 - 8 workers across different zones
 - 50+ issues across all categories and statuses
-- Realistic Hyderabad locations
+- Realistic city locations
 - Proper issue lifecycle with timestamps
 
 Usage:
@@ -22,67 +22,42 @@ from sqlalchemy import text
 from app.models.domain import Zone, Category, User, Issue, Organization, Evidence
 from app.core.config import settings
 
-# Hyderabad locations with realistic coordinates
-HYDERABAD_LOCATIONS = [
-    # Banjara Hills area
-    {"lat": 17.4156, "lng": 78.4347, "address": "Road No. 12, Banjara Hills"},
-    {"lat": 17.4189, "lng": 78.4401, "address": "Road No. 2, Banjara Hills"},
-    {"lat": 17.4203, "lng": 78.4289, "address": "GVK One Mall, Banjara Hills"},
-    {"lat": 17.4267, "lng": 78.4355, "address": "Panjagutta Circle"},
-    # Jubilee Hills area
-    {"lat": 17.4325, "lng": 78.4073, "address": "Road No. 36, Jubilee Hills"},
-    {"lat": 17.4356, "lng": 78.4156, "address": "Jubilee Hills Check Post"},
-    {"lat": 17.4289, "lng": 78.4012, "address": "Film Nagar, Jubilee Hills"},
-    {"lat": 17.4412, "lng": 78.4098, "address": "Road No. 45, Jubilee Hills"},
-    # Gachibowli area
-    {"lat": 17.4401, "lng": 78.3489, "address": "DLF Cyber City, Gachibowli"},
-    {"lat": 17.4456, "lng": 78.3567, "address": "Wipro Junction, Gachibowli"},
-    {"lat": 17.4378, "lng": 78.3623, "address": "ISB Road, Gachibowli"},
-    {"lat": 17.4312, "lng": 78.3401, "address": "Nanakramguda Main Road"},
-    # Madhapur area
-    {"lat": 17.4489, "lng": 78.3867, "address": "HITEC City Main Road"},
-    {"lat": 17.4534, "lng": 78.3912, "address": "Cyber Towers, Madhapur"},
-    {"lat": 17.4478, "lng": 78.3789, "address": "Durgam Cheruvu Road"},
-    {"lat": 17.4556, "lng": 78.3834, "address": "Kondapur Junction"},
-    # Secunderabad area
-    {"lat": 17.4399, "lng": 78.4983, "address": "Secunderabad Railway Station"},
-    {"lat": 17.4456, "lng": 78.5012, "address": "Paradise Circle"},
-    {"lat": 17.4312, "lng": 78.5078, "address": "Trimulgherry"},
-    {"lat": 17.4523, "lng": 78.4934, "address": "Tank Bund Road"},
-    # Ameerpet area
-    {"lat": 17.4378, "lng": 78.4478, "address": "Ameerpet Metro Station"},
-    {"lat": 17.4423, "lng": 78.4512, "address": "SR Nagar Main Road"},
-    {"lat": 17.4356, "lng": 78.4534, "address": "Yousufguda Check Post"},
-    {"lat": 17.4401, "lng": 78.4423, "address": "Greenlands Road"},
-    # Begumpet area
-    {"lat": 17.4434, "lng": 78.4667, "address": "Begumpet Airport Road"},
-    {"lat": 17.4478, "lng": 78.4712, "address": "Somajiguda Circle"},
-    {"lat": 17.4389, "lng": 78.4623, "address": "Raj Bhavan Road"},
-    {"lat": 17.4512, "lng": 78.4656, "address": "Khairatabad Junction"},
-    # Kukatpally area
-    {"lat": 17.4934, "lng": 78.3989, "address": "KPHB Colony Main Road"},
-    {"lat": 17.4878, "lng": 78.4045, "address": "Kukatpally Y Junction"},
-    {"lat": 17.4956, "lng": 78.3912, "address": "Allwyn Colony"},
-    {"lat": 17.4823, "lng": 78.4078, "address": "Moosapet X Roads"},
-    # Dilsukhnagar area
-    {"lat": 17.3689, "lng": 78.5234, "address": "Dilsukhnagar Bus Stand"},
-    {"lat": 17.3734, "lng": 78.5189, "address": "Chaitanyapuri"},
-    {"lat": 17.3656, "lng": 78.5267, "address": "Kothapet Main Road"},
-    {"lat": 17.3712, "lng": 78.5145, "address": "Malakpet"},
-    # LB Nagar area
-    {"lat": 17.3489, "lng": 78.5478, "address": "LB Nagar Circle"},
-    {"lat": 17.3534, "lng": 78.5512, "address": "Sagar Ring Road Junction"},
-    {"lat": 17.3456, "lng": 78.5423, "address": "Bairamalguda"},
-    {"lat": 17.3578, "lng": 78.5389, "address": "Nagole Metro Station"},
+# City locations with realistic coordinates
+CITY_LOCATIONS = [
+    # Area 1
+    {"lat": 17.4156, "lng": 78.4347, "address": "Main Road, Sector 1"},
+    {"lat": 17.4189, "lng": 78.4401, "address": "Park Avenue, Sector 2"},
+    {"lat": 17.4203, "lng": 78.4289, "address": "Central Mall, Sector 3"},
+    {"lat": 17.4267, "lng": 78.4355, "address": "City Circle"},
+    # Area 2
+    {"lat": 17.4325, "lng": 78.4073, "address": "High Street, Sector 4"},
+    {"lat": 17.4356, "lng": 78.4156, "address": "Junction 5"},
+    {"lat": 17.4289, "lng": 78.4012, "address": "Business District"},
+    {"lat": 17.4412, "lng": 78.4098, "address": "Commercial Hub"},
+    # Area 3
+    {"lat": 17.4401, "lng": 78.3489, "address": "Tech Park, Sector 6"},
+    {"lat": 17.4456, "lng": 78.3567, "address": "Corporate Park"},
+    {"lat": 17.4378, "lng": 78.3623, "address": "Institutional Area"},
+    {"lat": 17.4312, "lng": 78.3401, "address": "Ring Road"},
+    # Area 4
+    {"lat": 17.4489, "lng": 78.3867, "address": "Highway 1"},
+    {"lat": 17.4534, "lng": 78.3912, "address": "City Towers"},
+    {"lat": 17.4478, "lng": 78.3789, "address": "Outer Road"},
+    {"lat": 17.4556, "lng": 78.3834, "address": "Suburban Area"},
+    # Area 5
+    {"lat": 17.4399, "lng": 78.4983, "address": "Railway Station Road"},
+    {"lat": 17.4456, "lng": 78.5012, "address": "Station Circle"},
+    {"lat": 17.4312, "lng": 78.5078, "address": "Green Belt"},
+    {"lat": 17.4523, "lng": 78.4934, "address": "Lake Road"},
 ]
 
 # Additional workers to create
 ADDITIONAL_WORKERS = [
-    {"email": "worker4@ghmc.gov.in", "name": "Prasad Naidu", "zone": "Madhapur"},
-    {"email": "worker5@ghmc.gov.in", "name": "Srinivas Goud", "zone": "Secunderabad"},
-    {"email": "worker6@ghmc.gov.in", "name": "Mahesh Babu", "zone": "Kukatpally"},
-    {"email": "worker7@ghmc.gov.in", "name": "Rajesh Khanna", "zone": "Dilsukhnagar"},
-    {"email": "worker8@ghmc.gov.in", "name": "Anil Kumar", "zone": "Ameerpet"},
+    {"email": "worker4@authority.gov.in", "name": "Field Worker 4", "zone": "Central"},
+    {"email": "worker5@authority.gov.in", "name": "Field Worker 5", "zone": "North"},
+    {"email": "worker6@authority.gov.in", "name": "Field Worker 6", "zone": "South"},
+    {"email": "worker7@authority.gov.in", "name": "Field Worker 7", "zone": "East"},
+    {"email": "worker8@authority.gov.in", "name": "Field Worker 8", "zone": "West"},
 ]
 
 # Issue statuses and their distribution
@@ -159,9 +134,9 @@ def load_mock_data():
         citizen = session.exec(select(User).where(User.role == "CITIZEN")).first()
         if not citizen:
             citizen = User(
-                email="citizen@hyderabad.in",
+                email="citizen@example.com",
                 role="CITIZEN",
-                full_name="Hyderabad Citizen",
+                full_name="Citizen",
             )
             session.add(citizen)
             session.commit()
@@ -186,7 +161,7 @@ def load_mock_data():
         for status, count in STATUS_DISTRIBUTION.items():
             for i in range(count):
                 # Cycle through locations
-                loc = HYDERABAD_LOCATIONS[location_index % len(HYDERABAD_LOCATIONS)]
+                loc = CITY_LOCATIONS[location_index % len(CITY_LOCATIONS)]
                 location_index += 1
 
                 # Random category
@@ -256,7 +231,7 @@ def load_mock_data():
             # If less than 3, create more CLOSED issues for this worker
             needed = 3 - len(completed)
             for _ in range(max(0, needed)):
-                loc = random.choice(HYDERABAD_LOCATIONS)
+                loc = random.choice(CITY_LOCATIONS)
                 category = random.choice(categories)
                 created_at = random_date(90)  # Older issues for history
                 accepted_at = created_at + timedelta(hours=random.randint(1, 6))
@@ -321,11 +296,11 @@ def load_mock_data():
 
         print("\n✅ Mock data loaded successfully!")
         print("\n📌 Test Accounts:")
-        print("   Admin:   admin@ghmc.gov.in")
+        print("   Admin:   admin@authority.gov.in")
         print(
-            "   Workers: worker@ghmc.gov.in, worker2@ghmc.gov.in ... worker8@ghmc.gov.in"
+            "   Workers: worker@authority.gov.in, worker2@authority.gov.in ... worker8@authority.gov.in"
         )
-        print("   Citizen: citizen@hyderabad.in or any email")
+        print("   Citizen: citizen@example.com or any email")
         print("\n🔐 Get OTP: docker compose logs backend | grep OTP")
 
 

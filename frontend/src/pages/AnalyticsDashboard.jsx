@@ -17,7 +17,7 @@ import 'leaflet/dist/leaflet.css'
 import { HeatmapLayer } from '../components/HeatmapLayer'
 import { LocateControl } from '../components/LocateControl'
 import { SearchField } from '../components/SearchField'
-import { useGeolocation, HYDERABAD_CENTER } from '../hooks/useGeolocation'
+import { useGeolocation, DEFAULT_CENTER } from '../hooks/useGeolocation'
 
 
 const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
@@ -53,7 +53,7 @@ export default function AnalyticsDashboard() {
   const navigate = useNavigate()
 
   const { position: geoPosition } = useGeolocation()
-  const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [HYDERABAD_CENTER.lat, HYDERABAD_CENTER.lng]
+  const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]
 
   useEffect(() => {
     fetchAnalytics()
@@ -276,7 +276,7 @@ export default function AnalyticsDashboard() {
                         { label: 'Total Reports', val: data?.summary.reported || 0, icon: Zap },
                         { label: 'Resolved', val: data?.summary.resolved || 0, icon: CheckCircle },
                         { label: 'Workers', val: data?.summary.workers || 0, icon: Users },
-                        { label: 'Region', val: 'Hyderabad', icon: Globe },
+                        { label: 'Region', val: 'Citywide', icon: Globe },
                     ].map(item => (
                         <div key={item.label} className="p-8 bg-white/5 rounded-3xl border border-white/5 backdrop-blur-sm shadow-inner group hover:bg-white/10 transition-colors">
                             <item.icon size={24} className="text-blue-300 mb-4 group-hover:scale-110 transition-transform" />

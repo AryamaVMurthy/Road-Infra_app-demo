@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, Upload, WifiOff, Loader2 } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
@@ -29,7 +29,7 @@ export const ResolveTaskModal = ({
   isOnline,
   isResolving 
 }) => {
-  const fileInputRef = useRef(null)
+  const fileInputRef = React.useRef(null)
 
   if (!task) return null
 

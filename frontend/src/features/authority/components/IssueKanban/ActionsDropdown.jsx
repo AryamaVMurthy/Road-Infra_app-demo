@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MoreVertical, ChevronRight, UserPlus, UserMinus, ArrowRight, Search, X } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
@@ -33,7 +33,7 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
   const [activeSubmenu, setActiveSubmenu] = useState(null)
   const [loading, setLoading] = useState(false)
   const [workerSearchQuery, setWorkerSearchQuery] = useState('')
-  const dropdownRef = useRef(null)
+  const dropdownRef = React.useRef(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {

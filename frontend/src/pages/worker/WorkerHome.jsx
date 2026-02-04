@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import api from '../../services/api'
 import { 
     Briefcase, Clock, LogOut, Loader2, Activity, Map as MapIcon, Globe
@@ -38,7 +38,6 @@ export default function WorkerHome() {
   const [resolvePhoto, setResolvePhoto] = useState(null)
   const [isResolving, setIsResolving] = useState(false)
   const [toast, setToast] = useState(null)
-  const fileInputRef = useRef(null)
   const user = authService.getCurrentUser()
   const navigate = useNavigate()
 

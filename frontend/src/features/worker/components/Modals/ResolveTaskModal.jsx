@@ -3,23 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, Upload, WifiOff, Loader2, Calendar, ArrowRight, ArrowLeft } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
 
-/**
- * ResolveTaskModal - Two-step modal for workers to resolve a task
- * 
- * Step 1: Set expected completion date (ETA)
- * Step 2: Capture/Upload resolution photo proof
- * 
- * @param {Object} props
- * @param {Object} props.task - The task being resolved
- * @param {File} props.photo - The resolution photo file
- * @param {Function} props.onPhotoChange - Callback when photo is selected/cleared
- * @param {Function} props.onSubmit - Callback to submit the resolution
- * @param {Function} props.onCancel - Callback to close the modal
- * @param {boolean} props.isOnline - Online status for UI indicators
- * @param {boolean} props.isResolving - Loading state during submission
- * @param {string} props.etaDate - Selected ETA date string (YYYY-MM-DD)
- * @param {Function} props.onEtaDateChange - Callback when ETA date changes
- */
 export const ResolveTaskModal = ({ 
   task, 
   photo, 

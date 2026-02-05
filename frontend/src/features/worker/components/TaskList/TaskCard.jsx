@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { MapPin, Navigation2, Clock, CloudOff, Camera, ArrowRight } from 'lucide-react'
+import { MapPin, Navigation2, CloudOff, Camera, ArrowRight } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
 
 /**

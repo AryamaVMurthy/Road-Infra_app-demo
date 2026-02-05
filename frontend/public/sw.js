@@ -70,23 +70,6 @@ async function getPendingResolutions() {
   });
 }
 
-async function markSynced(db, id) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(RESOLUTIONS_STORE, 'readwrite');
-    const store = tx.objectStore(RESOLUTIONS_STORE);
-    const getReq = store.get(id);
-    getReq.onsuccess = () => {
-      const data = getReq.result;
-      if (data) {
-        data.status = 'synced';
-        store.put(data);
-      }
-      resolve();
-    };
-    getReq.onerror = () => reject(getReq.error);
-  });
-}
-
 async function removeResolution(db, id) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(RESOLUTIONS_STORE, 'readwrite');
@@ -139,7 +122,9 @@ async function getAuthToken() {
         setTimeout(() => resolve(null), 1000);
       });
       if (response?.token) return response.token;
-    } catch {}
+    } catch (err) {
+      console.warn('Failed to get auth token from client', err);
+    }
   }
   return null;
 }

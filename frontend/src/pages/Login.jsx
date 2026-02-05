@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ShieldCheck, Mail, Key, ArrowRight, Loader2 } from 'lucide-react'
-import { cn } from '../utils/utils'
 
 export default function Login() {
   const [email, setEmail] = useState('')

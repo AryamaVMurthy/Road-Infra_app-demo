@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import api from '../../services/api'
 import { useNavigate } from 'react-router-dom'
-import { Camera, MapPin, Check, ArrowLeft, ArrowRight, Upload, Map as MapIcon, Loader2, Info, AlertCircle, Navigation } from 'lucide-react'
+import { Camera, Check, ArrowLeft, ArrowRight, Map as MapIcon, Loader2, Info, AlertCircle, Navigation } from 'lucide-react'
 import { authService } from '../../services/auth'
 import { offlineService } from '../../services/offline'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -93,7 +93,7 @@ export default function ReportIssue() {
     }
   }
 
-  const handleSubmit = async () => {
+   const handleSubmit = async () => {
     setLoading(true)
     const user = authService.getCurrentUser()
     const reportData = {
@@ -246,10 +246,11 @@ export default function ReportIssue() {
                         />
                     </div>
                 </div>
-                <button 
-                    type="submit" 
+                 <button 
+                    type="button" 
                     disabled={loading}
                     className="w-full py-5 px-8 bg-primary text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-primary/20 disabled:bg-slate-200 disabled:shadow-none active:scale-[0.98]"
+                    onClick={handleSubmit}
                 >
                     {loading ? <Loader2 className="animate-spin" /> : <>Submit Report <Check size={20} /></>}
                 </button>

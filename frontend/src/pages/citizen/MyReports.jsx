@@ -98,7 +98,9 @@ export default function MyReports() {
     const user = authService.getCurrentUser()
     api.get(`/issues/my-reports?email=${user.sub}`)
       .then(res => setReports(res.data))
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Failed to fetch reports', err)
+      })
       .finally(() => setLoading(false))
   }
 
@@ -155,7 +157,7 @@ export default function MyReports() {
                     <Info size={44} />
                 </div>
                 <h3 className="text-3xl font-black text-slate-900 mb-4">No Active Reports</h3>
-                <p className="text-slate-400 font-bold text-lg mb-12 max-w-md mx-auto leading-relaxed">You haven't submitted any infrastructure issues in your jurisdiction yet.</p>
+                <p className="text-slate-400 font-bold text-lg mb-12 max-w-md mx-auto leading-relaxed">You haven&apos;t submitted any infrastructure issues in your jurisdiction yet.</p>
                 <button onClick={() => navigate('/citizen/report')} className="px-12 py-6 bg-primary text-white font-black text-lg rounded-[2rem] shadow-2xl shadow-primary/30 hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-3 mx-auto">
                    Report Your First Issue <ArrowRight size={22} />
                 </button>

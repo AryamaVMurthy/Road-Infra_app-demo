@@ -18,7 +18,7 @@ export const OfflineBanner = ({ isOnline, pendingCount }) => {
       className="bg-amber-500 text-white px-4 py-3 flex items-center justify-center gap-2 text-sm font-bold"
     >
       <WifiOff size={16} />
-      You're offline. Resolutions will sync when connected.
+      You&apos;re offline. Resolutions will sync when connected.
       {pendingCount > 0 && (
         <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
           {pendingCount} pending

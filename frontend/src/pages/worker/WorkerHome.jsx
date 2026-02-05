@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../../services/api'
 import { 
     Briefcase, Clock, LogOut, Loader2, Activity, Map as MapIcon, Globe
@@ -15,6 +15,7 @@ import { SearchField } from '../../components/SearchField'
 import { offlineService } from '../../services/offline'
 import { useWorkerOfflineSync } from '../../hooks/useWorkerOfflineSync'
 import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
+import { useWorkerTasks } from '../../hooks/useWorkerTasks'
 
 import { TaskCard } from '../../features/worker/components/TaskList/TaskCard'
 import { AcceptTaskModal } from '../../features/worker/components/Modals/AcceptTaskModal'
@@ -27,32 +28,29 @@ const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright
 
 export default function WorkerHome() {
   const [activeTab, setActiveTab] = useState('tasks') 
-  const [tasks, setTasks] = useState([])
   const [heatmapData, setHeatmapData] = useState([])
   const [selectedTask, setSelectedTask] = useState(null)
   const [resolveTask, setResolveTask] = useState(null)
   const [eta, setEta] = useState('')
   const [resolveEtaDate, setResolveEtaDate] = useState('')
-  const [loading, setLoading] = useState(true)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [pendingResolutions, setPendingResolutions] = useState({})
   const [resolvePhoto, setResolvePhoto] = useState(null)
   const [isResolving, setIsResolving] = useState(false)
   const [toast, setToast] = useState(null)
-  const user = authService.getCurrentUser()
   const navigate = useNavigate()
 
   const { position: geoPosition } = useGeolocation()
   const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]
 
-  /**
-   * Centralized helper to reset the resolution workflow state
-   */
-  const resetResolveState = useCallback(() => {
-    setResolveTask(null)
-    setResolvePhoto(null)
-    setResolveEtaDate('')
+  const showToast = useCallback((message, type = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
   }, [])
+
+  const { tasks, loading, fetchTasks } = useWorkerTasks((message) => {
+    showToast(message, 'error')
+  })
 
   const handleSyncComplete = useCallback((issueId, success) => {
     setPendingResolutions(prev => {
@@ -66,14 +64,9 @@ export default function WorkerHome() {
     } else {
       showToast('Resolution sync failed', 'error');
     }
-  }, []);
+  }, [fetchTasks, showToast]);
 
-  const { pendingCount, isSyncing } = useWorkerOfflineSync(handleSyncComplete);
-
-  const showToast = (message, type = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
+  const { pendingCount } = useWorkerOfflineSync(handleSyncComplete);
 
   const loadPendingResolutions = useCallback(async () => {
     try {
@@ -81,13 +74,19 @@ export default function WorkerHome() {
       const pendingMap = {};
       pending.forEach(r => { pendingMap[r.issueId] = true; });
       setPendingResolutions(pendingMap);
-    } catch {}
-  }, []);
+    } catch (err) {
+      showToast('Failed to load pending resolutions.', 'error')
+    }
+  }, [showToast]);
 
   useEffect(() => { 
     fetchTasks();
     loadPendingResolutions();
-    api.get('/analytics/heatmap').then(res => setHeatmapData(res.data)).catch(() => {});
+    api.get('/analytics/heatmap')
+      .then(res => setHeatmapData(res.data))
+      .catch(() => {
+        showToast('Failed to load heatmap data.', 'error')
+      });
 
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -98,18 +97,7 @@ export default function WorkerHome() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [loadPendingResolutions]);
-
-  const fetchTasks = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/worker/tasks');
-      setTasks(res.data);
-    } catch (err) {
-      console.error("Failed to fetch tasks");
-    }
-    setLoading(false);
-  };
+  }, [fetchTasks, loadPendingResolutions, showToast]);
 
   const handleAccept = async (taskId) => {
     try {
@@ -137,7 +125,9 @@ export default function WorkerHome() {
         });
         setPendingResolutions(prev => ({ ...prev, [resolveTask.id]: true }));
         showToast('Resolution saved offline. Will sync when connected.', 'info');
-        resetResolveState();
+        setResolveTask(null);
+        setResolvePhoto(null);
+        setResolveEtaDate('');
       } catch (err) {
         showToast('Failed to save offline resolution.', 'error');
       }
@@ -151,19 +141,15 @@ export default function WorkerHome() {
       await api.post(`/worker/tasks/${resolveTask.id}/resolve`, formData);
       showToast('Task resolved successfully!', 'success');
       fetchTasks();
-      resetResolveState();
+      setResolveTask(null);
+      setResolvePhoto(null);
+      setResolveEtaDate('');
     } catch (err) {
       showToast('Failed to resolve task.', 'error');
     }
     setIsResolving(false);
   };
 
-  const handlePhotoCapture = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setResolvePhoto(file);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -347,7 +333,7 @@ export default function WorkerHome() {
         photo={resolvePhoto}
         onPhotoChange={setResolvePhoto}
         onSubmit={handleResolveSubmit}
-        onCancel={resetResolveState}
+        onCancel={() => { setResolveTask(null); setResolvePhoto(null); setResolveEtaDate(''); }}
         isOnline={isOnline}
         isResolving={isResolving}
         etaDate={resolveEtaDate}

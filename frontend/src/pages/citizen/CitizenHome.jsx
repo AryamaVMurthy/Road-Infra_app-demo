@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, LayoutList, LogOut, Info, MapPin, ChevronRight, Activity, Globe } from 'lucide-react'
+import { Plus, LayoutList, LogOut, MapPin, ChevronRight, Globe } from 'lucide-react'
 import { authService } from '../../services/auth'
-import api from '../../services/api'
 import { motion } from 'framer-motion'
 import { cn } from '../../utils/utils'
 

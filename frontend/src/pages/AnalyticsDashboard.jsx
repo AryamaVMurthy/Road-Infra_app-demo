@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import api from '../services/api'
 import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+    XAxis, YAxis, CartesianGrid, Tooltip, 
     ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area 
 } from 'recharts'
 import { 
-    Activity, Globe, TrendingUp, AlertTriangle, CheckCircle2, CheckCircle,
-    MapPin, ArrowLeft, Info, Activity as ActivityIcon, Users,
-    ShieldCheck, Zap, Layers, Map as MapIcon, ChevronRight, Clock, ArrowRight
+    Globe, TrendingUp, AlertTriangle, CheckCircle2, CheckCircle,
+    ArrowLeft, Activity as ActivityIcon, Users,
+    ShieldCheck, Zap, Clock
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { cn } from '../utils/utils'
 import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'

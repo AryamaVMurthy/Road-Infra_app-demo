@@ -1,10 +1,8 @@
 
 import { chromium } from 'playwright';
 import { execSync } from 'child_process';
-import fs from 'fs';
-import path from 'path';
 
-(async () => {
+void (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage();
   
@@ -32,7 +30,9 @@ import path from 'path';
                   console.log(`Found OTP in DB: ${otp}`);
                   return otp;
               }
-          } catch (e) {}
+           } catch (e) {
+               // ignore and retry
+           }
           process.stdout.write('.');
           execSync('sleep 2');
       }

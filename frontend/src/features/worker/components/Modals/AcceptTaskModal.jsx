@@ -1,14 +1,20 @@
-import React, { useState } from 'react'
+import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, X } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
 
 export const AcceptTaskModal = ({ task, eta, onEtaChange, onConfirm, onCancel }) => {
-  if (!task) return null
+  const { minDate, maxDate } = useMemo(() => {
+    const today = new Date()
+    return {
+      minDate: today.toISOString().split('T')[0],
+      maxDate: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0],
+    }
+  }, [])
 
-  const today = new Date()
-  const minDate = today.toISOString().split('T')[0]
-  const maxDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  if (!task) return null
 
   const quickDates = [
     { label: 'Tomorrow', days: 1 },

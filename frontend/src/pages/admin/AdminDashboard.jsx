@@ -1,26 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../../services/api'
-import { MapContainer, TileLayer } from 'react-leaflet'
-import 'leaflet.heat'
 import { 
     Settings, Shield, Globe, Activity, Database, LogOut, 
-    TrendingUp, Users, AlertTriangle, CheckCircle, MapPin, 
-    ChevronRight, Download, Filter, Clock, ArrowRight
+    TrendingUp, Users, AlertTriangle, CheckCircle, 
+    ChevronRight, ArrowRight
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
-import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-    ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area 
-} from 'recharts'
-import { HeatmapLayer } from '../../components/HeatmapLayer'
-import { LocateControl } from '../../components/LocateControl'
-import { SearchField } from '../../components/SearchField'
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useNavigate } from 'react-router-dom'
-
-const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 const AdminStat = ({ label, value, trend, icon: Icon, color }) => (
     <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group">
@@ -44,14 +33,9 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const [data, setData] = useState(null)
   const [audits, setAudits] = useState([])
-  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    fetchAdminData()
-  }, [activeTab])
-
-  const fetchAdminData = () => {
+  const fetchAdminData = useCallback(() => {
     const promises = [
       api.get('/admin/issues'),
       api.get('/admin/workers'),
@@ -64,12 +48,17 @@ export default function AdminDashboard() {
         promises.push(Promise.resolve({data: []}))
     }
 
-    Promise.all(promises).then(([issuesRes, workersRes, statsRes, auditRes]) => {
+    Promise.all(promises).then(([, , statsRes, auditRes]) => {
       setData(statsRes.data)
       setAudits(auditRes.data)
-    }).catch(() => {
-    }).finally(() => setLoading(false))
-  }
+    }).catch((err) => {
+      console.error('Failed to fetch admin data', err)
+    })
+  }, [activeTab])
+
+  useEffect(() => {
+    fetchAdminData()
+  }, [fetchAdminData])
 
   const stats = [
     { name: 'Total Issues', value: data?.summary.reported || 0, color: 'bg-rose-500', icon: AlertTriangle },
@@ -151,7 +140,7 @@ export default function AdminDashboard() {
                                             stroke="none"
                                         >
                                             {(data?.category_split || []).map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][index % 4]} />
+                                                <Cell key={entry.name ?? `cell-${index}`} fill={['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][index % 4]} />
                                             ))}
                                         </Pie>
                                         <Tooltip />

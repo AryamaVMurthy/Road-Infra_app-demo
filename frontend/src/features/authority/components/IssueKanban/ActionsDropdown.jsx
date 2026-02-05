@@ -20,18 +20,7 @@ const PRIORITIES = [
 ]
 
 /**
- * IssueActionsDropdown - Comprehensive actions menu for issue cards
- * 
- * Features:
- * - Assign/Reassign workers
- * - Unassign workers
- * - Change status
- * - Shows worker workload indicators
- * 
- * @param {Object} issue - Issue data object
- * @param {Array} workers - List of available workers
- * @param {Function} onUpdate - Callback after action completion
- * @param {Object} api - API instance for making requests
+ * IssueActionsDropdown provides assignment, status, and priority actions for an issue.
  */
 export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -52,9 +41,6 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  /**
-   * Handle worker reassignment
-   */
   const handleReassign = async (workerId) => {
     setLoading(true)
     try {
@@ -68,9 +54,6 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
     setLoading(false)
   }
 
-  /**
-   * Handle worker unassignment
-   */
   const handleUnassign = async () => {
     setLoading(true)
     try {
@@ -83,9 +66,6 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
     setLoading(false)
   }
 
-  /**
-   * Handle status change
-   */
   const handleStatusChange = async (newStatus) => {
     if (newStatus === issue.status) return
     setLoading(true)
@@ -215,9 +195,7 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
   )
 }
 
-/**
- * AssignSection - Component for assigning a new worker
- */
+/** AssignSection - assign a worker to an unassigned issue. */
 const AssignSection = ({ workers, onAssign, onHover, onLeave, isActive, loading, searchQuery, onSearchChange }) => {
   const buttonRef = useRef(null)
   return (
@@ -251,9 +229,7 @@ const AssignSection = ({ workers, onAssign, onHover, onLeave, isActive, loading,
   )
 }
 
-/**
- * ReassignSection - Component for reassigning or unassigning
- */
+/** ReassignSection - reassign or unassign a worker. */
 const ReassignSection = ({ 
   workers, 
   currentWorkerId, 

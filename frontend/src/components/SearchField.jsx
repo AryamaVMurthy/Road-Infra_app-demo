@@ -26,7 +26,7 @@ export function SearchField({ onFound }) {
     return () => {
       control.remove();
     };
-  }, [map]);
+  }, [map, onFound]);
 
   return null;
 }

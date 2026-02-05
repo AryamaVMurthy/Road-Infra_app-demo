@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api, { API_URL } from '../../services/api'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -34,7 +34,7 @@ export default function AuthorityDashboard() {
   const [issues, setIssues] = useState([])
   const [workers, setWorkers] = useState([])
   const [workerAnalytics, setWorkerAnalytics] = useState(null)
-  const [loading, setLoading] = useState(true)
+  
   const [selectedIssues, setSelectedIssues] = useState([])
   const [reviewIssue, setReviewIssue] = useState(null)
   const [mapMode, setMapMode] = useState('markers')
@@ -47,19 +47,7 @@ export default function AuthorityDashboard() {
   const { position: geoPosition } = useGeolocation()
   const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]
 
-  useEffect(() => { 
-    fetchData()
-    
-    const interval = setInterval(() => {
-        fetchData()
-        setLastRefresh(new Date())
-    }, 30000)
-    
-    return () => clearInterval(interval)
-  }, [])
-
-  const fetchData = () => {
-    setLoading(true)
+  const fetchData = useCallback(() => {
     Promise.all([
       api.get('/admin/issues'), 
       api.get('/admin/workers-with-stats'),
@@ -71,8 +59,18 @@ export default function AuthorityDashboard() {
         setHeatmapData(heatRes.data)
         setWorkerAnalytics(analyticsRes.data)
       }).catch(err => console.error('Fetch failed:', err))
-      .finally(() => setLoading(false))
-  }
+  }, [])
+
+  useEffect(() => { 
+    fetchData()
+    
+    const interval = setInterval(() => {
+        fetchData()
+        setLastRefresh(new Date())
+    }, 30000)
+    
+    return () => clearInterval(interval)
+  }, [fetchData])
 
   const toggleIssueSelection = (id) => {
     setSelectedIssues(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])

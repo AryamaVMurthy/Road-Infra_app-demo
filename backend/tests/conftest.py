@@ -1,3 +1,4 @@
+import os
 import pytest
 from sqlmodel import SQLModel, create_engine, Session
 from fastapi.testclient import TestClient
@@ -6,16 +7,20 @@ from app.db.session import get_session
 from sqlalchemy import text
 
 # Use a separate test database
-sqlite_url = "postgresql://postgres:toto@localhost/app_test"
-engine = create_engine(sqlite_url)
+db_host = os.getenv("POSTGRES_HOST", "localhost")
+db_name = os.getenv("POSTGRES_DB", "app_test")
+db_user = os.getenv("POSTGRES_USER", "postgres")
+db_password = os.getenv("POSTGRES_PASSWORD", "toto")
+db_url = f"postgresql://{db_user}:{db_password}@{db_host}/{db_name}"
+engine = create_engine(db_url)
 
 
-from app.services.minio_client import init_minio
+from app.services.minio_client import init_minio, minio_client
+from minio.helpers import ObjectWriteResult, HTTPHeaderDict
 
 
 @pytest.fixture(name="session")
 def session_fixture():
-    # Ensure minio bucket exists
     init_minio()
 
     with engine.connect() as conn:

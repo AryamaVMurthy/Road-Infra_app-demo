@@ -1,36 +1,37 @@
 import { test, expect } from '@playwright/test';
 import { execSync } from 'child_process';
+import { getLatestOtp, resetDatabase } from './helpers/db';
 
 test('Citizen flow: Login and Report Issue', async ({ page }) => {
   const email = 'citizen_e2e@test.com';
+
+  resetDatabase();
   
   // 1. Login Flow
   await page.goto('http://localhost:3001/login');
   await page.fill('input[type="email"]', email);
-  await page.click('button:has-text("Request OTP")');
+  await page.click('button:has-text("Request Access")');
   
   // Wait for OTP to be generated in DB
   await page.waitForTimeout(2000);
   
   // Fetch OTP from DB
-  const otpCode = execSync(
-    `docker exec spec_requirements-db-1 psql -U postgres -d app -t -c "SELECT code FROM otp WHERE email='${email}' ORDER BY created_at DESC LIMIT 1;"`
-  ).toString().trim();
+  const otpCode = getLatestOtp(email);
   
   console.log(`Extracted OTP: ${otpCode}`);
   
-  await page.fill('input[placeholder*="OTP"]', otpCode);
-  await page.click('button:has-text("Login")');
+  await page.fill('input[placeholder*="Enter 6-digit code"]', otpCode);
+  await page.click('button:has-text("Verify & Sign In")');
   
   // 2. Home Page
-  await expect(page.locator('h2')).toContainText('Hello');
+  await expect(page.locator('h2')).toContainText('Namaste');
   
   // 3. Report Issue
-  await page.click('a:has-text("Report Issue")');
+  await page.click('text=Report New Issue');
   
   // Map/Location Step
   await page.waitForTimeout(5000);
-  await page.click('button:has-text("Confirm Location")');
+  await page.click('button:has-text("Confirm & Proceed")');
   
   // Photo Step
   // Simulate file upload

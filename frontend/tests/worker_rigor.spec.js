@@ -1,19 +1,22 @@
 import { test, expect } from '@playwright/test';
-import { execSync } from 'child_process';
+import { getLatestOtp, resetDatabase, runSql } from './helpers/db';
 
 test.describe('Worker Rigorous Flow', () => {
   const email = 'worker_rigor@authority.gov.in';
 
   test('Accepts task with ETA and completes work', async ({ page }) => {
+    resetDatabase();
     // 1. Setup worker user and assigned task
-    execSync(`docker exec spec_requirements-db-1 psql -U postgres -d app -c "INSERT INTO \\"user\\" (id, email, role, status) VALUES ('00000000-0000-0000-0000-000000000002', '${email}', 'WORKER', 'ACTIVE') ON CONFLICT DO NOTHING;"`);
+    runSql(
+      `INSERT INTO \\"user\\" (id, email, role, status) VALUES ('00000000-0000-0000-0000-000000000002', '${email}', 'WORKER', 'ACTIVE') ON CONFLICT DO NOTHING;`
+    );
     
     // 2. Login
     await page.goto('http://localhost:3001/login');
     await page.fill('input[type="email"]', email);
     await page.click('button:has-text("Request Access")');
     await page.waitForTimeout(1000);
-    const otp = execSync(`docker exec spec_requirements-db-1 psql -U postgres -d app -t -c "SELECT code FROM otp WHERE email='${email}' ORDER BY created_at DESC LIMIT 1;"`).toString().trim();
+    const otp = getLatestOtp(email);
     await page.fill('input[placeholder*="code"]', otp);
     await page.click('button:has-text("Verify & Sign In")');
 

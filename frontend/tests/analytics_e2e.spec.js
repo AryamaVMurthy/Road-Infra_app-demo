@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { execSync } from 'child_process';
+import { getLatestOtp, resetDatabase, runSql } from './helpers/db';
 
 test.describe('City Analytics End-to-End', () => {
   const email = 'sysadmin_e2e_ana@test.com';
 
   test('Persona can access, search location, and get current location', async ({ page, context }) => {
     // 1. Reset DB and Setup User
-    execSync('export PYTHONPATH=$PYTHONPATH:$(pwd)/../backend && ../venv/bin/python3 ../backend/reset_db.py');
+    resetDatabase();
     const sql = `INSERT INTO \\"user\\" (id, email, role, status) VALUES (gen_random_uuid(), '${email}', 'SYSADMIN', 'ACTIVE');`;
-    execSync(`docker exec spec_requirements-db-1 psql -U postgres -d app -c "${sql}"`);
+    runSql(sql);
     
     // 2. Login
     await page.goto('http://localhost:3001/login');
@@ -16,7 +16,7 @@ test.describe('City Analytics End-to-End', () => {
     await page.click('text=Request Access');
     await page.waitForTimeout(1000);
     
-    const otp = execSync(`docker exec spec_requirements-db-1 psql -U postgres -d app -t -c "SELECT code FROM otp WHERE email='${email}' ORDER BY created_at DESC LIMIT 1;"`).toString().trim();
+    const otp = getLatestOtp(email);
     await page.fill('input[placeholder*="Enter 6-digit code"]', otp);
     await page.click('text=Verify & Sign In');
     console.log(`Login clicked with OTP`);

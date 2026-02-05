@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { execSync } from 'child_process';
+import { getLatestOtp, resetDatabase, runSql } from './helpers/db';
 
 test.describe('Admin Rigorous Flow', () => {
   const email = 'admin_rigor@authority.gov.in';
 
   test.beforeAll(async () => {
-    execSync('export PYTHONPATH=$PYTHONPATH:$(pwd)/../backend && ../venv/bin/python3 ../backend/reset_db.py');
+    resetDatabase();
     const sql = `
         INSERT INTO \\"user\\" (id, email, role, status) VALUES ('00000000-0000-0000-0000-000000000001', '${email}', 'ADMIN', 'ACTIVE');
         INSERT INTO \\"user\\" (id, email, role, status) VALUES ('00000000-0000-0000-0000-000000000002', 'worker_rigor@test.com', 'WORKER', 'ACTIVE');
@@ -14,7 +14,7 @@ test.describe('Admin Rigorous Flow', () => {
         INSERT INTO issue (id, category_id, status, location, reporter_id, report_count, priority, created_at, updated_at) 
         VALUES (gen_random_uuid(), (SELECT id FROM category LIMIT 1), 'REPORTED', ST_GeomFromText('POINT(78.1 17.1)', 4326), '00000000-0000-0000-0000-000000000001', 1, 'P3', now(), now());
     `;
-    execSync(`docker exec spec_requirements-db-1 psql -U postgres -d app -c "${sql}"`);
+    runSql(sql);
   });
 
   test('Bulk assigns issues and reviews resolution', async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe('Admin Rigorous Flow', () => {
     await page.click('text=Request Access');
 
     await page.waitForTimeout(1000);
-    const otp = execSync(`docker exec spec_requirements-db-1 psql -U postgres -d app -t -c "SELECT code FROM otp WHERE email='${email}' ORDER BY created_at DESC LIMIT 1;"`).toString().trim();
+    const otp = getLatestOtp(email);
     await page.fill('input[placeholder*="Enter 6-digit code"]', otp);
     await page.click('text=Verify & Sign In');
 

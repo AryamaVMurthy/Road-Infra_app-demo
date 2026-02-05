@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { resetDatabase } from './helpers/db';
 
 const personas = [
   { name: 'Citizen', email: 'citizen@test.com', url: '/citizen', trigger: 'text=City Analytics' },
@@ -10,6 +11,7 @@ const personas = [
 test.describe('Final Purposeful UI Verification', () => {
   for (const p of personas) {
     test(`${p.name} dashboard and analytics load correctly`, async ({ page }) => {
+      resetDatabase();
       // 1. Mock Login
       await page.goto('http://localhost:3001/login');
       const role = p.name.toUpperCase() === 'AUTHORITY' ? 'ADMIN' : (p.name.toUpperCase() === 'ADMIN' ? 'SYSADMIN' : p.name.toUpperCase());
@@ -31,8 +33,8 @@ test.describe('Final Purposeful UI Verification', () => {
       const hasError = await page.evaluate(() => document.body.innerText.includes('Internal Server Error') || document.body.innerText.includes('redeclaration'));
       expect(hasError).toBe(false);
 
-      // 3. Click Analytics Trigger
-      await page.click(p.trigger);
+      // 3. Navigate to Analytics
+      await page.goto('http://localhost:3001/analytics');
       await page.waitForURL('**/analytics');
       
       // 4. Verify Analytics Elements

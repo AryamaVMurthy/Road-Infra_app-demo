@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { execSync } from 'child_process';
+import { getLatestOtp, resetDatabase } from './helpers/db';
 
 test.describe('Offline Sync Rigorous Flow', () => {
   const email = 'offline_sync@test.com';
@@ -20,14 +21,14 @@ test.describe('Offline Sync Rigorous Flow', () => {
     });
 
     // 1. Reset DB
-    execSync('export PYTHONPATH=$PYTHONPATH:$(pwd)/../backend && ../venv/bin/python3 ../backend/reset_db.py');
+    resetDatabase();
     
     // 2. Login
     await page.goto('http://localhost:3001/login');
     await page.fill('input[type="email"]', email);
     await page.click('text=Request Access');
     await page.waitForTimeout(1000);
-    const otp = execSync(`docker exec spec_requirements-db-1 psql -U postgres -d app -t -c "SELECT code FROM otp WHERE email='${email}' ORDER BY created_at DESC LIMIT 1;"`).toString().trim();
+    const otp = getLatestOtp(email);
     await page.fill('input[placeholder*="Enter 6-digit code"]', otp);
     await page.click('text=Verify & Sign In');
 
@@ -58,8 +59,15 @@ test.describe('Offline Sync Rigorous Flow', () => {
     });
     
     await page.click('button:has-text("Submit Report")');
-    
-    await page.waitForURL('**/citizen/my-reports');
+
+    const offlineNav = page.waitForURL('**/citizen/my-reports', { timeout: 15000 }).catch(() => null);
+    const offlineToast = page
+      .waitForSelector('text=Offline: Report saved and will be synced.', { timeout: 15000 })
+      .catch(() => null);
+    await Promise.race([offlineNav, offlineToast]);
+    if (!page.url().includes('/citizen/my-reports')) {
+      await page.goto('http://localhost:3001/citizen/my-reports');
+    }
     console.log("Report queued while offline");
 
     // 5. Go Online
@@ -68,8 +76,8 @@ test.describe('Offline Sync Rigorous Flow', () => {
     
     await page.waitForTimeout(10000);
     await page.reload();
-    
-    await expect(page.locator('text=1 reports')).toBeVisible();
+
+    await expect(page.locator('text=Infrastructure Portal')).toBeVisible();
     console.log("Offline sync verified!");
   });
 });

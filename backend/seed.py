@@ -2,11 +2,13 @@ import random
 from sqlmodel import Session, create_engine, select, SQLModel
 from app.models.domain import Category, User, Zone
 from app.core.config import settings
+import app.models.domain
 
 
 def seed_data():
-    engine = create_engine(settings.DATABASE_URL)
-    # Create tables if they don't exist
+    engine = create_engine(
+        settings.DATABASE_URL or settings.assemble_db_connection(None, settings)
+    )
     SQLModel.metadata.create_all(engine)
 
     with Session(engine) as session:
@@ -27,11 +29,11 @@ def seed_data():
 
         # 2. Seed Zones
         zones = [
-            Zone(name="Central Zone"),
-            Zone(name="North Zone"),
-            Zone(name="South Zone"),
-            Zone(name="East Zone"),
-            Zone(name="West Zone"),
+            Zone(name="Central Zone", boundary="POLYGON((0 0,1 0,1 1,0 1,0 0))"),
+            Zone(name="North Zone", boundary="POLYGON((1 0,2 0,2 1,1 1,1 0))"),
+            Zone(name="South Zone", boundary="POLYGON((0 -1,1 -1,1 0,0 0,0 -1))"),
+            Zone(name="East Zone", boundary="POLYGON((2 0,3 0,3 1,2 1,2 0))"),
+            Zone(name="West Zone", boundary="POLYGON((-1 0,0 0,0 1,-1 1,-1 0))"),
         ]
         for z in zones:
             existing = session.exec(select(Zone).where(Zone.name == z.name)).first()

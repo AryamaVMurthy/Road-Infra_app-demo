@@ -1,7 +1,4 @@
-"""
-Admin Worker Management Routes
-Endpoints for worker management and statistics
-"""
+"""Worker management and statistics endpoints."""
 
 from typing import List
 from uuid import UUID
@@ -24,7 +21,7 @@ def get_workers(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Retrieve all workers in the system"""
+    """Retrieve all workers in the system."""
     return WorkerService.get_all_workers(session)
 
 
@@ -33,7 +30,7 @@ def get_workers_with_stats(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Get all workers with their current task counts for assignment dropdown"""
+    """Return workers with task counts for assignment dropdowns."""
     return AnalyticsService.get_workers_with_stats(session)
 
 
@@ -43,7 +40,7 @@ def deactivate_worker(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Deactivate a worker and unassign their active tasks"""
+    """Deactivate a worker and unassign their active tasks."""
     WorkerService.deactivate_worker(session, worker_id, current_user.id)
     session.commit()
     return {"message": "Worker deactivated and tasks reset"}

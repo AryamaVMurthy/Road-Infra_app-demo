@@ -1,7 +1,4 @@
-"""
-Admin Issue Management Routes
-Endpoints for issue workflow and status management
-"""
+"""Admin issue management endpoints."""
 
 from typing import List
 from uuid import UUID
@@ -93,7 +90,7 @@ def update_issue_priority(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Update issue priority (P1-P4) with audit logging"""
+    """Update issue priority and audit the change."""
     if priority not in ["P1", "P2", "P3", "P4"]:
         raise HTTPException(
             status_code=400, detail="Invalid priority. Must be P1, P2, P3, or P4"

@@ -1,7 +1,4 @@
-"""
-Worker API Routes
-Endpoints for workers to manage their assigned tasks
-"""
+"""Worker task management endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select
@@ -28,6 +25,7 @@ def get_worker_tasks(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    """Return tasks assigned to the current worker."""
     statement = (
         select(Issue)
         .where(Issue.worker_id == current_user.id)
@@ -43,6 +41,7 @@ def accept_task(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    """Accept a task and set its ETA date."""
     issue = session.get(Issue, issue_id)
     if not issue or issue.worker_id != current_user.id:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -76,6 +75,7 @@ async def resolve_task(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    """Resolve a task with photo evidence and EXIF capture."""
     issue = session.get(Issue, issue_id)
     if not issue or issue.worker_id != current_user.id:
         raise HTTPException(status_code=404, detail="Task not found")

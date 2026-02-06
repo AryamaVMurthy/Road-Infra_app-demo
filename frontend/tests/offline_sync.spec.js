@@ -24,7 +24,7 @@ test.describe('Offline Sync Rigorous Flow', () => {
     resetDatabase();
     
     // 2. Login
-    await page.goto('http://localhost:3001/login');
+    await page.goto('http://localhost:3011/login');
     await page.fill('input[type="email"]', email);
     await page.click('text=Request Access');
     await page.waitForTimeout(1000);
@@ -66,7 +66,7 @@ test.describe('Offline Sync Rigorous Flow', () => {
       .catch(() => null);
     await Promise.race([offlineNav, offlineToast]);
     if (!page.url().includes('/citizen/my-reports')) {
-      await page.goto('http://localhost:3001/citizen/my-reports');
+      await page.goto('http://localhost:3011/citizen/my-reports');
     }
     console.log("Report queued while offline");
 

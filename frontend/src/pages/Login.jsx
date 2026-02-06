@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { authService } from '../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ShieldCheck, Mail, Key, ArrowRight, Loader2 } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
+import { authService } from '../services/auth'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -10,6 +11,7 @@ export default function Login() {
   const [step, setStep] = useState(1) 
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   const handleRequestOtp = async (e) => {
     e.preventDefault()
@@ -27,14 +29,15 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     try {
-      await authService.login(email, otp)
-      const decoded = authService.getCurrentUser()
-      if (decoded.role === 'CITIZEN') navigate('/citizen')
-      else if (decoded.role === 'ADMIN') navigate('/authority')
-      else if (decoded.role === 'WORKER') navigate('/worker')
-      else if (decoded.role === 'SYSADMIN') navigate('/admin')
+      const user = await login(email, otp)
+      if (user) {
+         if (user.role === 'CITIZEN') navigate('/citizen')
+         else if (user.role === 'ADMIN') navigate('/authority')
+         else if (user.role === 'WORKER') navigate('/worker')
+         else if (user.role === 'SYSADMIN') navigate('/admin')
+      }
     } catch (err) {
-      alert('Invalid OTP')
+      alert('Invalid OTP or Login Failed')
     }
     setLoading(false)
   }

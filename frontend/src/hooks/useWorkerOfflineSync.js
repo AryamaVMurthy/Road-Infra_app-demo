@@ -64,8 +64,9 @@ export const useWorkerOfflineSync = (onSyncComplete) => {
         refreshPendingCount();
         if (onSyncComplete) onSyncComplete(event.data.issueId, false);
       } else if (event.data?.type === 'GET_AUTH_TOKEN') {
-        const token = localStorage.getItem('auth_token');
-        event.ports[0]?.postMessage({ token });
+        // Auth token is now handled via cookies, Service Worker should use credentials: 'include'
+        // Just acknowledging or sending null to prevent hanging if logic expects it
+        event.ports[0]?.postMessage({ token: null });
       }
     };
     navigator.serviceWorker?.addEventListener('message', handleSWMessage);

@@ -10,7 +10,7 @@ test.describe('Universal Analytics Rigor', () => {
       resetDatabase();
 
       // 2. Login
-      await page.goto('http://localhost:3001/login');
+      await page.goto('http://localhost:3011/login');
       await page.fill('input[type="email"]', email);
       await page.click('text=Request Access');
       await page.waitForTimeout(1000);
@@ -24,9 +24,9 @@ test.describe('Universal Analytics Rigor', () => {
       } else if (email.includes('worker')) {
           await page.click('text=City Health');
       } else if (email.includes('admin')) {
-          await page.goto('http://localhost:3001/analytics');
+          await page.goto('http://localhost:3011/analytics');
       } else {
-          await page.goto('http://localhost:3001/analytics');
+          await page.goto('http://localhost:3011/analytics');
       }
 
       // 4. Verify Analytics Dashboard Elements

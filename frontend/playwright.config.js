@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 60000,
   workers: 1,
   use: {
-    baseURL: 'http://localhost:3001',
+    baseURL: 'http://localhost:3011',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

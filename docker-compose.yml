@@ -20,8 +20,8 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9010:9000"
+      - "9011:9001"
     volumes:
       - ./docker_data/minio:/data
     healthcheck:
@@ -51,6 +51,6 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3001:80"
+      - "3011:80"
     depends_on:
       - backend

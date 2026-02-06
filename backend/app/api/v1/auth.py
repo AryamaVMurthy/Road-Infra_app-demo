@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from app.core.config import settings
@@ -8,19 +8,12 @@ from sqlmodel import Session, select, desc
 from app.db.session import get_session
 from datetime import datetime, timedelta
 from app.services.email import EmailService
-
-router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
-
-
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
-
+from app.services.auth_service import AuthService
+from app.api.deps import get_current_user
 
 from app.core.security import check_otp_rate_limit
+
+router = APIRouter()
 
 
 @router.post("/otp-request")
@@ -37,9 +30,8 @@ async def request_otp(data: OTPRequest, session: Session = Depends(get_session))
     return {"message": "OTP sent to your email"}
 
 
-@router.post("/login", response_model=Token)
-def login(data: Login, session: Session = Depends(get_session)):
-    # Verify OTP
+@router.post("/login")
+def login(response: Response, data: Login, session: Session = Depends(get_session)):
     statement = (
         select(Otp)
         .where(Otp.email == data.email, Otp.code == data.otp)
@@ -50,7 +42,6 @@ def login(data: Login, session: Session = Depends(get_session)):
     if not otp_record or otp_record.expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
 
-    # Check if user exists, if not create as CITIZEN
     statement = select(User).where(User.email == data.email)
     user = session.exec(statement).first()
 
@@ -63,15 +54,93 @@ def login(data: Login, session: Session = Depends(get_session)):
     session.commit()
     session.refresh(user)
 
-    access_token = create_access_token(
+    access_token = AuthService.create_access_token(
         data={"sub": user.email, "role": user.role, "id": str(user.id)}
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token_str, _ = AuthService.create_refresh_token(session, user.id)
+
+    cookie_secure = not settings.DEV_MODE
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=cookie_secure,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token_str,
+        httponly=True,
+        secure=cookie_secure,
+        samesite="lax",
+        path=f"{settings.API_V1_STR}/auth/refresh",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+    return {"message": "Login successful"}
 
 
-@router.post("/google-mock", response_model=Token)
-def google_mock_login(email: str, session: Session = Depends(get_session)):
-    # Simulates a successful Google OAuth login
+@router.post("/refresh")
+def refresh_token(
+    request: Request, response: Response, session: Session = Depends(get_session)
+):
+    old_refresh_token = request.cookies.get("refresh_token")
+    if not old_refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+
+    new_access, new_refresh = AuthService.rotate_refresh_token(
+        session, old_refresh_token
+    )
+    cookie_secure = not settings.DEV_MODE
+
+    response.set_cookie(
+        key="access_token",
+        value=new_access,
+        httponly=True,
+        secure=cookie_secure,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh,
+        httponly=True,
+        secure=cookie_secure,
+        samesite="lax",
+        path=f"{settings.API_V1_STR}/auth/refresh",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+    return {"message": "Token refreshed"}
+
+
+@router.post("/logout")
+def logout(
+    response: Response, request: Request, session: Session = Depends(get_session)
+):
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(
+        key="refresh_token", path=f"{settings.API_V1_STR}/auth/refresh"
+    )
+    return {"message": "Logged out"}
+
+
+@router.get("/me")
+def read_users_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "role": current_user.role,
+        "full_name": current_user.full_name,
+    }
+
+
+@router.post("/google-mock")
+def google_mock_login(
+    response: Response, email: str, session: Session = Depends(get_session)
+):
     statement = select(User).where(User.email == email)
     user = session.exec(statement).first()
 
@@ -81,7 +150,27 @@ def google_mock_login(email: str, session: Session = Depends(get_session)):
         session.commit()
         session.refresh(user)
 
-    access_token = create_access_token(
+    access_token = AuthService.create_access_token(
         data={"sub": user.email, "role": user.role, "id": str(user.id)}
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token_str, _ = AuthService.create_refresh_token(session, user.id)
+    cookie_secure = not settings.DEV_MODE
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=cookie_secure,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token_str,
+        httponly=True,
+        secure=cookie_secure,
+        samesite="lax",
+        path=f"{settings.API_V1_STR}/auth/refresh",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+    return {"message": "Login successful"}

@@ -1,6 +1,7 @@
 import random
 from sqlmodel import Session, create_engine, select, SQLModel
 from app.models.domain import Category, User, Zone
+from app.models.auth import RefreshToken
 from app.core.config import settings
 import app.models.domain
 

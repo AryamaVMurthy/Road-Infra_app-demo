@@ -55,17 +55,12 @@ def test_bulk_assignment_rigor(client, session):
     for i in issues:
         session.refresh(i)
 
-    # Login as admin (Mock)
-    token_resp = client.post("/api/v1/auth/google-mock?email=admin@authority.gov.in")
-    token = token_resp.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    client.post("/api/v1/auth/google-mock?email=admin@authority.gov.in")
 
-    # Bulk assign
     issue_ids = [str(i.id) for i in issues]
     response = client.post(
         "/api/v1/admin/bulk-assign",
         json={"issue_ids": issue_ids, "worker_id": str(worker.id)},
-        headers=headers,
     )
     assert response.status_code == 200
 
@@ -103,13 +98,9 @@ def test_worker_deactivation_lifecycle(client, session):
     session.add(issue)
     session.commit()
 
-    token_resp = client.post("/api/v1/auth/google-mock?email=sysadmin@test.com")
-    headers = {"Authorization": f"Bearer {token_resp.json()['access_token']}"}
+    client.post("/api/v1/auth/google-mock?email=sysadmin@test.com")
 
-    # Deactivate worker
-    response = client.post(
-        f"/api/v1/admin/deactivate-worker?worker_id={worker.id}", headers=headers
-    )
+    response = client.post(f"/api/v1/admin/deactivate-worker?worker_id={worker.id}")
     assert response.status_code == 200
 
     # Verify status changed

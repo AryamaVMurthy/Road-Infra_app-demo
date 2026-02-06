@@ -12,7 +12,7 @@ test.describe('Worker Rigorous Flow', () => {
     );
     
     // 2. Login
-    await page.goto('http://localhost:3001/login');
+    await page.goto('http://localhost:3011/login');
     await page.fill('input[type="email"]', email);
     await page.click('button:has-text("Request Access")');
     await page.waitForTimeout(1000);

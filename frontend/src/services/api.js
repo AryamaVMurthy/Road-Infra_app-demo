@@ -4,20 +4,63 @@ const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true, // Important for cookies
 });
 
-api.interceptors.request.use((config) => {
-  const userStr = localStorage.getItem('user');
-  if (userStr) {
-    const user = JSON.parse(userStr);
-    if (user.access_token) {
-      config.headers.Authorization = `Bearer ${user.access_token}`;
+// Remove request interceptor that adds header
+// (Browser handles cookie automatically)
+
+// Add response interceptor for 401 handling
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
     }
+  });
+
+  failedQueue = [];
+};
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        }).then(() => {
+          return api(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        await api.post('/auth/refresh');
+        processQueue(null);
+        return api(originalRequest);
+      } catch (err) {
+        processQueue(err, null);
+        window.location.href = '/login'; // Redirect on refresh fail
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
   }
-  return config;
-}, (error) => {
-  return Promise.reject(error);
-});
+);
 
 export default api;
 export { API_URL };

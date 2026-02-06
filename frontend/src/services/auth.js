@@ -1,28 +1,24 @@
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+import api from './api'
 
 export const authService = {
   requestOtp: async (email) => {
-    return axios.post(`${API_URL}/auth/otp-request`, { email })
+    return api.post('/auth/otp-request', { email })
   },
   login: async (email, otp) => {
-    const response = await axios.post(`${API_URL}/auth/login`, { email, otp })
-    if (response.data.access_token) {
-      localStorage.setItem('user', JSON.stringify(response.data))
-    }
+    // No response data usage (tokens are cookies)
+    const response = await api.post('/auth/login', { email, otp })
     return response.data
   },
-  logout: () => {
-    localStorage.removeItem('user')
+  logout: async () => {
+    await api.post('/auth/logout')
     window.location.href = '/login'
   },
-  getCurrentUser: () => {
-    const user = localStorage.getItem('user')
-    if (user) {
-      const decoded = JSON.parse(atob(JSON.parse(user).access_token.split('.')[1]))
-      return decoded
+  getCurrentUser: async () => {
+    try {
+      const response = await api.get('/auth/me')
+      return response.data
+    } catch (error) {
+      return null
     }
-    return null
   }
 }

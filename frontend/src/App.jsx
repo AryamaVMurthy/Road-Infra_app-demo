@@ -10,41 +10,40 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import PrivateRoute from './components/PrivateRoute'
 import { useOfflineSync } from './hooks/useOfflineSync'
 import AnalyticsDashboard from './pages/AnalyticsDashboard'
+import { AuthProvider } from './hooks/useAuth'
 
 function App() {
   useOfflineSync()
   
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/analytics" element={<AnalyticsDashboard />} />
-        
-        {/* Citizen Routes */}
-        <Route path="/citizen" element={<PrivateRoute role="CITIZEN" />}>
-          <Route index element={<CitizenHome />} />
-          <Route path="report" element={<ReportIssue />} />
-          <Route path="my-reports" element={<MyReports />} />
-        </Route>
+    <AuthProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/analytics" element={<AnalyticsDashboard />} />
+          
+          <Route path="/citizen" element={<PrivateRoute role="CITIZEN" />}>
+            <Route index element={<CitizenHome />} />
+            <Route path="report" element={<ReportIssue />} />
+            <Route path="my-reports" element={<MyReports />} />
+          </Route>
 
-        {/* Authority Routes */}
-        <Route path="/authority" element={<PrivateRoute role="ADMIN" />}>
-          <Route index element={<AuthorityDashboard />} />
-        </Route>
+          <Route path="/authority" element={<PrivateRoute role="ADMIN" />}>
+            <Route index element={<AuthorityDashboard />} />
+          </Route>
 
-        {/* Worker Routes */}
-        <Route path="/worker" element={<PrivateRoute role="WORKER" />}>
-          <Route index element={<WorkerHome />} />
-        </Route>
+          <Route path="/worker" element={<PrivateRoute role="WORKER" />}>
+            <Route index element={<WorkerHome />} />
+          </Route>
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<PrivateRoute role="SYSADMIN" />}>
-          <Route index element={<AdminDashboard />} />
-        </Route>
+          <Route path="/admin" element={<PrivateRoute role="SYSADMIN" />}>
+            <Route index element={<AdminDashboard />} />
+          </Route>
 
-        <Route path="*" element={<Login />} />
-      </Routes>
-    </div>
+          <Route path="*" element={<Login />} />
+        </Routes>
+      </div>
+    </AuthProvider>
   )
 }
 

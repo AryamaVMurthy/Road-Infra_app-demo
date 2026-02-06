@@ -12,11 +12,15 @@ vi.mock('../services/auth', () => ({
   }
 }))
 
+import { AuthProvider } from '../hooks/useAuth'
+
 describe('Login Component', () => {
   it('renders email input initially', () => {
     render(
       <BrowserRouter>
-        <Login />
+        <AuthProvider>
+          <Login />
+        </AuthProvider>
       </BrowserRouter>
     )
     expect(screen.getByPlaceholderText(/authority.gov.in/i)).toBeDefined()
@@ -26,7 +30,9 @@ describe('Login Component', () => {
   it('switches to OTP step after email submission', async () => {
     render(
       <BrowserRouter>
-        <Login />
+        <AuthProvider>
+          <Login />
+        </AuthProvider>
       </BrowserRouter>
     )
     

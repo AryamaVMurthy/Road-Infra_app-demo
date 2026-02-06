@@ -21,7 +21,7 @@ test.describe('Admin Rigorous Flow', () => {
     page.on('console', msg => console.log('BROWSER:', msg.text()));
     page.on('pageerror', err => console.log('BROWSER_ERROR:', err.message, err.stack));
     // 2. Login
-    await page.goto('http://localhost:3001/login');
+    await page.goto('http://localhost:3011/login');
     await page.fill('input[type="email"]', email);
     await page.click('text=Request Access');
 

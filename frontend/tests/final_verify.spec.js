@@ -13,7 +13,7 @@ test.describe('Final Purposeful UI Verification', () => {
     test(`${p.name} dashboard and analytics load correctly`, async ({ page }) => {
       resetDatabase();
       // 1. Mock Login
-      await page.goto('http://localhost:3001/login');
+      await page.goto('http://localhost:3011/login');
       const role = p.name.toUpperCase() === 'AUTHORITY' ? 'ADMIN' : (p.name.toUpperCase() === 'ADMIN' ? 'SYSADMIN' : p.name.toUpperCase());
       
       await page.evaluate(({role, email}) => {
@@ -26,7 +26,7 @@ test.describe('Final Purposeful UI Verification', () => {
       }, {role, email: p.email});
 
       // 2. Load Dashboard
-      await page.goto(`http://localhost:3001${p.url}`);
+      await page.goto(`http://localhost:3011${p.url}`);
       await page.waitForTimeout(2000);
       
       // Check for common error text
@@ -34,7 +34,7 @@ test.describe('Final Purposeful UI Verification', () => {
       expect(hasError).toBe(false);
 
       // 3. Navigate to Analytics
-      await page.goto('http://localhost:3001/analytics');
+      await page.goto('http://localhost:3011/analytics');
       await page.waitForURL('**/analytics');
       
       // 4. Verify Analytics Elements

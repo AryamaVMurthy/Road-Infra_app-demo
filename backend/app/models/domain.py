@@ -28,6 +28,13 @@ class User(UserBase, table=True):
         back_populates="worker",
         sa_relationship_kwargs={"foreign_keys": "[Issue.worker_id]"},
     )
+    refresh_tokens: List["RefreshToken"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={
+            "primaryjoin": "User.id==RefreshToken.user_id",
+            "lazy": "dynamic",
+        },
+    )
 
 
 class OrganizationBase(SQLModel):

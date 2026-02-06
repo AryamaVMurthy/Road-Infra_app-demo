@@ -49,7 +49,9 @@ class Settings(BaseSettings):
     MINIO_SECURE: bool = False
 
     SECRET_KEY: str = "secret-key-for-jwt-change-me"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    DOMAIN: str = "localhost"
 
     # Development mode - skips actual email sending
     DEV_MODE: bool = True

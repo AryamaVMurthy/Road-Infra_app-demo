@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import api_router
 from app.core.config import settings
+from app.core.middleware import SecurityHeadersMiddleware
 
 from app.services.minio_client import init_minio
 
@@ -9,6 +10,8 @@ app = FastAPI(
     title="MARG (Monitoring Application for Road Governance) API",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.on_event("startup")

@@ -1,9 +1,9 @@
 import { execSync } from 'child_process'
 
-const DB_CONTAINER = 'spec_requirements-db-1'
+const DB_CONTAINER = 'lucky-panda-db-1'
 const DB_NAME = 'app'
 const DB_USER = 'postgres'
-const DB_HOST = '172.20.0.2'
+const DB_HOST = 'localhost'
 const DB_PASSWORD = 'toto'
 
 export const runSql = (sql) => {
@@ -14,15 +14,15 @@ export const runSql = (sql) => {
     .trim()
 }
 
-export const getLatestOtp = (email) => {
-  return runSql(
-    `SELECT code FROM otp WHERE email='${email}' ORDER BY created_at DESC LIMIT 1;`
+export const resetDatabase = () => {
+  execSync(
+    `docker exec lucky-panda-backend-1 python reset_db.py`,
+    { stdio: 'inherit' }
   )
 }
 
-export const resetDatabase = () => {
-  execSync(
-    `export POSTGRES_SERVER=${DB_HOST} POSTGRES_PASSWORD=${DB_PASSWORD} PYTHONPATH=$PYTHONPATH:$(pwd)/../backend && ../venv/bin/python3 ../backend/reset_db.py`,
-    { stdio: 'inherit' }
+export const getLatestOtp = (email) => {
+  return runSql(
+    `SELECT code FROM otp WHERE email='${email}' ORDER BY created_at DESC LIMIT 1;`
   )
 }

@@ -23,7 +23,7 @@ test.describe('Citizen Rigorous Flow', () => {
     });
 
     // 1. Login
-    await page.goto('http://localhost:3001/login');
+    await page.goto('http://localhost:3011/login');
     await page.fill('input[type="email"]', email);
     await page.click('text=Request Access');
     await page.waitForTimeout(1000);
@@ -70,12 +70,12 @@ test.describe('Citizen Rigorous Flow', () => {
       .catch(() => null);
     await Promise.race([firstNav, firstToast]);
     if (!page.url().includes('/citizen/my-reports')) {
-      await page.goto('http://localhost:3001/citizen/my-reports');
+      await page.goto('http://localhost:3011/citizen/my-reports');
     }
     console.log("Report submitted, verified in my-reports");
 
     // 3. Second Report (Duplicate)
-    await page.goto('http://localhost:3001/citizen/report');
+    await page.goto('http://localhost:3011/citizen/report');
     await page.waitForTimeout(2000);
     await page.click('button:has-text("Confirm & Proceed")');
     
@@ -96,7 +96,7 @@ test.describe('Citizen Rigorous Flow', () => {
       .catch(() => null);
     await Promise.race([secondNav, secondToast]);
     if (!page.url().includes('/citizen/my-reports')) {
-      await page.goto('http://localhost:3001/citizen/my-reports');
+      await page.goto('http://localhost:3011/citizen/my-reports');
     }
     await page.reload();
     await page.waitForTimeout(2000);

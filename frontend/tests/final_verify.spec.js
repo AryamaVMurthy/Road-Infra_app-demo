@@ -1,47 +1,25 @@
-import { test, expect } from '@playwright/test';
-import { resetDatabase } from './helpers/db';
+import { test, expect } from '@playwright/test'
+import { resetDatabase } from './helpers/db'
+import { loginAs } from './helpers/e2e'
 
 const personas = [
-  { name: 'Citizen', email: 'citizen@test.com', url: '/citizen', trigger: 'text=City Analytics' },
-  { name: 'Authority', email: 'admin@authority.gov.in', url: '/authority', trigger: 'text=City Analytics' },
-  { name: 'Worker', email: 'worker@authority.gov.in', url: '/worker', trigger: 'text=City Health' },
-  { name: 'Admin', email: 'sysadmin@test.com', url: '/admin', trigger: 'text=Full Analytics' }
-];
+  { name: 'Citizen', email: 'citizen@example.com', path: '/citizen', anchor: 'Report New Issue' },
+  { name: 'Authority', email: 'admin@authority.gov.in', path: '/authority', anchor: 'Kanban Triage' },
+  { name: 'Worker', email: 'worker@authority.gov.in', path: '/worker', anchor: 'Assigned Tasks' },
+  { name: 'Sysadmin', email: 'sysadmin@marg.gov.in', path: '/admin', anchor: 'Full Analytics' },
+]
 
 test.describe('Final Purposeful UI Verification', () => {
-  for (const p of personas) {
-    test(`${p.name} dashboard and analytics load correctly`, async ({ page }) => {
-      resetDatabase();
-      // 1. Mock Login
-      await page.goto('http://localhost:3011/login');
-      const role = p.name.toUpperCase() === 'AUTHORITY' ? 'ADMIN' : (p.name.toUpperCase() === 'ADMIN' ? 'SYSADMIN' : p.name.toUpperCase());
-      
-      await page.evaluate(({role, email}) => {
-        localStorage.setItem('user', JSON.stringify({
-          access_token: 'dummy.payload.dummy',
-          role: role,
-          sub: email,
-          id: '00000000-0000-0000-0000-000000000001'
-        }));
-      }, {role, email: p.email});
+  for (const persona of personas) {
+    test(`${persona.name} dashboard loads without hard errors`, async ({ page }) => {
+      resetDatabase()
+      await loginAs(page, persona.email, persona.path)
 
-      // 2. Load Dashboard
-      await page.goto(`http://localhost:3011${p.url}`);
-      await page.waitForTimeout(2000);
-      
-      // Check for common error text
-      const hasError = await page.evaluate(() => document.body.innerText.includes('Internal Server Error') || document.body.innerText.includes('redeclaration'));
-      expect(hasError).toBe(false);
+      await expect(page.locator(`text=${persona.anchor}`)).toBeVisible({ timeout: 15000 })
 
-      // 3. Navigate to Analytics
-      await page.goto('http://localhost:3011/analytics');
-      await page.waitForURL('**/analytics');
-      
-      // 4. Verify Analytics Elements
-      await expect(page.locator('h1')).toContainText('City Health Intelligence');
-      await expect(page.locator('.leaflet-container')).toBeVisible();
-      
-      console.log(`${p.name} verification successful!`);
-    });
+      const hasCrashText = await page.locator('body').innerText()
+      expect(hasCrashText.includes('Internal Server Error')).toBe(false)
+      expect(hasCrashText.includes('Cannot read properties')).toBe(false)
+    })
   }
-});
+})

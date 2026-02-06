@@ -2,6 +2,7 @@ import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Plus, LayoutList, LogOut, MapPin, ChevronRight, Globe } from 'lucide-react'
 import { authService } from '../../services/auth'
+import { useAuth } from '../../hooks/useAuth'
 import { motion } from 'framer-motion'
 import { cn } from '../../utils/utils'
 
@@ -36,7 +37,7 @@ const NavCard = ({ to, title, description, icon: Icon, primary = false, onClick 
 }
 
 export default function CitizenHome() {
-  const user = authService.getCurrentUser()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   return (
@@ -65,7 +66,7 @@ export default function CitizenHome() {
             className="mb-12"
         >
             <h2 className="text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
-                Namaste, <span className="text-primary">{user.sub.split('@')[0]}</span>.
+                Namaste, <span className="text-primary">{user?.email?.split('@')[0] || 'Citizen'}</span>.
             </h2>
             <p className="text-xl text-slate-500 font-medium max-w-2xl leading-relaxed">
                 Empowering every citizen to report, track, and resolve city-wide infrastructure issues in real-time.

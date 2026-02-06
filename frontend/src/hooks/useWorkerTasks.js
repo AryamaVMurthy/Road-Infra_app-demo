@@ -14,8 +14,9 @@ export const useWorkerTasks = (onError) => {
       if (onError) {
         onError('Failed to fetch tasks')
       }
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [onError])
 
   useEffect(() => {

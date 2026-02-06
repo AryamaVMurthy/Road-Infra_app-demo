@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import api from '../../services/api'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Check, ArrowLeft, ArrowRight, Map as MapIcon, Loader2, Info, AlertCircle, Navigation } from 'lucide-react'
-import { authService } from '../../services/auth'
+import { useAuth } from '../../hooks/useAuth'
 import { offlineService } from '../../services/offline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
@@ -58,6 +58,7 @@ export default function ReportIssue() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState(null)
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -95,11 +96,10 @@ export default function ReportIssue() {
 
    const handleSubmit = async () => {
     setLoading(true)
-    const user = authService.getCurrentUser()
     const reportData = {
         category_id: selectedCategory,
         lat: position.lat, lng: position.lng,
-        reporter_email: user.sub, description, photo
+        reporter_email: user?.email, description, photo
     }
 
     try {

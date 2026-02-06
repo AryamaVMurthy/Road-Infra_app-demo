@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import api, { API_URL } from '../../services/api'
-import { authService } from '../../services/auth'
+import { useAuth } from '../../hooks/useAuth'
 import { 
     Clock, ChevronRight, MapPin, ArrowLeft, Loader2, Info, X, 
     Camera, History, User, Map as MapIcon, ArrowRight, Activity 
@@ -89,14 +89,14 @@ export default function MyReports() {
   const [auditLogs, setAuditLogs] = useState([])
   const [loadingAudit, setLoadingAudit] = useState(false)
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   useEffect(() => {
-    fetchReports()
-  }, [])
+    if (user?.email) fetchReports()
+  }, [user])
 
   const fetchReports = () => {
-    const user = authService.getCurrentUser()
-    api.get(`/issues/my-reports?email=${user.sub}`)
+    api.get(`/issues/my-reports?email=${user.email}`)
       .then(res => setReports(res.data))
       .catch((err) => {
         console.error('Failed to fetch reports', err)

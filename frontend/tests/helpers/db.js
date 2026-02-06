@@ -3,12 +3,11 @@ import { execSync } from 'child_process'
 const DB_CONTAINER = 'lucky-panda-db-1'
 const DB_NAME = 'app'
 const DB_USER = 'postgres'
-const DB_HOST = 'localhost'
-const DB_PASSWORD = 'toto'
 
 export const runSql = (sql) => {
   return execSync(
-    `docker exec ${DB_CONTAINER} psql -U ${DB_USER} -d ${DB_NAME} -t -c "${sql}"`
+    `docker exec -i ${DB_CONTAINER} psql -v ON_ERROR_STOP=1 -U ${DB_USER} -d ${DB_NAME} -qAt`,
+    { input: sql }
   )
     .toString()
     .trim()

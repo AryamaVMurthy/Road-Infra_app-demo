@@ -48,9 +48,11 @@ export default function WorkerHome() {
     setTimeout(() => setToast(null), 4000);
   }, [])
 
-  const { tasks, loading, fetchTasks } = useWorkerTasks((message) => {
+  const handleTaskFetchError = useCallback((message) => {
     showToast(message, 'error')
-  })
+  }, [showToast])
+
+  const { tasks, loading, fetchTasks } = useWorkerTasks(handleTaskFetchError)
 
   const handleSyncComplete = useCallback((issueId, success) => {
     setPendingResolutions(prev => {
@@ -80,7 +82,6 @@ export default function WorkerHome() {
   }, [showToast]);
 
   useEffect(() => { 
-    fetchTasks();
     loadPendingResolutions();
     api.get('/analytics/heatmap')
       .then(res => setHeatmapData(res.data))

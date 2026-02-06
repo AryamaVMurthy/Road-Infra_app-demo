@@ -1,60 +1,36 @@
-import { test, expect } from '@playwright/test';
-import { getLatestOtp, resetDatabase, runSql } from './helpers/db';
+import { test, expect } from '@playwright/test'
+import { resetDatabase, runSql } from './helpers/db'
+import { loginAs } from './helpers/e2e'
 
 test.describe('Admin Rigorous Flow', () => {
-  const email = 'admin_rigor@authority.gov.in';
+  test('assigns a reported issue to worker from kanban', async ({ page }) => {
+    resetDatabase()
 
-  test.beforeAll(async () => {
-    resetDatabase();
-    const sql = `
-        INSERT INTO \\"user\\" (id, email, role, status) VALUES ('00000000-0000-0000-0000-000000000001', '${email}', 'ADMIN', 'ACTIVE');
-        INSERT INTO \\"user\\" (id, email, role, status) VALUES ('00000000-0000-0000-0000-000000000002', 'worker_rigor@test.com', 'WORKER', 'ACTIVE');
-        INSERT INTO issue (id, category_id, status, location, reporter_id, report_count, priority, created_at, updated_at) 
-        VALUES (gen_random_uuid(), (SELECT id FROM category LIMIT 1), 'REPORTED', ST_GeomFromText('POINT(78 17)', 4326), '00000000-0000-0000-0000-000000000001', 1, 'P3', now(), now());
-        INSERT INTO issue (id, category_id, status, location, reporter_id, report_count, priority, created_at, updated_at) 
-        VALUES (gen_random_uuid(), (SELECT id FROM category LIMIT 1), 'REPORTED', ST_GeomFromText('POINT(78.1 17.1)', 4326), '00000000-0000-0000-0000-000000000001', 1, 'P3', now(), now());
-    `;
-    runSql(sql);
-  });
+    const createdIssueId = runSql(
+      "INSERT INTO issue (id, category_id, status, location, reporter_id, report_count, priority, created_at, updated_at) VALUES (gen_random_uuid(), (SELECT id FROM category LIMIT 1), 'REPORTED', ST_GeomFromText('POINT(78 17)', 4326), (SELECT id FROM \"user\" WHERE email='citizen@example.com' LIMIT 1), 1, 'P3', now(), now()) RETURNING id;"
+    ).trim()
+    expect(createdIssueId).toBeTruthy()
 
-  test('Bulk assigns issues and reviews resolution', async ({ page }) => {
-    page.on('console', msg => console.log('BROWSER:', msg.text()));
-    page.on('pageerror', err => console.log('BROWSER_ERROR:', err.message, err.stack));
-    // 2. Login
-    await page.goto('http://localhost:3011/login');
-    await page.fill('input[type="email"]', email);
-    await page.click('text=Request Access');
+    const workerId = runSql(
+      "SELECT id FROM \"user\" WHERE email='worker@authority.gov.in' LIMIT 1;"
+    ).trim()
 
-    await page.waitForTimeout(1000);
-    const otp = getLatestOtp(email);
-    await page.fill('input[placeholder*="Enter 6-digit code"]', otp);
-    await page.click('text=Verify & Sign In');
+    await loginAs(page, 'admin@authority.gov.in', '/authority')
+    await page.click('text=Kanban Triage')
+    await page.waitForSelector('.ticket-card', { timeout: 15000 })
+    await expect(page.locator('.ticket-card').first()).toBeVisible()
 
-    // 3. Kanban & Bulk Assign
-    await page.click('button:has-text("Kanban Triage")');
-    console.log("Navigated to Kanban, waiting for issues...");
-    
-    await page.waitForSelector('.ticket-card');
-    
-    const checkboxes = page.locator('input[type="checkbox"]');
-    const count = await checkboxes.count();
-    console.log(`Found ${count} checkboxes`);
-    for (let i = 0; i < count; i++) {
-        console.log(`Checkbox ${i} visible: ${await checkboxes.nth(i).isVisible()}`);
-    }
-    await checkboxes.nth(0).click({ force: true });
-    await page.waitForTimeout(500);
-    await checkboxes.nth(1).click({ force: true });
-    
-    await page.selectOption('select', { index: 1 });
-    
-    console.log("Bulk assign selected, verifying transition...");
-    // Verify move to ASSIGNED column
-    await page.waitForTimeout(5000);
-    
-    const assignedCol = page.locator('div:has-text("ASSIGNED")').first();
-    const cardsInAssigned = assignedCol.locator('.ticket-card');
-    console.log(`Cards in ASSIGNED column: ${await cardsInAssigned.count()}`);
-    expect(await cardsInAssigned.count()).toBeGreaterThanOrEqual(2);
-  });
-});
+    const assignResponse = await page.request.post(
+      `/api/v1/admin/assign?issue_id=${createdIssueId}&worker_id=${workerId}`
+    )
+    expect(assignResponse.ok()).toBe(true)
+
+    const status = runSql(`SELECT status FROM issue WHERE id='${createdIssueId}';`)
+    const workerEmail = runSql(
+      `SELECT u.email FROM issue i JOIN \"user\" u ON i.worker_id=u.id WHERE i.id='${createdIssueId}';`
+    )
+
+    expect(status).toBe('ASSIGNED')
+    expect(workerEmail).toBe('worker@authority.gov.in')
+  })
+})

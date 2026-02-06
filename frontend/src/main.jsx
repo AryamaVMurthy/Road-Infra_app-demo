@@ -7,7 +7,9 @@ import { BrowserRouter } from 'react-router-dom'
 
 const queryClient = new QueryClient()
 
-if ('serviceWorker' in navigator) {
+const shouldRegisterServiceWorker = 'serviceWorker' in navigator && !navigator.webdriver
+
+if (shouldRegisterServiceWorker) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {

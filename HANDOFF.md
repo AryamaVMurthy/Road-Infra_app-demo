@@ -1,225 +1,97 @@
-# MARG (Monitoring Application for Road Governance) - Handoff Document
+# MARG Handoff
 
-## Quick Start
+This handoff is the operational quick-reference for running, testing, and validating the current MARG system.
 
-### Prerequisites
-- Docker & Docker Compose
-- Python 3.12+
-- Node.js 18+
+## 1) Current Baseline
 
-### 1. Start Infrastructure
+- Branch work has been merged with comprehensive backend and frontend tests.
+- Auth is OTP + HttpOnly cookie JWT (access + refresh).
+- Worker dashboard fetch-loop bug has been fixed.
+- Playwright tests were hardened for deterministic execution.
+
+## 2) Local Run
+
 ```bash
-docker-compose up -d
+docker compose up --build
 ```
-This starts PostgreSQL (port 5432) and MinIO (ports 9000/9001).
 
-### 2. Setup Backend
+Endpoints:
+
+- App: `http://localhost:3011`
+- API (proxied): `http://localhost:3011/api/v1`
+- MinIO API: `http://localhost:9010`
+- MinIO Console: `http://localhost:9011`
+
+## 3) Auth and OTP
+
+### Auth endpoints
+
+- `POST /api/v1/auth/otp-request`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+
+### OTP behavior
+
+- In `DEV_MODE=true`, OTP is printed to backend logs and email is skipped.
+- In `DEV_MODE=false`, SMTP send is attempted with configured `MAIL_*` values.
+
+Read OTP from logs:
+
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+docker compose logs backend --tail=200 | grep -i otp
+```
+
+## 4) Seeded Accounts
+
+| Email | Role |
+|---|---|
+| `citizen@example.com` | CITIZEN |
+| `admin@authority.gov.in` | ADMIN |
+| `worker@authority.gov.in` | WORKER |
+| `worker2@authority.gov.in` | WORKER |
+| `worker3@authority.gov.in` | WORKER |
+| `sysadmin@marg.gov.in` | SYSADMIN |
+
+## 5) Testing Commands
+
+### Backend
+
+```bash
 cd backend
-pip install -r requirements.txt
-python seed.py
-uvicorn app.main:app --host 0.0.0.0 --port 8088
+source venv/bin/activate
+POSTGRES_HOST=172.21.0.2 POSTGRES_SERVER=172.21.0.2 MINIO_ENDPOINT=localhost:9010 python -m pytest tests/ -v --tb=short
 ```
 
-### 3. Setup Frontend
+### Frontend Unit/Integration
+
 ```bash
 cd frontend
-npm install
-npm run dev
+npm test
 ```
 
-Access the app at `http://localhost:5173`
+### Frontend E2E
 
-## Test Accounts
-
-| Email | Role | Dashboard |
-|-------|------|-----------|
-| `admin@authority.gov.in` | ADMIN | `/authority` |
-| `worker@authority.gov.in` | WORKER | `/worker` |
-| `citizen@example.com` | CITIZEN | `/citizen` |
-
-**Login Flow**: Enter email → Check backend console for OTP → Enter 6-digit code
-
-In DEV_MODE, OTPs are printed to console: `[DEV MODE] Skipping email send. OTP for email: 123456`
-
-## Project Structure
-
-```
-.
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/          # Route handlers
-│   │   │   ├── auth.py      # OTP authentication
-│   │   │   ├── issues.py    # Citizen reporting (5m dedup)
-│   │   │   ├── admin.py     # Authority operations
-│   │   │   ├── worker.py    # Field force tasks
-│   │   │   ├── analytics.py # Stats & heatmaps
-│   │   │   └── media.py     # Image serving
-│   │   ├── core/
-│   │   │   ├── config.py    # Settings (DEV_MODE here)
-│   │   │   └── security.py  # JWT utilities
-│   │   ├── models/
-│   │   │   └── domain.py    # SQLModel entities
-│   │   └── services/
-│   │       ├── email.py     # OTP delivery
-│   │       ├── minio_client.py
-│   │       ├── exif.py      # Image metadata
-│   │       ├── audit.py     # Mutation logging
-│   │       └── analytics.py # Stats computation
-│   ├── seed.py              # DB seeder
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── citizen/     # ReportIssue, MyReports
-│   │   │   ├── authority/   # AuthorityDashboard
-│   │   │   ├── worker/      # WorkerHome (offline-capable)
-│   │   │   └── admin/       # AdminDashboard
-│   │   ├── services/
-│   │   │   ├── api.js       # Axios client
-│   │   │   ├── auth.js      # JWT management
-│   │   │   └── offline.js   # IndexedDB service
-│   │   └── hooks/
-│   │       ├── useOfflineSync.js
-│   │       └── useWorkerOfflineSync.js
-│   ├── public/
-│   │   └── sw.js            # Service Worker
-│   └── package.json
-├── docker-compose.yml
-├── DESIGN.md                # Technical architecture
-└── README.md                # Setup guide
-```
-
-## Key Features Implemented
-
-### 1. Silent 5m Duplicate Aggregation
-- **Location**: `backend/app/api/v1/issues.py`
-- When a citizen reports an issue, PostGIS checks for existing issues within 5 meters
-- Duplicates increment `report_count` instead of creating new issues
-- User sees "Report submitted successfully" - no indication of deduplication
-
-### 2. Offline-First Worker Resolution
-- **Location**: `frontend/src/pages/worker/WorkerHome.jsx`
-- Workers can resolve tasks offline (tunnels, basements, remote areas)
-- Photos stored in IndexedDB (`workerResolutions` store)
-- Service Worker + Background Sync API uploads when connectivity returns
-- Visual indicators: "Pending Sync" badge, offline banner, toast notifications
-
-### 3. EXIF Verification
-- **Location**: `backend/app/services/exif.py`
-- Extracts GPS and timestamp from uploaded photos
-- Validates location proximity and timestamp recency
-- Prevents fraud by ensuring photos are captured on-site
-
-### 4. Complete Audit Trail
-- **Location**: `backend/app/services/audit.py`
-- Every status change logged with actor, timestamp, before/after values
-- Immutable record for accountability
-
-### 5. Real-Time Analytics
-- **Location**: `backend/app/services/analytics.py`
-- Heatmap data via PostGIS spatial queries
-- Trend charts with actual database data (last 7 days)
-- No mock/fake numbers in production views
-
-## Environment Configuration
-
-### Backend (`backend/.env`)
-```env
-POSTGRES_SERVER=localhost
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=toto
-POSTGRES_DB=app
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-SECRET_KEY=your-secret-key
-DEV_MODE=True
-```
-
-### Frontend (`frontend/.env`)
-```env
-VITE_API_URL=http://localhost:8088/api/v1
-```
-
-## Issue Lifecycle
-
-```
-REPORTED → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED
-```
-
-1. **Citizen** reports issue with photo and GPS location
-2. **Admin** views on map/kanban, assigns to worker
-3. **Worker** accepts with ETA (30m, 1h, 2h, 4h, 1d, 2d)
-4. **Worker** starts on-site work
-5. **Worker** submits "after" photo (works offline!)
-6. **Admin** reviews before/after, approves or rejects
-
-## API Quick Reference
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/auth/otp-request` | POST | Request OTP |
-| `/auth/login` | POST | Verify OTP, get JWT |
-| `/issues/report` | POST | Report issue (multipart) |
-| `/issues/my-reports` | GET | Citizen's reports |
-| `/admin/issues` | GET | All issues |
-| `/admin/bulk-assign` | POST | Assign to worker |
-| `/admin/approve` | POST | Approve resolution |
-| `/worker/tasks` | GET | Worker's tasks |
-| `/worker/tasks/{id}/accept` | POST | Accept with ETA |
-| `/worker/tasks/{id}/resolve` | POST | Submit resolution |
-| `/analytics/stats` | GET | Dashboard stats |
-| `/analytics/heatmap` | GET | Heatmap data |
-
-## Production Checklist
-
-- [ ] Set `DEV_MODE=False` and configure real SMTP
-- [ ] Use HTTPS (required for Service Workers)
-- [ ] Set strong `SECRET_KEY`
-- [ ] Configure MinIO access policies
-- [ ] Set up PostgreSQL backups
-- [ ] Enable CORS for production domain only
-- [ ] Add rate limiting for OTP requests
-
-## Troubleshooting
-
-### OTP Not Working
-In DEV_MODE, check backend console for printed OTP.
-
-### Database Connection Issues
 ```bash
-docker-compose ps          # Check if containers running
-docker-compose logs db     # View PostgreSQL logs
+cd frontend
+npx playwright install
+npx playwright test --reporter=list
 ```
 
-### MinIO Issues
-Access console at `http://localhost:9001` (minioadmin/minioadmin)
+## 6) Last Verified Totals
 
-### Offline Sync Not Working
-- Service Workers require HTTPS in production
-- Check browser DevTools → Application → Service Workers
-- Verify IndexedDB stores have pending data
+- Backend: `148 passed`
+- Frontend Vitest: `16 passed`
+- Playwright E2E: `19 passed`
 
-### Maps Not Loading
-- Check network for tile requests
-- Verify geolocation permissions granted
-- Default fallback: default center coordinates
+## 7) Key Notes for Maintainers
 
-## Files Modified in Latest Update
+- E2E auth in tests uses request-based login helpers to avoid OTP/UI instability where unnecessary.
+- Service worker registration is skipped in automation contexts (`navigator.webdriver`) to reduce flake.
+- SQL helper for tests uses strict psql options (`-qAt -v ON_ERROR_STOP=1`) for deterministic assertions.
 
-### Backend (5m Dedup - Already Implemented)
-- `backend/app/api/v1/issues.py` - PostGIS ST_DWithin query
+## 8) Known Operational Caveats
 
-### Frontend (Offline Capabilities)
-- `frontend/src/services/offline.js` - IndexedDB for resolutions
-- `frontend/public/sw.js` - Service Worker with Background Sync
-- `frontend/src/hooks/useWorkerOfflineSync.js` - Sync hook
-- `frontend/src/pages/worker/WorkerHome.jsx` - Offline resolve modal
-- `frontend/src/main.jsx` - Service Worker registration
-
-## Contact
-
-Built for DASS course project - MARG (Monitoring Application for Road Governance).
+- On fresh machines, Playwright binaries may be missing; run `npx playwright install`.
+- Real OTP email delivery requires valid SMTP and `DEV_MODE=false`.

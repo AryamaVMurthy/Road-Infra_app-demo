@@ -266,8 +266,10 @@ Browser (Worker) → IndexedDB → Background Sync → Service Worker
 
 ### 9.1 Authentication
 - OTP email flow (`/auth/otp-request`)
-- JWT issued for session (`/auth/login`)
-- Stored in localStorage and attached via Axios interceptor
+- JWT access + refresh issued on login (`/auth/login`)
+- Tokens stored as HttpOnly cookies (`access_token`, `refresh_token`)
+- Refresh rotation via `/auth/refresh`
+- Session identity resolved by `/auth/me`
 
 ### 9.2 Authorization
 - Role-based gates in frontend routes
@@ -277,6 +279,11 @@ Browser (Worker) → IndexedDB → Background Sync → Service Worker
 - Input validation with Pydantic/SQLModel
 - Only image MIME types accepted for uploads
 - AuditLog records immutable state changes
+- Cookie auth reduces XSS exposure versus token-in-localStorage patterns
+
+### 9.4 OTP Delivery Modes
+- `DEV_MODE=true`: OTP generation is persisted and logged; email send is skipped.
+- `DEV_MODE=false`: SMTP send attempted using configured `MAIL_*` values.
 
 ---
 

@@ -1,455 +1,211 @@
 # MARG (Monitoring Application for Road Governance)
 
-A full-stack application for reporting and managing city infrastructure issues (potholes, drainage problems, street lights, garbage). Built for Municipal Authorities.
+MARG is a full-stack platform for reporting and managing city infrastructure issues (potholes, drainage, street lights, and garbage).
 
-## Features
+It supports role-based operations for CITIZEN, ADMIN, WORKER, and SYSADMIN with a full issue lifecycle:
 
-- **Citizen Portal**: Report infrastructure issues with GPS location and photo evidence
-- **Authority Dashboard**: View issues on map, assign to workers, approve resolutions
-  - **Kanban Triage View**: Visual workflow with REPORTED → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED columns
-  - **Quick-Assign**: One-click worker assignment with real-time task count display
-  - **Worker Analytics**: Embedded workforce overview with real-time stats
-  - **ETA Tracking**: Display estimated completion times on issue cards
-  - **Auto-Refresh**: Dashboard updates every 30 seconds with manual refresh option
-- **Worker Dashboard**: Accept assigned tasks with ETA, submit resolution proof
-- **Analytics Dashboard**: Real-time city health metrics, heatmaps, and trends
-- **Audit Trail**: Complete transparency with full mutation history
+`REPORTED -> ASSIGNED -> ACCEPTED -> IN_PROGRESS -> RESOLVED -> CLOSED`
 
 ## Tech Stack
 
-### Backend
-- **FastAPI** - High-performance Python web framework
-- **PostgreSQL + PostGIS** - Spatial database for geolocation data
-- **SQLModel** - ORM with Pydantic integration
-- **MinIO** - S3-compatible object storage for images
-- **JWT** - Secure token-based authentication
+- Backend: FastAPI, SQLModel, PostgreSQL + PostGIS, MinIO
+- Frontend: React 18, Vite, Tailwind CSS, Leaflet, Recharts
+- Auth: OTP login + JWT access/refresh tokens in HttpOnly cookies
+- Testing: pytest, Vitest, Playwright
 
-### Frontend
-- **React 18** + **Vite** - Modern frontend tooling
-- **Tailwind CSS** - Utility-first styling
-- **Leaflet** - Interactive maps with heatmap support
-- **Recharts** - Data visualization
-- **Framer Motion** - Smooth animations
-
----
-
-## 🚀 Deployment Guide
+## Quick Start (Docker)
 
 ### Prerequisites
 
-- **Docker** and **Docker Compose** (v2.0+)
+- Docker
+- Docker Compose v2+
 
-That's it! Everything runs in containers.
-
-### Quick Start
+### Run
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/AryamaVMurthy/Road-Infra_app-demo.git
 cd Road-Infra_app-demo
-
-# 2. Start all services
 docker compose up --build
-
-# 3. Wait for startup (first build takes 2-3 minutes)
-# You'll see: "Uvicorn running on http://0.0.0.0:8088"
 ```
 
-Open **http://localhost:3001** in your browser - the app is ready!
+### Service URLs
 
-### Services Running
+- Frontend: `http://localhost:3011`
+- API (via frontend proxy): `http://localhost:3011/api/v1`
+- MinIO API: `http://localhost:9010`
+- MinIO Console: `http://localhost:9011`
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| **Frontend** | http://localhost:3001 | Main application UI |
-| **Backend API** | http://localhost:3001/api/v1/ | REST API (proxied through Nginx) |
-| **MinIO Console** | http://localhost:9001 | Object storage dashboard |
+## Authentication and OTP
 
-### Data Persistence
+### Current Auth Model
 
-All data persists in `./docker_data/`:
-- `./docker_data/postgres/` - Database records
-- `./docker_data/minio/` - Uploaded images and evidence
+- OTP request: `POST /api/v1/auth/otp-request`
+- OTP login: `POST /api/v1/auth/login`
+- Refresh: `POST /api/v1/auth/refresh`
+- Logout: `POST /api/v1/auth/logout`
+- Session introspection: `GET /api/v1/auth/me`
 
-To reset everything: `docker compose down -v && rm -rf docker_data/`
+Access and refresh tokens are issued as HttpOnly cookies. Frontend no longer reads JWT from localStorage.
 
----
+### OTP Delivery Behavior
 
-## 🔐 Authentication & OTP System
+- `DEV_MODE=true` (default in docker-compose): OTP email send is skipped and OTP is printed in backend logs.
+- `DEV_MODE=false`: backend attempts real SMTP delivery using `MAIL_*` settings.
 
-### How Authentication Works
+### Read OTP in DEV_MODE
 
-This application uses **OTP (One-Time Password)** based authentication:
-1. User enters their email address
-2. System generates a 6-digit OTP
-3. In **DEV_MODE** (default), OTP is printed to backend console (not emailed)
-4. User enters OTP to login and receive JWT token
-
-### Getting Your OTP
-
-#### Step 1: Open the App
-Navigate to http://localhost:3001
-
-#### Step 2: Enter Email
-Enter one of the test user emails (see below) and click **"Request Access"**
-
-#### Step 3: Get OTP from Backend Logs
-
-**Option A: Watch logs in real-time**
 ```bash
-docker compose logs -f backend
-```
-Look for:
-```
-[DEV MODE] Skipping email send. OTP for admin@authority.gov.in: 845669
+docker compose logs backend --tail=200 | grep -i otp
 ```
 
-**Option B: Search logs for OTP**
-```bash
-docker compose logs backend | grep OTP
-```
+## Seeded User Accounts
 
-**Option C: Get most recent OTP**
-```bash
-docker compose logs backend --tail=20 | grep OTP
-```
+| Email | Role | Dashboard |
+|---|---|---|
+| `citizen@example.com` | CITIZEN | `/citizen` |
+| `admin@authority.gov.in` | ADMIN | `/authority` |
+| `worker@authority.gov.in` | WORKER | `/worker` |
+| `worker2@authority.gov.in` | WORKER | `/worker` |
+| `worker3@authority.gov.in` | WORKER | `/worker` |
+| `sysadmin@marg.gov.in` | SYSADMIN | `/admin` |
 
-#### Step 4: Enter OTP
-Copy the 6-digit code and enter it in the verification screen.
+## Core User Flows
 
-### Test User Accounts
+### Citizen
 
-| Email | Role | Dashboard URL | Capabilities |
-|-------|------|---------------|--------------|
-| `admin@authority.gov.in` | ADMIN | `/authority` | Assign issues, approve resolutions, view analytics |
-| `worker@authority.gov.in` | WORKER | `/worker` | Accept tasks, set ETA, submit resolution proof |
-| `worker2@authority.gov.in` | WORKER | `/worker` | Same as above (additional worker) |
-| `worker3@authority.gov.in` | WORKER | `/worker` | Same as above (additional worker) |
-| `sysadmin@marg.gov.in` | SYSADMIN | `/admin` | Platform monitoring |
-| Any email (e.g., `test@example.com`) | CITIZEN | `/citizen` | Report issues, track status |
+1. Request OTP and login.
+2. Report issue with location and photo.
+3. Track reports in My Reports.
 
----
+### Admin / Authority
 
-## 📱 Usage Guide
-
-### For Citizens (Reporting Issues)
-
-1. **Login** with any email (new users auto-registered as CITIZEN)
-2. **Report Issue**:
-   - Allow location access when prompted
-   - Select issue category (Pothole, Drainage, Street Light, Garbage)
-   - Take or upload a photo
-   - Submit the report
-3. **Track Status**: View your reported issues and their current status
-
-### For Authority/Admin (Managing Issues)
-
-1. **Login** as `admin@authority.gov.in`
-2. **Operations Map**: View all issues on interactive map
-   - Toggle between Markers and Heatmap view
-   - Click markers to see issue details
-3. **Kanban Triage**: Manage issue workflow
-   - Each card has a **⋮ menu** with admin actions:
-     - **Assign/Reassign Worker**: Change who's working on it
-     - **Unassign Worker**: Remove worker and reset to REPORTED
-     - **Move to Status**: Manually change status (REPORTED, ASSIGNED, IN_PROGRESS, RESOLVED, CLOSED)
-   - **REPORTED**: New issues awaiting assignment
-     - Click **"Assign"** button to quick-assign to a worker
-     - Use checkbox + dropdown for bulk assignment
-   - **ASSIGNED/ACCEPTED**: Issues assigned to workers
-   - **IN_PROGRESS**: Workers actively resolving
-   - **RESOLVED**: Awaiting admin approval
-     - Click card to review before/after photos
-     - **Approve** to close or **Reject** with reason
-   - **CLOSED**: Completed issues
-4. **Field Force**: View worker performance
-   - Active task counts per worker
-   - Weekly resolution statistics
-5. **City Analytics**: View city-wide metrics (links to `/analytics`)
-
-### For Workers (Resolving Issues)
-
-1. **Login** as `worker@authority.gov.in` (or worker2/worker3)
-2. **View Tasks**: See assigned issues on your dashboard
-3. **Accept Task**:
-   - Click on an assigned task
-   - Set **ETA** (estimated hours to resolve)
-   - Click **Accept**
-4. **Start Work**: Click **"Start"** when you begin on-site
-5. **Resolve**:
-   - Take "after" photo showing the fix
-   - Click **"Mark Resolved"**
-   - Upload the resolution photo
-6. **Wait for Approval**: Admin reviews and closes the issue
-
----
-
-## 🔄 Complete Workflow Demo
-
-Here's how to test the full issue lifecycle:
-
-### 1. Report an Issue (as Citizen)
-```bash
-# Login as citizen
-# Email: citizen@example.com
-# Get OTP: docker compose logs backend | grep OTP
-```
-- Report a pothole with photo and location
-
-### 2. Assign to Worker (as Admin)
-```bash
-# Login as admin
-# Email: admin@authority.gov.in
-# Get OTP: docker compose logs backend | grep OTP
-```
-- Go to **Kanban Triage**
-- Find issue in **REPORTED** column
-- Click **Assign** → Select worker (shows task counts)
-
-### 3. Accept & Resolve (as Worker)
-```bash
-# Login as worker
-# Email: worker@authority.gov.in
-# Get OTP: docker compose logs backend | grep OTP
-```
-- See assigned task
-- Click **Accept** with ETA (e.g., 4 hours)
-- Click **Start** when beginning work
-- Click **Resolve** and upload "after" photo
-
-### 4. Approve Resolution (as Admin)
-- Login as admin again
-- Go to **Kanban Triage**
-- Find issue in **RESOLVED** column
-- Click to review before/after photos
-- Click **Approve** to close
-
----
-
-## 🛠️ API Reference
-
-### Authentication
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/auth/otp-request` | POST | Request OTP for email |
-| `/api/v1/auth/login` | POST | Verify OTP, get JWT token |
-| `/api/v1/auth/google-mock` | POST | Dev-only: Instant login (bypass OTP) |
-
-### Issues
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/issues/report` | POST | Report new issue (multipart form) |
-| `/api/v1/issues/my-reports?email=` | GET | Get user's reported issues |
-
-### Admin
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/admin/issues` | GET | List all issues |
-| `/api/v1/admin/workers` | GET | List all workers |
-| `/api/v1/admin/workers-with-stats` | GET | Workers with task counts (sorted by workload) |
-| `/api/v1/admin/worker-analytics` | GET | Detailed worker performance metrics |
-| `/api/v1/admin/assign?issue_id=&worker_id=` | POST | Quick-assign single issue |
-| `/api/v1/admin/bulk-assign` | POST | Assign multiple issues |
-| `/api/v1/admin/update-status?issue_id=&status=` | POST | Move issue to any status |
-| `/api/v1/admin/unassign?issue_id=` | POST | Remove worker, reset to REPORTED |
-| `/api/v1/admin/reassign?issue_id=&worker_id=` | POST | Change assigned worker |
-| `/api/v1/admin/approve?issue_id=` | POST | Approve resolved issue |
-| `/api/v1/admin/reject?issue_id=&reason=` | POST | Reject with reason |
+1. Review issues on Operations Map and Kanban Triage.
+2. Assign/reassign/unassign workers.
+3. Approve or reject resolved issues.
 
 ### Worker
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/worker/tasks` | GET | Get assigned tasks |
-| `/api/v1/worker/tasks/{id}/accept?eta=` | POST | Accept task with ETA (hours) |
-| `/api/v1/worker/tasks/{id}/start` | POST | Mark task as in-progress |
-| `/api/v1/worker/tasks/{id}/resolve` | POST | Submit resolution (multipart with photo) |
 
-### Analytics (Public)
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/analytics/stats` | GET | Dashboard statistics |
-| `/api/v1/analytics/heatmap` | GET | Issue heatmap data |
-| `/api/v1/analytics/issues-public` | GET | Public issue list |
+1. View assigned tasks.
+2. Accept task with ETA date.
+3. Resolve task with photo evidence.
 
-### Media
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/media/{issue_id}/before` | GET | Before image (report photo) |
-| `/api/v1/media/{issue_id}/after` | GET | After image (resolution photo) |
+Note: Backend has `start` transition endpoint (`/worker/tasks/{id}/start`). UI may present resolve action directly depending on status.
 
----
+## API Reference (High Value Endpoints)
 
-## 📊 Issue Lifecycle
+### Auth
 
+- `POST /api/v1/auth/otp-request`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/google-mock` (test/dev utility)
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+
+### Issues (Citizen)
+
+- `POST /api/v1/issues/report`
+- `GET /api/v1/issues/my-reports`
+
+### Admin
+
+- `GET /api/v1/admin/issues`
+- `GET /api/v1/admin/workers`
+- `GET /api/v1/admin/workers-with-stats`
+- `GET /api/v1/admin/worker-analytics`
+- `POST /api/v1/admin/assign?issue_id=<uuid>&worker_id=<uuid>`
+- `POST /api/v1/admin/bulk-assign`
+- `POST /api/v1/admin/approve?issue_id=<uuid>`
+- `POST /api/v1/admin/reject?issue_id=<uuid>&reason=<text>`
+- `POST /api/v1/admin/update-status?issue_id=<uuid>&status=<state>`
+
+### Worker
+
+- `GET /api/v1/worker/tasks`
+- `POST /api/v1/worker/tasks/{issue_id}/accept?eta_date=<ISO-8601>`
+- `POST /api/v1/worker/tasks/{issue_id}/start`
+- `POST /api/v1/worker/tasks/{issue_id}/resolve` (multipart `photo`)
+
+### Analytics + Media
+
+- `GET /api/v1/analytics/stats`
+- `GET /api/v1/analytics/heatmap`
+- `GET /api/v1/analytics/issues-public`
+- `GET /api/v1/analytics/audit/{entity_id}`
+- `GET /api/v1/media/{issue_id}/before`
+- `GET /api/v1/media/{issue_id}/after`
+
+## Testing
+
+### Frontend Unit/Integration (Vitest)
+
+```bash
+cd frontend
+npm test
 ```
-REPORTED → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED
-    ↓         ↓          ↓            ↓            ↓
- Citizen    Admin     Worker      Worker       Admin
- reports   assigns   accepts &   starts      approves
-  issue    to worker  sets ETA   on-site    resolution
+
+### Frontend E2E (Playwright)
+
+```bash
+cd frontend
+npx playwright install
+npx playwright test --reporter=list
 ```
 
-| Status | Who Changes It | Action |
-|--------|---------------|--------|
-| REPORTED | Citizen | Submits issue with photo + GPS |
-| ASSIGNED | Admin | Assigns to field worker |
-| ACCEPTED | Worker | Accepts with ETA estimate |
-| IN_PROGRESS | Worker | Starts on-site work |
-| RESOLVED | Worker | Submits "after" photo proof |
-| CLOSED | Admin | Approves resolution (or rejects) |
+### Backend (pytest)
 
----
+If running against dockerized DB/backend network setup used in this repo:
 
-## 🗂️ Project Structure
-
+```bash
+cd backend
+source venv/bin/activate
+POSTGRES_HOST=172.21.0.2 POSTGRES_SERVER=172.21.0.2 MINIO_ENDPOINT=localhost:9010 python -m pytest tests/ -v --tb=short
 ```
+
+## Current Verified Test Status
+
+- Backend: `148 passed`
+- Frontend Vitest: `16 passed`
+- Playwright E2E: `19 passed`
+
+## Additional Documentation
+
+- Auth details: `docs/AUTHENTICATION.md`
+- Test execution and triage: `docs/TESTING.md`
+- Handoff runbook: `HANDOFF.md`
+- Architecture overview: `DESIGN.md`
+
+## Development Notes
+
+- Service worker registration is skipped under browser automation (`navigator.webdriver`) to reduce E2E flakiness.
+- E2E tests use deterministic API-request login helper (`page.request.post(...)`) where appropriate.
+- `frontend/tests/helpers/db.js` uses strict psql flags (`-qAt -v ON_ERROR_STOP=1`) to avoid false positives in SQL assertions.
+
+## Project Structure
+
+```text
 .
 ├── backend/
 │   ├── app/
-│   │   ├── api/v1/          # API route handlers
-│   │   ├── core/            # Config, security, database
-│   │   ├── models/          # SQLModel domain models
-│   │   ├── schemas/         # Pydantic request/response schemas
-│   │   └── services/        # Business logic services
-│   ├── seed.py              # Database seeder (creates test users)
-│   ├── Dockerfile           # Backend container
-│   └── requirements.txt
+│   │   ├── api/v1/
+│   │   ├── core/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   └── services/
+│   └── tests/
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # Reusable UI components
-│   │   ├── pages/           # Route pages by role
-│   │   │   ├── authority/   # Admin dashboard
-│   │   │   ├── worker/      # Worker dashboard
-│   │   │   └── citizen/     # Citizen portal
-│   │   ├── hooks/           # Custom React hooks
-│   │   └── services/        # API client, auth
-│   ├── Dockerfile           # Frontend container (Nginx)
-│   └── nginx.conf           # Nginx config with API proxy
-├── docker-compose.yml       # Full stack deployment
-├── docker-compose.dev.yml   # Dev mode (DB + MinIO only)
-├── docker_data/             # Persistent data (git-ignored)
-├── DESIGN.md                # Technical architecture
-├── HANDOFF.md               # Quick reference guide
-└── README.md                # This file
+│   └── tests/
+├── docker-compose.yml
+├── DESIGN.md
+├── HANDOFF.md
+└── README.md
 ```
 
----
+## Production Checklist
 
-## 🔧 Development
-
-### Local Development Setup (Hot Reload)
-
-```bash
-# 1. Start database services only
-docker compose -f docker-compose.dev.yml up -d
-
-# 2. Backend (Terminal 1)
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python seed.py
-uvicorn app.main:app --host 0.0.0.0 --port 8088 --reload
-
-# 3. Frontend (Terminal 2)
-cd frontend
-npm install
-npm run dev
-```
-
-Frontend runs at http://localhost:5173 with hot reload.
-
-### Rebuilding Containers
-
-```bash
-# Rebuild specific service
-docker compose build backend
-docker compose up -d backend
-
-# Rebuild all
-docker compose up --build
-
-# Full reset (removes all data)
-docker compose down -v
-rm -rf docker_data/
-docker compose up --build
-```
-
----
-
-## 🐛 Troubleshooting
-
-### OTP Not Showing in Logs
-
-```bash
-# Check if backend is running
-docker compose ps
-
-# View backend logs
-docker compose logs backend --tail=50
-
-# Search for OTP
-docker compose logs backend | grep -i otp
-```
-
-### Login Stuck / Token Issues
-
-```bash
-# Clear browser localStorage and try again
-# Or open incognito window
-```
-
-### Database Connection Issues
-
-```bash
-# Check container health
-docker compose ps
-
-# View database logs
-docker compose logs db
-
-# Reset database
-docker compose down -v
-docker compose up --build
-```
-
-### Frontend Not Loading
-
-```bash
-# Check frontend logs
-docker compose logs frontend
-
-# Verify nginx is running
-docker compose exec frontend nginx -t
-```
-
-### MinIO/Image Issues
-
-```bash
-# Access MinIO Console
-# URL: http://localhost:9001
-# Username: minioadmin
-# Password: minioadmin
-
-# Check MinIO logs
-docker compose logs minio
-```
-
-### Port Already in Use
-
-```bash
-# Check what's using the port
-lsof -i :3001
-
-# Kill the process or change port in docker-compose.yml
-```
-
----
-
-## 📄 License
-
-MIT License - See LICENSE file for details.
-
-## 👥 Contributors
-
-Built for DASS (Design and Analysis of Software Systems) course project.
+- Set `DEV_MODE=false`.
+- Configure valid SMTP (`MAIL_SERVER`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`).
+- Set strong `SECRET_KEY`.
+- Configure HTTPS.
+- Restrict CORS to production domains.

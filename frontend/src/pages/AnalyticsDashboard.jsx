@@ -12,16 +12,15 @@ import {
 import { motion } from 'framer-motion'
 import { cn } from '../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
-import 'leaflet/dist/leaflet.css'
-import { HeatmapLayer } from '../components/HeatmapLayer'
-import { LocateControl } from '../components/LocateControl'
-import { SearchField } from '../components/SearchField'
+import Map, { Marker, Popup } from 'react-map-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import { MapboxHeatmap } from '../components/MapboxHeatmap'
+import { MapboxLocateControl } from '../components/MapboxLocateControl'
+import { MapboxGeocoderControl } from '../components/MapboxGeocoder'
 import { useGeolocation, DEFAULT_CENTER } from '../hooks/useGeolocation'
 
 
-const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
 const StatBox = ({ label, value, trend, icon: Icon, colorClass }) => (
     <motion.div 
@@ -143,14 +142,27 @@ export default function AnalyticsDashboard() {
                     </div>
                 </div>
                 <div className="h-[500px] w-full rounded-[2.5rem] overflow-hidden border-8 border-slate-50 shadow-inner relative">
-                    <MapContainer center={userLocation} zoom={12} className="h-full w-full">
-                        <TileLayer url={MAP_TILES} attribution={MAP_ATTRIBUTION} />
+                    <Map
+                        initialViewState={{
+                            longitude: userLocation[1],
+                            latitude: userLocation[0],
+                            zoom: 12
+                        }}
+                        style={{ width: '100%', height: '100%' }}
+                        mapStyle="mapbox://styles/mapbox/streets-v12"
+                        mapboxAccessToken={MAPBOX_TOKEN}
+                    >
                         {viewMode === 'heatmap' ? (
-                            <HeatmapLayer points={heatmapData} />
+                            <MapboxHeatmap points={heatmapData} />
                         ) : (
                             issues.map(issue => (
-                                <Marker key={issue.id} position={[issue.lat, issue.lng]}>
-                                    <Popup>
+                                <Marker key={issue.id} longitude={issue.lng} latitude={issue.lat}>
+                                    <Popup
+                                        longitude={issue.lng}
+                                        latitude={issue.lat}
+                                        closeButton={true}
+                                        closeOnClick={false}
+                                    >
                                         <div className="p-2 space-y-2">
                                             <p className="font-black text-slate-900">{issue.category_name}</p>
                                             <p className="text-xs text-slate-500">{issue.status}</p>
@@ -159,9 +171,9 @@ export default function AnalyticsDashboard() {
                                 </Marker>
                             ))
                         )}
-                        <LocateControl />
-                        <SearchField />
-                    </MapContainer>
+                        <MapboxLocateControl />
+                        <MapboxGeocoderControl mapboxAccessToken={MAPBOX_TOKEN} />
+                    </Map>
                 </div>
             </motion.div>
 

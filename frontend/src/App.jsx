@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
-import 'leaflet/dist/leaflet.css'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import Login from './pages/Login'
 import CitizenHome from './pages/citizen/CitizenHome'
 import ReportIssue from './pages/citizen/ReportIssue'

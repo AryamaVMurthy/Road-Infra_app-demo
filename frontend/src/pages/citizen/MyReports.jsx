@@ -8,22 +8,11 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import { MapContainer, TileLayer, Marker } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import Map, { Marker } from 'react-map-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import { EvidenceGallery } from '../../components/EvidenceGallery'
 
-// Fix Leaflet marker icon issue in React
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-
-let DefaultIcon = L.icon({
-    iconUrl: markerIcon,
-    shadowUrl: markerShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -68,17 +57,21 @@ const TimelineItem = ({ log, isLast }) => (
     </div>
 )
 
-const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-
 function ReportMap({ report }) {
     if (!report.lat || !report.lng) return null;
     return (
-        <MapContainer center={[report.lat, report.lng]} zoom={16} className="h-full w-full rounded-[2.5rem]">
-            <TileLayer url={MAP_TILES} attribution={MAP_ATTRIBUTION} />
-            <Marker position={[report.lat, report.lng]}>
-            </Marker>
-        </MapContainer>
+        <Map
+            initialViewState={{
+                longitude: report.lng,
+                latitude: report.lat,
+                zoom: 16
+            }}
+            style={{ width: '100%', height: '100%' }}
+            mapStyle="mapbox://styles/mapbox/streets-v12"
+            mapboxAccessToken={MAPBOX_TOKEN}
+        >
+            <Marker longitude={report.lng} latitude={report.lat} />
+        </Map>
     );
 }
 

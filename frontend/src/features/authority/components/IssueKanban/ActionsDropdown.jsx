@@ -28,6 +28,7 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
   const [loading, setLoading] = useState(false)
   const [workerSearchQuery, setWorkerSearchQuery] = useState('')
   const dropdownRef = React.useRef(null)
+  const submenuTimeoutRef = useRef(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -38,7 +39,10 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      if (submenuTimeoutRef.current) clearTimeout(submenuTimeoutRef.current)
+    }
   }, [])
 
   const handleReassign = async (workerId) => {
@@ -107,6 +111,25 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
     setLoading(false)
   }
 
+  const handleSubmenuEnter = (submenuName) => {
+    if (submenuTimeoutRef.current) {
+      clearTimeout(submenuTimeoutRef.current)
+    }
+    setActiveSubmenu(submenuName)
+    if (submenuName === 'assign' || submenuName === 'reassign') {
+      setWorkerSearchQuery('')
+    }
+  }
+
+  const handleSubmenuLeave = () => {
+    if (submenuTimeoutRef.current) {
+      clearTimeout(submenuTimeoutRef.current)
+    }
+    submenuTimeoutRef.current = setTimeout(() => {
+      setActiveSubmenu(null)
+    }, 150)
+  }
+
   const hasWorker = !!issue.worker_id
 
   return (
@@ -137,11 +160,8 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
               <AssignSection 
                 workers={workers}
                 onAssign={handleAssign}
-                onHover={() => {
-                  setActiveSubmenu('assign')
-                  setWorkerSearchQuery('')
-                }}
-                onLeave={() => setActiveSubmenu(null)}
+                onHover={() => handleSubmenuEnter('assign')}
+                onLeave={handleSubmenuLeave}
                 isActive={activeSubmenu === 'assign'}
                 loading={loading}
                 searchQuery={workerSearchQuery}
@@ -153,11 +173,8 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
                 currentWorkerId={issue.worker_id}
                 onReassign={handleReassign}
                 onUnassign={handleUnassign}
-                onHoverReassign={() => {
-                  setActiveSubmenu('reassign')
-                  setWorkerSearchQuery('')
-                }}
-                onLeaveReassign={() => setActiveSubmenu(null)}
+                onHoverReassign={() => handleSubmenuEnter('reassign')}
+                onLeaveReassign={handleSubmenuLeave}
                 isReassignActive={activeSubmenu === 'reassign'}
                 loading={loading}
                 searchQuery={workerSearchQuery}
@@ -170,8 +187,8 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
               <StatusSection
                 currentStatus={issue.status}
                 onStatusChange={handleStatusChange}
-                onHover={() => setActiveSubmenu('status')}
-                onLeave={() => setActiveSubmenu(null)}
+                onHover={() => handleSubmenuEnter('status')}
+                onLeave={handleSubmenuLeave}
                 isActive={activeSubmenu === 'status'}
                 loading={loading}
               />
@@ -182,8 +199,8 @@ export const IssueActionsDropdown = ({ issue, workers, onUpdate, api }) => {
               <PrioritySection
                 currentPriority={issue.priority}
                 onPriorityChange={handlePriorityChange}
-                onHover={() => setActiveSubmenu('priority')}
-                onLeave={() => setActiveSubmenu(null)}
+                onHover={() => handleSubmenuEnter('priority')}
+                onLeave={handleSubmenuLeave}
                 isActive={activeSubmenu === 'priority'}
                 loading={loading}
               />
@@ -293,53 +310,82 @@ const StatusSection = ({
   onLeave,
   isActive,
   loading 
-}) => (
-  <div 
-    className="relative"
-    onMouseEnter={onHover}
-    onMouseLeave={onLeave}
-  >
-    <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
-      <div className="flex items-center gap-3">
-        <ArrowRight size={14} className="text-slate-500" />
-        <span className="text-sm font-bold text-slate-700">Move to Status</span>
-      </div>
-      <ChevronRight size={14} className="text-slate-400" />
-    </button>
-    
-    <AnimatePresence>
-      {isActive && (
-        <motion.div
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 10 }}
-          className="absolute right-full top-0 mr-1 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
-          style={{ zIndex: 9999 }}
-        >
-          <div className="p-3 border-b border-slate-100 bg-slate-50">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Change Status</p>
-          </div>
-          <div className="py-1">
-            {KANBAN_STATUSES.map(status => (
-              <button
-                key={status.value}
-                onClick={() => onStatusChange(status.value)}
-                disabled={loading || status.value === currentStatus}
-                className={cn(
-                  "w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors disabled:opacity-50 text-left",
-                  status.value === currentStatus && "bg-primary/5"
-                )}
-              >
-                <div className={cn("w-2 h-2 rounded-full", status.color)}></div>
-                <span className="text-sm font-medium text-slate-700">{status.label}</span>
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
-)
+}) => {
+  const buttonRef = useRef(null)
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+
+  useEffect(() => {
+    if (isActive && buttonRef?.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      const submenuWidth = 192 // w-48
+      let left = rect.left - submenuWidth - 4
+      // If submenu would go off-screen on left, show it on the right
+      if (left < 10) {
+        left = rect.right + 4
+      }
+      setPosition({
+        top: rect.top,
+        left: left
+      })
+    }
+  }, [isActive])
+
+  return (
+    <div 
+      className="relative"
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+    >
+      <button ref={buttonRef} className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
+        <div className="flex items-center gap-3">
+          <ArrowRight size={14} className="text-slate-500" />
+          <span className="text-sm font-bold text-slate-700">Move to Status</span>
+        </div>
+        <ChevronRight size={14} className="text-slate-400" />
+      </button>
+      
+      <AnimatePresence>
+        {isActive && createPortal(
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
+            style={{ 
+              zIndex: 99999,
+              top: position.top,
+              left: position.left
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseEnter={onHover}
+            onMouseLeave={onLeave}
+          >
+            <div className="p-3 border-b border-slate-100 bg-slate-50">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Change Status</p>
+            </div>
+            <div className="py-1">
+              {KANBAN_STATUSES.map(status => (
+                <button
+                  key={status.value}
+                  onClick={() => onStatusChange(status.value)}
+                  disabled={loading || status.value === currentStatus}
+                  className={cn(
+                    "w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors disabled:opacity-50 text-left",
+                    status.value === currentStatus && "bg-primary/5"
+                  )}
+                >
+                  <div className={cn("w-2 h-2 rounded-full", status.color)}></div>
+                  <span className="text-sm font-medium text-slate-700">{status.label}</span>
+                </button>
+              ))}
+            </div>
+          </motion.div>,
+          document.body
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 const PrioritySection = ({ 
   currentPriority, 
@@ -348,53 +394,82 @@ const PrioritySection = ({
   onLeave,
   isActive,
   loading 
-}) => (
-  <div 
-    className="relative"
-    onMouseEnter={onHover}
-    onMouseLeave={onLeave}
-  >
-    <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
-      <div className="flex items-center gap-3">
-        <Flag size={14} className="text-amber-500" />
-        <span className="text-sm font-bold text-slate-700">Change Priority</span>
-      </div>
-      <ChevronRight size={14} className="text-slate-400" />
-    </button>
-    
-    <AnimatePresence>
-      {isActive && (
-        <motion.div
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 10 }}
-          className="absolute right-full top-0 mr-1 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
-          style={{ zIndex: 9999 }}
-        >
-          <div className="p-3 border-b border-slate-100 bg-slate-50">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Set Priority</p>
-          </div>
-          <div className="py-1">
-            {PRIORITIES.map(priority => (
-              <button
-                key={priority.value}
-                onClick={() => onPriorityChange(priority.value)}
-                disabled={loading || priority.value === currentPriority}
-                className={cn(
-                  "w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors disabled:opacity-50 text-left",
-                  priority.value === currentPriority && "bg-primary/5"
-                )}
-              >
-                <div className={cn("w-2 h-2 rounded-full", priority.color)}></div>
-                <span className="text-sm font-medium text-slate-700">{priority.label}</span>
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
-)
+}) => {
+  const buttonRef = useRef(null)
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+
+  useEffect(() => {
+    if (isActive && buttonRef?.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      const submenuWidth = 192 // w-48
+      let left = rect.left - submenuWidth - 4
+      // If submenu would go off-screen on left, show it on the right
+      if (left < 10) {
+        left = rect.right + 4
+      }
+      setPosition({
+        top: rect.top,
+        left: left
+      })
+    }
+  }, [isActive])
+
+  return (
+    <div 
+      className="relative"
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+    >
+      <button ref={buttonRef} className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left">
+        <div className="flex items-center gap-3">
+          <Flag size={14} className="text-amber-500" />
+          <span className="text-sm font-bold text-slate-700">Change Priority</span>
+        </div>
+        <ChevronRight size={14} className="text-slate-400" />
+      </button>
+      
+      <AnimatePresence>
+        {isActive && createPortal(
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden"
+            style={{ 
+              zIndex: 99999,
+              top: position.top,
+              left: position.left
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseEnter={onHover}
+            onMouseLeave={onLeave}
+          >
+            <div className="p-3 border-b border-slate-100 bg-slate-50">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Set Priority</p>
+            </div>
+            <div className="py-1">
+              {PRIORITIES.map(priority => (
+                <button
+                  key={priority.value}
+                  onClick={() => onPriorityChange(priority.value)}
+                  disabled={loading || priority.value === currentPriority}
+                  className={cn(
+                    "w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors disabled:opacity-50 text-left",
+                    priority.value === currentPriority && "bg-primary/5"
+                  )}
+                >
+                  <div className={cn("w-2 h-2 rounded-full", priority.color)}></div>
+                  <span className="text-sm font-medium text-slate-700">{priority.label}</span>
+                </button>
+              ))}
+            </div>
+          </motion.div>,
+          document.body
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 const WorkerSubmenu = ({ workers, onSelect, loading, title, currentWorkerId, searchQuery, onSearchChange, parentRef }) => {
   const filteredWorkers = workers.filter(worker => {

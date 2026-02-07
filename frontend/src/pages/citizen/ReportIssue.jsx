@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
-import 'leaflet/dist/leaflet.css'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import Map, { Marker } from 'react-map-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import api from '../../services/api'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Check, ArrowLeft, ArrowRight, Map as MapIcon, Loader2, Info, AlertCircle, Navigation } from 'lucide-react'
@@ -9,26 +9,13 @@ import { offlineService } from '../../services/offline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 
-import { SearchField } from '../../components/SearchField'
-import { LocateControl } from '../../components/LocateControl'
+import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
+import { MapboxLocateControl } from '../../components/MapboxLocateControl'
 import { useGeolocation } from '../../hooks/useGeolocation'
 
 import { Toast } from '../../features/common/components/Toast'
 
-const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-
-function LocationMarker({ position, setPosition }) {
-  useMapEvents({
-    click(e) {
-      setPosition(e.latlng)
-    },
-  })
-
-  return position === null ? null : (
-    <Marker position={position}></Marker>
-  )
-}
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
 const StepIndicator = ({ step }) => (
     <div className="flex items-center gap-2 mb-10">
@@ -162,12 +149,24 @@ export default function ReportIssue() {
                       <p className="text-slate-400 text-sm mt-1">Please allow location access when prompted</p>
                     </div>
                   ) : position ? (
-                    <MapContainer center={position} zoom={17} className="h-full w-full">
-                      <TileLayer url={MAP_TILES} attribution={MAP_ATTRIBUTION} />
-                      <LocationMarker position={position} setPosition={setPosition} />
-                      <SearchField onFound={setPosition} />
-                      <LocateControl onFound={setPosition} />
-                    </MapContainer>
+                    <Map
+                      initialViewState={{
+                        longitude: position.lng,
+                        latitude: position.lat,
+                        zoom: 17
+                      }}
+                      style={{ width: '100%', height: '100%' }}
+                      mapStyle="mapbox://styles/mapbox/streets-v12"
+                      mapboxAccessToken={MAPBOX_TOKEN}
+                      onClick={(e) => setPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
+                    >
+                      <Marker longitude={position.lng} latitude={position.lat} />
+                      <MapboxGeocoderControl 
+                        mapboxAccessToken={MAPBOX_TOKEN} 
+                        onFound={(latlng) => setPosition(latlng)}
+                      />
+                      <MapboxLocateControl onFound={(latlng) => setPosition(latlng)} />
+                    </Map>
                   ) : (
                     <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
                       <AlertCircle className="text-slate-400 mb-4" size={40} />

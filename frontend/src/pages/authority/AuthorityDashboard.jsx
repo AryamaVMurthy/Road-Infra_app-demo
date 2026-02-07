@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api, { API_URL } from '../../services/api'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
-import 'leaflet/dist/leaflet.css'
+import Map, { Marker, Popup } from 'react-map-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import { 
     LayoutDashboard, Map as MapIcon, Users, LogOut, 
     CheckCircle2, AlertCircle, Clock,
@@ -12,9 +12,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
 
-import { HeatmapLayer } from '../../components/HeatmapLayer'
-import { LocateControl } from '../../components/LocateControl'
-import { SearchField } from '../../components/SearchField'
+import { MapboxHeatmap } from '../../components/MapboxHeatmap'
+import { MapboxLocateControl } from '../../components/MapboxLocateControl'
+import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
 import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
 
 import { SidebarItem } from '../../features/common/components/SidebarItem'
@@ -26,8 +26,7 @@ import { IssueReviewModal } from '../../features/authority/components/Modals/Iss
 import { WorkersTable } from '../../features/authority/components/WorkerAnalytics/WorkersTable'
 import { AnalyticsPanel } from '../../features/authority/components/WorkerAnalytics/AnalyticsPanel'
 
-const MAP_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
 export default function AuthorityDashboard() {
   const [activeTab, setActiveTab] = useState('map') 
@@ -39,7 +38,6 @@ export default function AuthorityDashboard() {
   const [reviewIssue, setReviewIssue] = useState(null)
   const [mapMode, setMapMode] = useState('markers')
   const [heatmapData, setHeatmapData] = useState([])
-  const [rejectReason, setRejectReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
@@ -94,13 +92,12 @@ export default function AuthorityDashboard() {
     setSubmitting(false)
   }
 
-  const handleReject = async (id) => {
-    if (!rejectReason) return alert("Please provide a reason")
+  const handleReject = async (id, reason) => {
+    if (!reason) return alert("Please provide a reason")
     setSubmitting(true)
     try {
-        await api.post(`/admin/reject?issue_id=${id}&reason=${rejectReason}`)
+        await api.post(`/admin/reject?issue_id=${id}&reason=${reason}`)
         setReviewIssue(null)
-        setRejectReason('')
         fetchData()
     } catch (e) { alert("Rejection failed") }
     setSubmitting(false)
@@ -175,12 +172,25 @@ export default function AuthorityDashboard() {
                         </div>
                     </div>
                     <div className="flex-1 rounded-[3rem] overflow-hidden border-8 border-white shadow-2xl relative">
-                        <MapContainer center={userLocation} zoom={14} className="h-full w-full">
-                            <TileLayer url={MAP_TILES} attribution={MAP_ATTRIBUTION} />
+                        <Map
+                            initialViewState={{
+                                longitude: userLocation[1],
+                                latitude: userLocation[0],
+                                zoom: 14
+                            }}
+                            style={{ width: '100%', height: '100%' }}
+                            mapStyle="mapbox://styles/mapbox/streets-v12"
+                            mapboxAccessToken={MAPBOX_TOKEN}
+                        >
                             {mapMode === 'markers' ? (
                                 issues.map(issue => (
-                                    <Marker key={issue.id} position={[issue.lat, issue.lng]}>
-                                        <Popup>
+                                    <Marker key={issue.id} longitude={issue.lng} latitude={issue.lat}>
+                                        <Popup
+                                            longitude={issue.lng}
+                                            latitude={issue.lat}
+                                            closeButton={true}
+                                            closeOnClick={false}
+                                        >
                                             <div className="p-3 w-64 space-y-3">
                                                 <div className="flex justify-between items-start">
                                                     <p className="font-black text-slate-900">{issue.category_name}</p>
@@ -216,10 +226,10 @@ export default function AuthorityDashboard() {
                                         </Popup>
                                     </Marker>
                                 ))
-                            ) : ( <HeatmapLayer points={heatmapData} /> )}
-                            <LocateControl />
-                            <SearchField />
-                        </MapContainer>
+                            ) : ( <MapboxHeatmap points={heatmapData} /> )}
+                            <MapboxLocateControl />
+                            <MapboxGeocoderControl mapboxAccessToken={MAPBOX_TOKEN} />
+                        </Map>
                     </div>
                 </motion.div>
             )}

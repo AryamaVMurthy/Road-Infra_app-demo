@@ -19,7 +19,7 @@ test.describe('Universal Analytics Rigor', () => {
 
       await expect(page).toHaveURL(/\/analytics/)
       await expect(page.locator('h1')).toContainText('City Health Intelligence')
-      await expect(page.locator('.leaflet-container')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Geospatial Insights' })).toBeVisible()
       await expect(page.locator('.recharts-surface').first()).toBeVisible()
     })
   }

@@ -87,8 +87,7 @@ npx playwright test --reporter=list
 
 ## 7) Key Notes for Maintainers
 
-- E2E auth in tests uses request-based login helpers to avoid OTP/UI instability where unnecessary.
-- Service worker registration is skipped in automation contexts (`navigator.webdriver`) to reduce flake.
+- E2E auth in tests uses request-based OTP helpers (`otp-request` -> DB OTP lookup -> `login`) to avoid UI instability.
 - SQL helper for tests uses strict psql options (`-qAt -v ON_ERROR_STOP=1`) for deterministic assertions.
 
 ## 8) Known Operational Caveats

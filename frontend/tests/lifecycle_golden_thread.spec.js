@@ -1,8 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { execSync } from 'child_process';
 import { resetDatabase, runSql } from './helpers/db';
-import path from 'path';
-import fs from 'fs';
+import { ensureTestImage, loginAs } from './helpers/e2e';
 
 // ── Test users (seeded by resetDatabase → seed.py) ──
 const CITIZEN_EMAIL = 'citizen@example.com';
@@ -11,42 +9,6 @@ const WORKER_EMAIL = 'worker@authority.gov.in';
 
 // Looked up from DB after reset
 let WORKER_ID;
-
-// ── Helpers ──
-
-/**
- * Login via google-mock endpoint (bypasses OTP entirely).
- * Sets HttpOnly auth cookies, then navigates to the role-appropriate page
- * and waits for the auth context to hydrate.
- *
- * NOTE: We use 'domcontentloaded' instead of 'networkidle' because this suite
- * spans multiple role logins and app transitions.
- */
-async function loginAs(page, email, expectedPath) {
-  await page.goto('/login', { waitUntil: 'domcontentloaded' });
-
-  const resp = await page.request.post(`/api/v1/auth/google-mock?email=${encodeURIComponent(email)}`);
-  expect(resp.ok()).toBe(true);
-
-  await page.goto(expectedPath, { waitUntil: 'domcontentloaded' });
-
-  await page.waitForFunction(() => {
-    return !document.body.innerText.includes('Loading session...');
-  }, { timeout: 15000 });
-}
-
-/**
- * Generate a simple test image file and return its absolute path.
- */
-function createTestImage() {
-  const imgPath = path.join(process.cwd(), 'golden_test.jpg');
-  if (!fs.existsSync(imgPath)) {
-    execSync(
-      `python3 -c "from PIL import Image; Image.new('RGB', (100, 100), color=(255, 0, 0)).save('${imgPath}')"`
-    );
-  }
-  return imgPath;
-}
 
 // ── Test Suite ──
 
@@ -75,7 +37,7 @@ test.describe('Golden Thread: Full Issue Lifecycle', () => {
     await context.grantPermissions(['geolocation']);
     await context.setGeolocation({ latitude: 17.4447, longitude: 78.3483 });
 
-    const testImage = createTestImage();
+    const testImage = ensureTestImage();
 
     // ════════════════════════════════════════════
     // PHASE 1: Citizen reports an issue

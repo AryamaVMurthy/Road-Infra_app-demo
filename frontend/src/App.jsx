@@ -8,13 +8,10 @@ import AuthorityDashboard from './pages/authority/AuthorityDashboard'
 import WorkerHome from './pages/worker/WorkerHome'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import PrivateRoute from './components/PrivateRoute'
-import { useOfflineSync } from './hooks/useOfflineSync'
 import AnalyticsDashboard from './pages/AnalyticsDashboard'
 import { AuthProvider } from './hooks/useAuth'
 
 function App() {
-  useOfflineSync()
-  
   return (
     <AuthProvider>
       <div className="min-h-screen bg-gray-50">

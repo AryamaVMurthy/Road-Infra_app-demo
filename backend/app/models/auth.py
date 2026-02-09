@@ -8,7 +8,10 @@ from app.models.domain import User
 class RefreshToken(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="user.id", index=True)
+    # Slow hash (bcrypt) used for secure token verification.
     token_hash: str = Field(index=True)
+    # Deterministic lookup hash (sha256) to avoid querying by raw token value.
+    token_lookup: Optional[str] = Field(default=None, index=True)
     expires_at: datetime
     created_at: datetime = Field(default_factory=datetime.utcnow)
     revoked_at: Optional[datetime] = None

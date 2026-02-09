@@ -16,7 +16,7 @@ oauth2_scheme = OAuth2PasswordBearer(
 def get_current_user(
     request: Request,
     session: Session = Depends(get_session),
-    token_auth: str = Depends(oauth2_scheme),
+    token_auth: str | None = Depends(oauth2_scheme),
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -34,7 +34,7 @@ def get_current_user(
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        user_id: str = payload.get("id")
+        user_id: str | None = payload.get("id")
         if user_id is None:
             raise credentials_exception
     except JWTError:
@@ -44,3 +44,34 @@ def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+
+VALID_ROLES = {"CITIZEN", "WORKER", "ADMIN", "SYSADMIN"}
+
+
+def require_roles(*allowed_roles: str):
+    allowed = {role.upper() for role in allowed_roles}
+    invalid = allowed - VALID_ROLES
+    if invalid:
+        raise ValueError(f"Invalid role names: {sorted(invalid)}")
+
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.status != "ACTIVE":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Inactive user account",
+            )
+        user_role = (current_user.role or "").upper()
+        if user_role not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return current_user
+
+    return dependency
+
+
+require_admin_user = require_roles("ADMIN", "SYSADMIN")
+require_worker_user = require_roles("WORKER")
+require_citizen_user = require_roles("CITIZEN")

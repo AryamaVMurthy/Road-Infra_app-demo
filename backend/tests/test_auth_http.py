@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
 from datetime import datetime, timedelta
+import hashlib
 from unittest.mock import patch, AsyncMock
 
 from app.main import app
@@ -81,7 +82,9 @@ def test_refresh_token_rotation_integration(client: TestClient, session: Session
     rt_new = client.cookies.get("refresh_token")
     assert rt_new != rt_old
 
-    statement = select(RefreshToken).where(RefreshToken.token_hash == rt_old)
+    statement = select(RefreshToken).where(
+        RefreshToken.token_lookup == hashlib.sha256(rt_old.encode()).hexdigest()
+    )
     ref_token_db = session.exec(statement).first()
     assert ref_token_db is not None
     assert ref_token_db.revoked_at is not None
@@ -99,6 +102,8 @@ def test_logout_clears_cookies(client: TestClient, session: Session):
 
     client.post("/api/v1/auth/login", json={"email": email, "otp": "111111"})
     assert "access_token" in client.cookies
+    refresh_token = client.cookies.get("refresh_token")
+    assert refresh_token is not None
 
     response = client.post("/api/v1/auth/logout")
     assert response.status_code == 200
@@ -106,8 +111,36 @@ def test_logout_clears_cookies(client: TestClient, session: Session):
     at = client.cookies.get("access_token")
     assert at is None or at == ""
 
+    db_row = session.exec(
+        select(RefreshToken).where(
+            RefreshToken.token_lookup
+            == hashlib.sha256(refresh_token.encode()).hexdigest()
+        )
+    ).first()
+    assert db_row is not None
+    assert db_row.revoked_at is not None
+
 
 def test_hsts_header_present(client: TestClient):
     response = client.get("/")
     assert "Strict-Transport-Security" in response.headers
     assert "max-age=31536000" in response.headers["Strict-Transport-Security"]
+
+
+def test_otp_single_use(client: TestClient, session: Session):
+    email = "singleuse@example.com"
+    otp = Otp(
+        email=email, code="222222", expires_at=datetime.utcnow() + timedelta(minutes=5)
+    )
+    session.add(otp)
+    session.commit()
+
+    first = client.post("/api/v1/auth/login", json={"email": email, "otp": "222222"})
+    assert first.status_code == 200
+
+    second = client.post("/api/v1/auth/login", json={"email": email, "otp": "222222"})
+    assert second.status_code == 400
+    assert second.json()["detail"] == "Invalid or expired OTP"
+
+    remaining = session.exec(select(Otp).where(Otp.email == email)).all()
+    assert remaining == []

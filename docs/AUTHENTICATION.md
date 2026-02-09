@@ -10,7 +10,7 @@ Authentication flow:
 2. User submits OTP (`/api/v1/auth/login`).
 3. Backend sets HttpOnly cookies:
    - `access_token`
-   - `refresh_token` (scoped to `/api/v1/auth/refresh`)
+   - `refresh_token` (scoped to `/api/v1/auth`)
 4. Frontend resolves active user through `/api/v1/auth/me`.
 
 ## Endpoints
@@ -22,7 +22,6 @@ Authentication flow:
 | `/api/v1/auth/refresh` | POST | Rotate refresh token and renew access token |
 | `/api/v1/auth/logout` | POST | Clear auth cookies |
 | `/api/v1/auth/me` | GET | Return current authenticated user |
-| `/api/v1/auth/google-mock` | POST | Test/dev login shortcut |
 
 ## OTP Delivery Modes
 
@@ -46,7 +45,9 @@ If SMTP is misconfigured, OTP generation still occurs but delivery can fail.
 ## Security Characteristics
 
 - Access and refresh tokens are HttpOnly cookies, reducing token theft via XSS.
+- Refresh tokens are persisted as secure hashes (bcrypt) with deterministic lookup hashes (sha256).
 - Refresh rotation and token-family logic are implemented in `backend/app/services/auth_service.py`.
+- Logout revokes the presented refresh token server-side before clearing cookies.
 - Concurrency and breach behavior are tested in backend auth/concurrency tests.
 
 ## Operational Checks

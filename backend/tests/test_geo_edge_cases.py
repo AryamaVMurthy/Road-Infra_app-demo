@@ -15,9 +15,9 @@ Covers:
 import pytest
 from datetime import datetime
 from uuid import uuid4, UUID
-from sqlmodel import Session, select
+from sqlmodel import Session, select, desc
 
-from app.models.domain import Category, User, Issue, Evidence
+from app.models.domain import Category, User, Issue, Evidence, Otp
 from app.services.issue_service import IssueService
 
 
@@ -61,8 +61,16 @@ def _create_issue(
     return issue
 
 
-def _login(client, email: str):
-    resp = client.post(f"/api/v1/auth/google-mock?email={email}")
+def _login(client, session: Session, email: str):
+    client.post("/api/v1/auth/otp-request", json={"email": email})
+    otp = (
+        session.exec(
+            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+        )
+        .first()
+    )
+    assert otp is not None
+    resp = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
     assert resp.status_code == 200
 
 
@@ -154,6 +162,7 @@ class TestReportEndpointDuplicates:
     def test_report_at_same_location_increments_count(self, client, session):
         cat, citizen, _ = _seed(session)
         photo = _make_jpeg()
+        _login(client, session, citizen.email)
 
         # First report
         resp1 = client.post(
@@ -162,7 +171,6 @@ class TestReportEndpointDuplicates:
                 "category_id": str(cat.id),
                 "lat": "17.44",
                 "lng": "78.35",
-                "reporter_email": citizen.email,
             },
             files={"photo": ("test1.jpg", photo, "image/jpeg")},
         )
@@ -176,7 +184,6 @@ class TestReportEndpointDuplicates:
                 "category_id": str(cat.id),
                 "lat": "17.44",
                 "lng": "78.35",
-                "reporter_email": citizen.email,
             },
             files={"photo": ("test2.jpg", photo, "image/jpeg")},
         )
@@ -194,6 +201,7 @@ class TestReportEndpointDuplicates:
     def test_report_far_away_creates_new_issue(self, client, session):
         cat, citizen, _ = _seed(session)
         photo = _make_jpeg()
+        _login(client, session, citizen.email)
 
         # Report at location A
         resp1 = client.post(
@@ -202,7 +210,6 @@ class TestReportEndpointDuplicates:
                 "category_id": str(cat.id),
                 "lat": "17.44",
                 "lng": "78.35",
-                "reporter_email": citizen.email,
             },
             files={"photo": ("test1.jpg", photo, "image/jpeg")},
         )
@@ -216,7 +223,6 @@ class TestReportEndpointDuplicates:
                 "category_id": str(cat.id),
                 "lat": "28.61",
                 "lng": "77.21",
-                "reporter_email": citizen.email,
             },
             files={"photo": ("test2.jpg", photo, "image/jpeg")},
         )

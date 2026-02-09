@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from sqlmodel import Session, select, func, col
+from fastapi import APIRouter, Depends, UploadFile, File, Form
+from sqlmodel import Session, select, col
 from app.db.session import get_session
-from app.models.domain import Issue, Evidence, User, Category
+from app.models.domain import Issue, Evidence, User
 from app.schemas.issue import IssueRead
 from app.services.issue_service import IssueService
+from app.api.deps import require_citizen_user
 from uuid import UUID
 from typing import List, Optional
 
@@ -16,11 +17,11 @@ async def report_issue(
     lat: float = Form(...),
     lng: float = Form(...),
     address: Optional[str] = Form(None),
-    reporter_email: str = Form(...),
     photo: UploadFile = File(...),
     session: Session = Depends(get_session),
+    current_user: User = Depends(require_citizen_user),
 ):
-    reporter = IssueService.get_or_create_reporter(session, reporter_email)
+    reporter = current_user
     point_wkt = IssueService.build_point_wkt(lat, lng)
     duplicate_issue = IssueService.find_duplicate_issue(session, point_wkt)
 
@@ -65,12 +66,10 @@ async def report_issue(
 
 
 @router.get("/my-reports", response_model=List[IssueRead])
-def get_my_reports(email: str, session: Session = Depends(get_session)):
-    statement = select(User).where(User.email == email)
-    user = session.exec(statement).first()
-    if not user:
-        return []
-
+def get_my_reports(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_citizen_user),
+):
     # Get all issues where user is the reporter OR has provided evidence
     # (Handling duplicates where reporter_id might be different but evidence exists)
     from sqlalchemy import or_
@@ -81,11 +80,12 @@ def get_my_reports(email: str, session: Session = Depends(get_session)):
         .join(Evidence, isouter=True)
         .where(
             or_(
-                col(Issue.reporter_id) == user.id,
-                col(Evidence.reporter_id) == user.id,
+                col(Issue.reporter_id) == current_user.id,
+                col(Evidence.reporter_id) == current_user.id,
             )
         )
         .distinct()
+        .options(selectinload(Issue.category), selectinload(Issue.worker))
     )
 
     return session.exec(statement).all()

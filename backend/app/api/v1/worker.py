@@ -14,7 +14,7 @@ from typing import List
 from datetime import datetime
 import io
 
-from app.api.deps import get_current_user
+from app.api.deps import require_worker_user
 from app.schemas.issue import IssueRead
 
 router = APIRouter()
@@ -23,7 +23,7 @@ router = APIRouter()
 @router.get("/tasks", response_model=List[IssueRead])
 def get_worker_tasks(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_worker_user),
 ):
     """Return tasks assigned to the current worker."""
     statement = (
@@ -39,7 +39,7 @@ def accept_task(
     issue_id: UUID,
     eta_date: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_worker_user),
 ):
     """Accept a task and set its ETA date."""
     issue = session.get(Issue, issue_id)
@@ -56,7 +56,7 @@ def accept_task(
 def start_task(
     issue_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_worker_user),
 ):
     """Start working on a task"""
     issue = session.get(Issue, issue_id)
@@ -73,7 +73,7 @@ async def resolve_task(
     issue_id: UUID,
     photo: UploadFile = File(...),
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_worker_user),
 ):
     """Resolve a task with photo evidence and EXIF capture."""
     issue = session.get(Issue, issue_id)

@@ -97,7 +97,6 @@ Note: Backend has `start` transition endpoint (`/worker/tasks/{id}/start`). UI m
 
 - `POST /api/v1/auth/otp-request`
 - `POST /api/v1/auth/login`
-- `POST /api/v1/auth/google-mock` (test/dev utility)
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
 - `GET /api/v1/auth/me`
@@ -132,6 +131,7 @@ Note: Backend has `start` transition endpoint (`/worker/tasks/{id}/start`). UI m
 - `GET /api/v1/analytics/heatmap`
 - `GET /api/v1/analytics/issues-public`
 - `GET /api/v1/analytics/audit/{entity_id}`
+- `GET /api/v1/analytics/audit-all` (admin only)
 - `GET /api/v1/media/{issue_id}/before`
 - `GET /api/v1/media/{issue_id}/after`
 
@@ -177,8 +177,7 @@ POSTGRES_HOST=172.21.0.2 POSTGRES_SERVER=172.21.0.2 MINIO_ENDPOINT=localhost:901
 
 ## Development Notes
 
-- Service worker registration is skipped under browser automation (`navigator.webdriver`) to reduce E2E flakiness.
-- E2E tests use deterministic API-request login helper (`page.request.post(...)`) where appropriate.
+- E2E tests use deterministic API-request OTP login helpers (`otp-request` -> DB OTP lookup -> `login`).
 - `frontend/tests/helpers/db.js` uses strict psql flags (`-qAt -v ON_ERROR_STOP=1`) to avoid false positives in SQL assertions.
 
 ## Project Structure

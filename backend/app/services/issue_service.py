@@ -9,26 +9,13 @@ from uuid import UUID, uuid4
 from sqlmodel import Session, select, func
 
 from app.core.config import settings
-from app.models.domain import Evidence, Issue, User
+from app.models.domain import Evidence, Issue
 from app.services.exif import ExifService
 from app.services.minio_client import minio_client
 
 
 class IssueService:
     """Service for issue reporting and evidence creation."""
-
-    @staticmethod
-    def get_or_create_reporter(session: Session, reporter_email: str) -> User:
-        statement = select(User).where(User.email == reporter_email)
-        reporter = session.exec(statement).first()
-        if reporter:
-            return reporter
-
-        reporter = User(email=reporter_email, role="CITIZEN")
-        session.add(reporter)
-        session.commit()
-        session.refresh(reporter)
-        return reporter
 
     @staticmethod
     def build_point_wkt(lat: float, lng: float) -> str:

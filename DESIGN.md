@@ -2,7 +2,7 @@
 
 ## 1. System Overview
 
-The MARG (Monitoring Application for Road Governance) is a full-stack platform for Municipal Authorities that enables citizens to report infrastructure issues with GPS-verified photo evidence, and provides authorities with transparent, auditable workflows for assignment, resolution, and analytics. The system is offline-capable for field workers, supports silent duplicate aggregation, and publishes public analytics with heatmaps.
+The MARG (Monitoring Application for Road Governance) is a full-stack platform for Municipal Authorities that enables citizens to report infrastructure issues with GPS-verified photo evidence, and provides authorities with transparent, auditable workflows for assignment, resolution, and analytics. The system supports silent duplicate aggregation and publishes public analytics with heatmaps.
 
 ---
 
@@ -13,7 +13,7 @@ The MARG (Monitoring Application for Road Governance) is a full-stack platform f
 │                              CLIENT TIER                                     │
 │  ┌──────────────┐  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐ │
 │  │ Citizen App  │  │ Authority Ops │  │ Worker App    │  │ Analytics Dash │ │
-│  │ (React)      │  │ (React)       │  │ (React + SW)  │  │ (React)        │ │
+│  │ (React)      │  │ (React)       │  │ (React)       │  │ (React)        │ │
 │  └──────┬───────┘  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘ │
 │         │                 │                  │                  │          │
 │         └───────────────┬─┴──────────────────┴──────────────────┘          │
@@ -72,7 +72,6 @@ Browser → Nginx (frontend) → /api/* proxied → FastAPI backend → PostGIS 
 | HTTP | Axios | 1.6 | REST client |
 | State | React Query | 3.39 | Server state cache |
 | Routing | React Router DOM | 6.18 | Client routing |
-| PWA | Service Worker | native | Offline cache + sync |
 
 ### 3.2 Backend
 | Category | Technology | Version | Purpose |
@@ -181,16 +180,7 @@ Worker UI → Accept task → Start work → Resolve with photo
   └─ AuditLog records state transitions
 ```
 
-### 6.4 Worker Resolution Flow (Offline)
-```
-Offline → photo saved in IndexedDB (workerResolutions)
-Service Worker registers 'sync-resolutions'
-On reconnect → SW uploads multipart to /worker/tasks/{id}/resolve
-On success → resolution removed from IndexedDB
-Client notified via postMessage
-```
-
-### 6.5 Audit Trail Flow
+### 6.4 Audit Trail Flow
 ```
 Any status/assignment change → AuditService.log
 Stored in auditlog table → retrieved via /analytics/audit/{entity_id}
@@ -205,13 +195,12 @@ Stored in auditlog table → retrieved via /analytics/audit/{entity_id}
 |--------|----------|------|
 | POST | `/api/v1/auth/otp-request` | email → OTP |
 | POST | `/api/v1/auth/login` | OTP → JWT |
-| POST | `/api/v1/auth/google-mock` | Dev-only shortcut |
 
 ### Issues (Citizen)
 | Method | Endpoint | Notes |
 |--------|----------|------|
 | POST | `/api/v1/issues/report` | multipart with photo |
-| GET | `/api/v1/issues/my-reports` | by email |
+| GET | `/api/v1/issues/my-reports` | authenticated citizen only |
 
 ### Authority/Admin
 | Method | Endpoint | Notes |
@@ -249,20 +238,7 @@ Stored in auditlog table → retrieved via /analytics/audit/{entity_id}
 
 ---
 
-## 8. Service Worker & Offline Architecture
-
-```
-Browser (Worker) → IndexedDB → Background Sync → Service Worker
-  └─ sync-resolutions → POST /worker/tasks/{id}/resolve
-```
-
-- Cache strategy: app shell caching for GET assets
-- API calls bypass cache (no API caching)
-- Offline queue uses IndexedDB `workerResolutions`
-
----
-
-## 9. Security & Access Control
+## 8. Security & Access Control
 
 ### 9.1 Authentication
 - OTP email flow (`/auth/otp-request`)
@@ -273,7 +249,7 @@ Browser (Worker) → IndexedDB → Background Sync → Service Worker
 
 ### 9.2 Authorization
 - Role-based gates in frontend routes
-- Backend guards via `get_current_user` dependency
+- Backend guards via centralized RBAC dependencies (`require_roles`, `require_admin_user`, `require_worker_user`, `require_citizen_user`)
 
 ### 9.3 Data Protection
 - Input validation with Pydantic/SQLModel
@@ -287,7 +263,7 @@ Browser (Worker) → IndexedDB → Background Sync → Service Worker
 
 ---
 
-## 10. Deployment Topology
+## 9. Deployment Topology
 
 ### 10.1 Docker Compose
 ```
@@ -330,20 +306,9 @@ REPORTED → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED
  Citizen     Admin       Worker       Worker       Admin
 ```
 
-### 11.3 Offline Resolution Sync
-```
-Worker offline → IndexedDB (workerResolutions)
-         ↓
-Service Worker sync-resolutions
-         ↓
-POST /worker/tasks/{id}/resolve
-         ↓
-MinIO stores resolution + Issue marked RESOLVED
-```
-
 ---
 
-## 12. Testing Strategy
+## 11. Testing Strategy
 
 | Layer | Tools | Notes |
 |------|------|------|
@@ -354,7 +319,7 @@ MinIO stores resolution + Issue marked RESOLVED
 
 ---
 
-## 13. Key Implementation Locations
+## 12. Key Implementation Locations
 
 | Concern | File |
 |---------|------|
@@ -366,14 +331,10 @@ MinIO stores resolution + Issue marked RESOLVED
 | Heatmap layer | `frontend/src/components/HeatmapLayer.jsx` |
 | Geocoding search | `frontend/src/components/SearchField.jsx` |
 | GPS button | `frontend/src/components/LocateControl.jsx` |
-| Offline queue | `frontend/src/services/offline.js` |
-| Service Worker | `frontend/public/sw.js` |
-
 ---
 
-## 14. Known Constraints & Notes
+## 13. Known Constraints & Notes
 
 - Auth API base URL is `/api/v1` through Nginx proxy in docker-compose.
 - Frontend `auth.js` uses `VITE_API_URL` or localhost fallback; keep aligned in envs.
 - Map tiles and attribution are hardcoded per-page; consistency is required.
-- Background Sync requires HTTPS in production.

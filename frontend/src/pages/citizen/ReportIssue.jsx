@@ -4,8 +4,6 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import api from '../../services/api'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Check, ArrowLeft, ArrowRight, Map as MapIcon, Loader2, Info, AlertCircle, Navigation } from 'lucide-react'
-import { useAuth } from '../../hooks/useAuth'
-import { offlineService } from '../../services/offline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 
@@ -45,7 +43,6 @@ export default function ReportIssue() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState(null)
   const navigate = useNavigate()
-  const { user } = useAuth()
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -67,7 +64,7 @@ export default function ReportIssue() {
   }, [geoPosition, position])
 
   useEffect(() => {
-    api.get('/admin/categories').then(res => setCategories(res.data)).catch(() => {
+    api.get('/categories').then(res => setCategories(res.data)).catch(() => {
         setCategories([
             {id: '1', name: 'Pothole'}, {id: '2', name: 'Drainage'}, {id: '3', name: 'Garbage'}
         ])
@@ -83,28 +80,22 @@ export default function ReportIssue() {
 
    const handleSubmit = async () => {
     setLoading(true)
-    const reportData = {
-        category_id: selectedCategory,
-        lat: position.lat, lng: position.lng,
-        reporter_email: user?.email, description, photo
-    }
 
     try {
-      if (!navigator.onLine) {
-          await offlineService.saveReport(reportData)
-          showToast('Offline: Report saved and will be synced.', 'info')
-          setTimeout(() => navigate('/citizen/my-reports'), 2000)
-      } else {
-          const formData = new FormData()
-          Object.keys(reportData).forEach(key => formData.append(key, reportData[key]))
-          await api.post('/issues/report', formData)
-          showToast('Successfully reported!', 'success')
-          setTimeout(() => navigate('/citizen/my-reports'), 2000)
+      const formData = new FormData()
+      formData.append('category_id', selectedCategory)
+      formData.append('lat', position.lat)
+      formData.append('lng', position.lng)
+      formData.append('photo', photo)
+      if (description) {
+        formData.append('description', description)
       }
-    } catch (err) {
-      showToast('Failed to submit. Saving locally...', 'error')
-      await offlineService.saveReport(reportData)
+
+      await api.post('/issues/report', formData)
+      showToast('Successfully reported!', 'success')
       setTimeout(() => navigate('/citizen/my-reports'), 2000)
+    } catch (err) {
+      showToast('Failed to submit report.', 'error')
     }
     setLoading(false)
   }

@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
+import hashlib
 from uuid import uuid4
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
@@ -37,7 +38,8 @@ def test_refresh_token_lifecycle(session: Session):
 
     # 2. Create Refresh Token
     token_str, db_token = AuthService.create_refresh_token(session, user.id)
-    assert db_token.token_hash == token_str
+    assert db_token.token_hash != token_str
+    assert db_token.token_lookup == hashlib.sha256(token_str.encode()).hexdigest()
     assert db_token.revoked_at is None
     assert db_token.user_id == user.id
 
@@ -47,10 +49,13 @@ def test_refresh_token_lifecycle(session: Session):
     # Verify Old Token Revoked
     session.refresh(db_token)
     assert db_token.revoked_at is not None
-    assert db_token.replaced_by == new_refresh_str
+    assert db_token.replaced_by is not None
+    assert db_token.replaced_by != new_refresh_str
 
     # Verify New Token
-    statement = select(RefreshToken).where(RefreshToken.token_hash == new_refresh_str)
+    statement = select(RefreshToken).where(
+        RefreshToken.token_lookup == hashlib.sha256(new_refresh_str.encode()).hexdigest()
+    )
     new_db_token = session.exec(statement).first()
     assert new_db_token is not None
     assert new_db_token.family_id == db_token.family_id
@@ -79,6 +84,8 @@ def test_breach_detection(session: Session):
     assert "Security breach detected" in excinfo.value.detail
 
     # 4. Verify B is now revoked (Victim locked out)
-    statement = select(RefreshToken).where(RefreshToken.token_hash == token_B_str)
+    statement = select(RefreshToken).where(
+        RefreshToken.token_lookup == hashlib.sha256(token_B_str.encode()).hexdigest()
+    )
     token_B = session.exec(statement).first()
     assert token_B.revoked_at is not None

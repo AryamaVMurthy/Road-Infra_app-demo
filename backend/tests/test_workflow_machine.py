@@ -15,9 +15,9 @@ Covers:
 import pytest
 from datetime import datetime, timedelta
 from uuid import uuid4
-from sqlmodel import Session, select
+from sqlmodel import Session, select, desc
 
-from app.models.domain import Category, User, Issue, AuditLog
+from app.models.domain import Category, User, Issue, AuditLog, Otp
 
 
 # ---------------------------------------------------------------------------
@@ -61,9 +61,17 @@ def _create_issue(session: Session, cat, reporter, status="REPORTED", worker=Non
     return issue
 
 
-def _login(client, email: str):
-    """Authenticate via the dev google-mock endpoint."""
-    resp = client.post(f"/api/v1/auth/google-mock?email={email}")
+def _login(client, session: Session, email: str):
+    """Authenticate using OTP request + login flow."""
+    client.post("/api/v1/auth/otp-request", json={"email": email})
+    otp = (
+        session.exec(
+            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+        )
+        .first()
+    )
+    assert otp is not None
+    resp = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
     assert resp.status_code == 200, f"Login failed for {email}: {resp.text}"
 
 
@@ -91,7 +99,7 @@ class TestGoldenPath:
         assert issue.worker_id is None
 
         # -- Step 2: Admin assigns → ASSIGNED --
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}"
         )
@@ -101,7 +109,7 @@ class TestGoldenPath:
         assert issue.worker_id == worker_a.id
 
         # -- Step 3: Worker accepts → ACCEPTED --
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 200
@@ -135,7 +143,7 @@ class TestGoldenPath:
         assert issue.resolved_at is not None
 
         # -- Step 6: Admin approves → CLOSED --
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(f"/api/v1/admin/approve?issue_id={issue.id}")
         assert resp.status_code == 200
         session.refresh(issue)
@@ -159,7 +167,7 @@ class TestAdminOperations:
         cat, citizen, admin, worker_a, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}"
         )
@@ -178,7 +186,7 @@ class TestAdminOperations:
         session.add(issue)
         session.commit()
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/reassign?issue_id={issue.id}&worker_id={worker_b.id}"
         )
@@ -193,7 +201,7 @@ class TestAdminOperations:
         cat, citizen, admin, worker_a, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(f"/api/v1/admin/unassign?issue_id={issue.id}")
         assert resp.status_code == 200
         session.refresh(issue)
@@ -209,7 +217,7 @@ class TestAdminOperations:
         session.add(issue)
         session.commit()
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         reason = "Photo does not match site"
         resp = client.post(f"/api/v1/admin/reject?issue_id={issue.id}&reason={reason}")
         assert resp.status_code == 200
@@ -222,7 +230,7 @@ class TestAdminOperations:
         cat, citizen, admin, worker_a, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="REPORTED")
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/update-status?issue_id={issue.id}&status=CLOSED"
         )
@@ -234,7 +242,7 @@ class TestAdminOperations:
         cat, citizen, admin, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/update-status?issue_id={issue.id}&status=FOOBAR"
         )
@@ -248,7 +256,7 @@ class TestAdminOperations:
 
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}"
         )
@@ -256,7 +264,7 @@ class TestAdminOperations:
 
     def test_assign_nonexistent_issue_fails(self, client, session):
         _seed(session)
-        _login(client, "admin@authority.gov.in")
+        _login(client, session, "admin@authority.gov.in")
         fake_id = uuid4()
         resp = client.post(
             f"/api/v1/admin/assign?issue_id={fake_id}&worker_id={fake_id}"
@@ -272,7 +280,7 @@ class TestAdminOperations:
             session, cat, citizen, status="ASSIGNED", worker=worker_a
         )
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             "/api/v1/admin/bulk-assign",
             json={
@@ -303,7 +311,7 @@ class TestWorkerOperations:
         cat, citizen, admin, worker_a, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         eta = (datetime.utcnow() + timedelta(hours=8)).isoformat() + "Z"
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 200
@@ -319,7 +327,7 @@ class TestWorkerOperations:
         session.add(issue)
         session.commit()
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/start")
         assert resp.status_code == 200
         session.refresh(issue)
@@ -331,7 +339,7 @@ class TestWorkerOperations:
             session, cat, citizen, status="IN_PROGRESS", worker=worker_a
         )
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
 
         from PIL import Image
         import io
@@ -360,7 +368,7 @@ class TestWorkerOperations:
             session, cat, citizen, status="ASSIGNED", worker=worker_b
         )
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         resp = client.get("/api/v1/worker/tasks")
         assert resp.status_code == 200
         task_ids = [t["id"] for t in resp.json()]
@@ -380,7 +388,7 @@ class TestWrongWorkerGuards:
         cat, citizen, admin, worker_a, worker_b, _ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
-        _login(client, worker_b.email)
+        _login(client, session, worker_b.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 404
@@ -389,7 +397,7 @@ class TestWrongWorkerGuards:
         cat, citizen, admin, worker_a, worker_b, _ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ACCEPTED", worker=worker_a)
 
-        _login(client, worker_b.email)
+        _login(client, session, worker_b.email)
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/start")
         assert resp.status_code == 404
 
@@ -399,7 +407,7 @@ class TestWrongWorkerGuards:
             session, cat, citizen, status="IN_PROGRESS", worker=worker_a
         )
 
-        _login(client, worker_b.email)
+        _login(client, session, worker_b.email)
 
         from PIL import Image
         import io
@@ -416,7 +424,7 @@ class TestWrongWorkerGuards:
 
     def test_nonexistent_task_returns_404(self, client, session):
         _seed(session)
-        _login(client, "worker_a@authority.gov.in")
+        _login(client, session, "worker_a@authority.gov.in")
         fake_id = uuid4()
         resp = client.post(f"/api/v1/worker/tasks/{fake_id}/start")
         assert resp.status_code == 404
@@ -438,14 +446,14 @@ class TestRejectReresolveCycle:
         session.commit()
 
         # Admin rejects
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(f"/api/v1/admin/reject?issue_id={issue.id}&reason=Bad photo")
         assert resp.status_code == 200
         session.refresh(issue)
         assert issue.status == "IN_PROGRESS"
 
         # Worker re-resolves
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
 
         from PIL import Image
         import io
@@ -463,7 +471,7 @@ class TestRejectReresolveCycle:
         assert issue.status == "RESOLVED"
 
         # Admin approves
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(f"/api/v1/admin/approve?issue_id={issue.id}")
         assert resp.status_code == 200
         session.refresh(issue)
@@ -488,7 +496,7 @@ class TestFieldIntegrity:
         session.add(issue)
         session.commit()
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(f"/api/v1/admin/unassign?issue_id={issue.id}")
         assert resp.status_code == 200
         session.refresh(issue)
@@ -505,7 +513,7 @@ class TestFieldIntegrity:
         session.add(issue)
         session.commit()
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/reassign?issue_id={issue.id}&worker_id={worker_b.id}"
         )
@@ -526,7 +534,7 @@ class TestPriority:
         cat, citizen, admin, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/update-priority?issue_id={issue.id}&priority=P1"
         )
@@ -539,7 +547,7 @@ class TestPriority:
         cat, citizen, admin, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/update-priority?issue_id={issue.id}&priority=CRITICAL"
         )

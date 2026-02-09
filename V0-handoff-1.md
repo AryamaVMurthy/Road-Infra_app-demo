@@ -2,7 +2,7 @@
 
 ## 1. System Architecture Overview
 
-MARG is a high-integrity, full-stack municipal infrastructure management system designed for scale, transparency, and offline resilience.
+MARG is a high-integrity, full-stack municipal infrastructure management system designed for scale and transparency.
 
 - **Frontend**: React 18, Vite, Tailwind CSS, Leaflet (Maps), Framer Motion (Animations).
 - **Backend**: FastAPI (Python), SQLModel (ORM), Pydantic (Validation).
@@ -16,11 +16,11 @@ MARG is a high-integrity, full-stack municipal infrastructure management system 
 
 ### Authentication Flow
 1. **OTP Request**: User submits email -> 6-digit OTP generated and stored in DB (valid for 10 mins).
-2. **Login/Verify**: User submits OTP -> JWT token issued containing `user_id` and `role`.
-3. **Session**: JWT stored in `localStorage` and sent in `Authorization: Bearer <token>` headers.
+2. **Login/Verify**: User submits OTP -> access + refresh tokens are issued as HttpOnly cookies.
+3. **Session**: Backend resolves identity from signed cookie token and applies RBAC checks server-side.
 
 ### Roles & Permissions
-Currently, roles are defined in the `User` model and enforced at the controller level:
+Roles are defined in the `User` model and enforced via backend RBAC dependencies (`require_admin_user`, `require_worker_user`, `require_citizen_user`):
 
 | Role | Scope | Key Capabilities |
 |------|-------|------------------|
@@ -35,8 +35,7 @@ Currently, roles are defined in the `User` model and enforced at the controller 
 
 ### 3.1 Authentication (`/auth`)
 - `POST /otp-request`: Generates OTP. In `DEV_MODE`, prints to console.
-- `POST /login`: Validates OTP and returns JWT.
-- `POST /google-mock`: (Dev Only) Instant login for any email to facilitate testing.
+- `POST /login`: Validates OTP and sets auth cookies.
 
 ### 3.2 Issue Management (`/issues`)
 - `POST /report`: The primary citizen entry point. 
@@ -77,11 +76,8 @@ The system uses **PostGIS** for all location-based logic:
 - `ST_SetSRID(ST_MakePoint(lng, lat), 4326)` for storage.
 - Spatial indexing for fast proximity searches (Deduplication).
 
-### 4.2 Offline Persistence (Worker Flow)
-Designed for workers in areas with poor connectivity:
-- **IndexedDB**: Resolutions are saved locally if the browser is offline.
-- **Service Workers**: Background sync mechanism attempts to push pending resolutions when a connection is restored.
-- **Visual Feedback**: "Pending Sync" indicators on tasks.
+### 4.2 Worker Resolution Persistence
+Worker resolution is now strictly online-only; offline queueing and service-worker sync paths have been removed from the frontend.
 
 ### 4.3 Audit Logging
 The `AuditService` automatically records every significant state change:

@@ -35,7 +35,6 @@ Covers:
 - Auth context/interceptor behavior
 - Login component behavior
 - Worker modal components
-- Offline service behavior
 
 ## 3) Frontend E2E (Playwright)
 
@@ -60,9 +59,8 @@ npx playwright test tests/lifecycle_golden_thread.spec.js --reporter=list
 
 ## Determinism Principles Used in E2E
 
-- Request-based login helper (`page.request.post('/api/v1/auth/google-mock...')`) to avoid OTP timing flake.
+- Request-based OTP login helper (`otp-request` -> DB OTP lookup -> `login`) to avoid UI timing flake.
 - Strict SQL helper output (`psql -qAt -v ON_ERROR_STOP=1`) for reliable DB assertions.
-- Service worker registration skipped during browser automation (`navigator.webdriver`) to reduce resource-race issues.
 
 ## Failure Triage Checklist
 

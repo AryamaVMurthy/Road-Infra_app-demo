@@ -1,8 +1,22 @@
 import pytest
 from app.models.domain import Category, User, Issue, AuditLog
-from sqlmodel import Session, select, col
+from sqlmodel import Session, select, col, desc
 from uuid import uuid4
 from datetime import datetime, timedelta
+from app.models.domain import Otp
+
+
+def _login(client, session: Session, email: str):
+    client.post("/api/v1/auth/otp-request", json={"email": email})
+    otp = (
+        session.exec(
+            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+        )
+        .first()
+    )
+    assert otp is not None
+    response = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
+    assert response.status_code == 200
 
 
 def test_sla_breach_detection_logic(session):
@@ -55,7 +69,7 @@ def test_bulk_assignment_rigor(client, session):
     for i in issues:
         session.refresh(i)
 
-    client.post("/api/v1/auth/google-mock?email=admin@authority.gov.in")
+    _login(client, session, "admin@authority.gov.in")
 
     issue_ids = [str(i.id) for i in issues]
     response = client.post(
@@ -98,7 +112,7 @@ def test_worker_deactivation_lifecycle(client, session):
     session.add(issue)
     session.commit()
 
-    client.post("/api/v1/auth/google-mock?email=sysadmin@test.com")
+    _login(client, session, "sysadmin@test.com")
 
     response = client.post(f"/api/v1/admin/deactivate-worker?worker_id={worker.id}")
     assert response.status_code == 200

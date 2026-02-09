@@ -2,6 +2,7 @@ import pytest
 from app.models.domain import Category, User, Issue, Otp
 from sqlmodel import Session, select
 import io
+from conftest import login_via_otp
 
 
 def test_root(client):
@@ -46,6 +47,7 @@ def test_report_issue_integration(client, session):
     session.add(reporter)
     session.commit()
     session.refresh(reporter)
+    login_via_otp(client, session, reporter.email)
 
     # Create a small valid JPEG in memory
     from PIL import Image
@@ -62,7 +64,6 @@ def test_report_issue_integration(client, session):
             "category_id": str(category.id),
             "lat": 17.4447,
             "lng": 78.3483,
-            "reporter_email": "reporter@example.com",
             "address": "Main Road",
         },
         files={"photo": ("test.jpg", file_content, "image/jpeg")},
@@ -87,6 +88,7 @@ def test_duplicate_report_integration(client, session):
     user = User(email="user@example.com", role="CITIZEN")
     session.add(user)
     session.commit()
+    login_via_otp(client, session, user.email)
 
     # Valid image content
     from PIL import Image
@@ -103,7 +105,6 @@ def test_duplicate_report_integration(client, session):
             "category_id": str(category.id),
             "lat": 17.4447,
             "lng": 78.3483,
-            "reporter_email": "user@example.com",
         },
         files={"photo": ("test1.jpg", file_content, "image/jpeg")},
     )
@@ -116,7 +117,6 @@ def test_duplicate_report_integration(client, session):
             "category_id": str(category.id),
             "lat": 17.444701,  # Extremely close
             "lng": 78.348301,
-            "reporter_email": "user@example.com",
         },
         files={"photo": ("test2.jpg", file_content, "image/jpeg")},
     )

@@ -16,9 +16,9 @@ Covers:
 import pytest
 from datetime import datetime, timedelta
 from uuid import uuid4
-from sqlmodel import Session, select
+from sqlmodel import Session, select, desc
 
-from app.models.domain import Category, User, Issue, AuditLog
+from app.models.domain import Category, User, Issue, AuditLog, Otp
 
 
 # ---------------------------------------------------------------------------
@@ -55,8 +55,16 @@ def _create_issue(session: Session, cat, reporter, status="REPORTED", worker=Non
     return issue
 
 
-def _login(client, email: str):
-    resp = client.post(f"/api/v1/auth/google-mock?email={email}")
+def _login(client, session: Session, email: str):
+    client.post("/api/v1/auth/otp-request", json={"email": email})
+    otp = (
+        session.exec(
+            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+        )
+        .first()
+    )
+    assert otp is not None
+    resp = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
     assert resp.status_code == 200
 
 
@@ -82,7 +90,7 @@ class TestAssignmentAudits:
         cat, citizen, admin, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}"
         )
@@ -105,7 +113,7 @@ class TestAssignmentAudits:
         cat, citizen, admin, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
         session.expire_all()
@@ -118,7 +126,7 @@ class TestAssignmentAudits:
         cat, citizen, admin, worker_a, worker_b = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/reassign?issue_id={issue.id}&worker_id={worker_b.id}"
         )
@@ -134,7 +142,7 @@ class TestAssignmentAudits:
         cat, citizen, admin, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(f"/api/v1/admin/unassign?issue_id={issue.id}")
         assert resp.status_code == 200
 
@@ -159,7 +167,7 @@ class TestStatusChangeAudits:
         cat, citizen, admin, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="REPORTED")
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/update-status?issue_id={issue.id}&status=CLOSED"
         )
@@ -175,7 +183,7 @@ class TestStatusChangeAudits:
         cat, citizen, admin, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="RESOLVED", worker=worker_a)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(f"/api/v1/admin/approve?issue_id={issue.id}")
         assert resp.status_code == 200
 
@@ -192,7 +200,7 @@ class TestStatusChangeAudits:
         session.add(issue)
         session.commit()
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(f"/api/v1/admin/reject?issue_id={issue.id}&reason=Bad photo")
         assert resp.status_code == 200
 
@@ -215,7 +223,7 @@ class TestWorkerAudits:
         cat, citizen, _, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 200
@@ -234,7 +242,7 @@ class TestWorkerAudits:
         session.add(issue)
         session.commit()
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/start")
         assert resp.status_code == 200
 
@@ -251,7 +259,7 @@ class TestWorkerAudits:
             session, cat, citizen, status="IN_PROGRESS", worker=worker_a
         )
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
 
         from PIL import Image
         import io
@@ -284,7 +292,7 @@ class TestPriorityAudits:
         cat, citizen, admin, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(
             f"/api/v1/admin/update-priority?issue_id={issue.id}&priority=P1"
         )
@@ -299,7 +307,7 @@ class TestPriorityAudits:
         cat, citizen, admin, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         client.post(f"/api/v1/admin/update-priority?issue_id={issue.id}&priority=P2")
 
         session.expire_all()
@@ -320,10 +328,10 @@ class TestAuditEndpoint:
         cat, citizen, admin, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
@@ -339,10 +347,10 @@ class TestAuditEndpoint:
         cat, citizen, admin, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
@@ -380,10 +388,10 @@ class TestGoldenPathAuditTrail:
         cat, citizen, admin, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
@@ -401,7 +409,7 @@ class TestGoldenPathAuditTrail:
             files={"photo": ("after.jpg", buf.getvalue(), "image/jpeg")},
         )
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         client.post(f"/api/v1/admin/approve?issue_id={issue.id}")
 
         session.expire_all()

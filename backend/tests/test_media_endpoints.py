@@ -16,9 +16,9 @@ import io
 from datetime import datetime, timedelta
 from uuid import uuid4
 from PIL import Image
-from sqlmodel import Session, select
+from sqlmodel import Session, select, desc
 
-from app.models.domain import Category, User, Issue, Evidence
+from app.models.domain import Category, User, Issue, Evidence, Otp
 from app.services.exif import ExifService
 
 
@@ -55,8 +55,16 @@ def _create_issue(session: Session, cat, reporter, status="REPORTED", worker=Non
     return issue
 
 
-def _login(client, email: str):
-    resp = client.post(f"/api/v1/auth/google-mock?email={email}")
+def _login(client, session: Session, email: str):
+    client.post("/api/v1/auth/otp-request", json={"email": email})
+    otp = (
+        session.exec(
+            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+        )
+        .first()
+    )
+    assert otp is not None
+    resp = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
     assert resp.status_code == 200
 
 
@@ -117,6 +125,7 @@ class TestEvidenceCreation:
     def test_report_creates_evidence_record(self, client, session):
         cat, citizen, _, _ = _seed(session)
         photo = _make_jpeg()
+        _login(client, session, citizen.email)
 
         resp = client.post(
             "/api/v1/issues/report",
@@ -124,7 +133,6 @@ class TestEvidenceCreation:
                 "category_id": str(cat.id),
                 "lat": "17.44",
                 "lng": "78.35",
-                "reporter_email": citizen.email,
             },
             files={"photo": ("test.jpg", photo, "image/jpeg")},
         )
@@ -146,7 +154,7 @@ class TestEvidenceCreation:
         cat, citizen, admin, worker = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker)
 
-        _login(client, worker.email)
+        _login(client, session, worker.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
@@ -180,6 +188,7 @@ class TestMediaEndpoint:
     def test_get_before_image_returns_jpeg(self, client, session):
         cat, citizen, _, _ = _seed(session)
         photo = _make_jpeg()
+        _login(client, session, citizen.email)
 
         # Report issue (creates REPORT evidence in MinIO)
         resp = client.post(
@@ -188,7 +197,6 @@ class TestMediaEndpoint:
                 "category_id": str(cat.id),
                 "lat": "17.44",
                 "lng": "78.35",
-                "reporter_email": citizen.email,
             },
             files={"photo": ("test.jpg", photo, "image/jpeg")},
         )
@@ -205,7 +213,7 @@ class TestMediaEndpoint:
         cat, citizen, admin, worker = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker)
 
-        _login(client, worker.email)
+        _login(client, session, worker.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
@@ -247,6 +255,7 @@ class TestEvidenceIntegrity:
     def test_duplicate_report_creates_additional_evidence(self, client, session):
         cat, citizen, _, _ = _seed(session)
         photo = _make_jpeg()
+        _login(client, session, citizen.email)
 
         resp1 = client.post(
             "/api/v1/issues/report",
@@ -254,7 +263,6 @@ class TestEvidenceIntegrity:
                 "category_id": str(cat.id),
                 "lat": "17.44",
                 "lng": "78.35",
-                "reporter_email": citizen.email,
             },
             files={"photo": ("test1.jpg", photo, "image/jpeg")},
         )
@@ -267,7 +275,6 @@ class TestEvidenceIntegrity:
                 "category_id": str(cat.id),
                 "lat": "17.44",
                 "lng": "78.35",
-                "reporter_email": citizen.email,
             },
             files={"photo": ("test2.jpg", photo, "image/jpeg")},
         )
@@ -290,7 +297,7 @@ class TestEvidenceIntegrity:
         cat, citizen, admin, worker = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker)
 
-        _login(client, worker.email)
+        _login(client, session, worker.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
@@ -302,11 +309,11 @@ class TestEvidenceIntegrity:
         )
         assert resp.status_code == 200
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.post(f"/api/v1/admin/reject?issue_id={issue.id}&reason=Bad photo")
         assert resp.status_code == 200
 
-        _login(client, worker.email)
+        _login(client, session, worker.email)
         photo2 = _make_jpeg(color=(0, 0, 255))
         resp = client.post(
             f"/api/v1/worker/tasks/{issue.id}/resolve",

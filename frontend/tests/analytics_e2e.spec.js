@@ -13,7 +13,7 @@ test.describe('City Analytics End-to-End', () => {
     await page.goto('/analytics', { waitUntil: 'domcontentloaded' })
 
     await expect(page.locator('h1')).toContainText('City Health Intelligence')
-    await expect(page.locator('.leaflet-container')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Geospatial Insights' })).toBeVisible()
     await expect(page.locator('.recharts-surface').first()).toBeVisible()
   })
 })

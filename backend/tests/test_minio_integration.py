@@ -6,6 +6,7 @@ from sqlmodel import select
 from app.core.config import settings
 from app.models.domain import Category, Evidence, Issue
 from app.services.minio_client import minio_client
+from conftest import login_via_otp
 
 
 def _make_test_image_bytes() -> bytes:
@@ -23,6 +24,7 @@ def test_report_issue_uploads_to_minio(client, session):
     session.add(category)
     session.commit()
     session.refresh(category)
+    login_via_otp(client, session, "storage@test.com")
 
     file_content = _make_test_image_bytes()
     response = client.post(
@@ -31,7 +33,6 @@ def test_report_issue_uploads_to_minio(client, session):
             "category_id": str(category.id),
             "lat": 17.4447,
             "lng": 78.3483,
-            "reporter_email": "storage@test.com",
             "address": "Storage Avenue",
         },
         files={"photo": ("test.jpg", file_content, "image/jpeg")},

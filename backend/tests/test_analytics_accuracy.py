@@ -17,9 +17,9 @@ Covers:
 import pytest
 from datetime import datetime, timedelta
 from uuid import uuid4
-from sqlmodel import Session, select
+from sqlmodel import Session, select, desc
 
-from app.models.domain import Category, User, Issue, AuditLog
+from app.models.domain import Category, User, Issue, AuditLog, Otp
 
 
 # ---------------------------------------------------------------------------
@@ -95,8 +95,16 @@ def _create_issue(
     return issue
 
 
-def _login(client, email: str):
-    resp = client.post(f"/api/v1/auth/google-mock?email={email}")
+def _login(client, session: Session, email: str):
+    client.post("/api/v1/auth/otp-request", json={"email": email})
+    otp = (
+        session.exec(
+            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+        )
+        .first()
+    )
+    assert otp is not None
+    resp = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
     assert resp.status_code == 200
 
 
@@ -295,11 +303,11 @@ class TestAuditEndpoint:
         issue = _create_issue(session, cat, citizen)
 
         # Assign
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
         # Accept
-        _login(client, worker_a.email)
+        _login(client, session, worker_a.email)
         eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
@@ -342,7 +350,7 @@ class TestDashboardStats:
         _create_issue(session, cat, citizen, status="RESOLVED", worker=worker_b)
         _create_issue(session, cat, citizen, status="CLOSED", worker=worker_b)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.get("/api/v1/admin/dashboard-stats")
         assert resp.status_code == 200
         data = resp.json()
@@ -357,7 +365,7 @@ class TestDashboardStats:
         _create_issue(session, cat, citizen, status="IN_PROGRESS", worker=worker_a)
         _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.get("/api/v1/admin/dashboard-stats")
         data = resp.json()
         # ASSIGNED + ACCEPTED + IN_PROGRESS = 3
@@ -381,7 +389,7 @@ class TestWorkersWithStats:
         # worker_b: 1 active task
         _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_b)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.get("/api/v1/admin/workers-with-stats")
         assert resp.status_code == 200
         data = resp.json()
@@ -399,7 +407,7 @@ class TestWorkersWithStats:
         _create_issue(session, cat, citizen, status="IN_PROGRESS", worker=worker_a)
         _create_issue(session, cat, citizen, status="CLOSED", worker=worker_a)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.get("/api/v1/admin/workers-with-stats")
         data = resp.json()
 
@@ -413,7 +421,7 @@ class TestWorkersWithStats:
         the service queries role=WORKER without filtering by status."""
         _, _, _, _, admin, _, _, worker_inactive = _seed(session)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.get("/api/v1/admin/workers-with-stats")
         data = resp.json()
         emails = [w["email"] for w in data]
@@ -439,7 +447,7 @@ class TestWorkerAnalytics:
         _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_b)
         _create_issue(session, cat, citizen, status="CLOSED", worker=worker_b)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.get("/api/v1/admin/worker-analytics")
         assert resp.status_code == 200
         data = resp.json()
@@ -461,7 +469,7 @@ class TestWorkerAnalytics:
         _create_issue(session, cat, citizen, status="ACCEPTED", worker=worker_a)
         _create_issue(session, cat, citizen, status="IN_PROGRESS", worker=worker_a)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.get("/api/v1/admin/worker-analytics")
         data = resp.json()
 
@@ -481,7 +489,7 @@ class TestWorkerAnalytics:
         session.add(issue)
         session.commit()
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.get("/api/v1/admin/worker-analytics")
         data = resp.json()
 
@@ -495,7 +503,7 @@ class TestWorkerAnalytics:
         # Only active tasks, nothing resolved
         _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
-        _login(client, admin.email)
+        _login(client, session, admin.email)
         resp = client.get("/api/v1/admin/worker-analytics")
         data = resp.json()
 

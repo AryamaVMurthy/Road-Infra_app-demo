@@ -3,6 +3,7 @@ import pytest
 from sqlmodel import SQLModel, create_engine, Session
 from fastapi.testclient import TestClient
 from sqlalchemy import text
+from sqlmodel import select, desc
 
 db_host = os.getenv("POSTGRES_SERVER", os.getenv("POSTGRES_HOST", "localhost"))
 db_name = os.getenv("POSTGRES_DB", "app_test")
@@ -40,6 +41,7 @@ from app.services.minio_client import init_minio
 
 # Ensure all domain models are imported so metadata.sorted_tables is populated
 import app.models.domain  # noqa: F401
+from app.models.domain import Otp
 
 
 @pytest.fixture(name="session")
@@ -92,3 +94,22 @@ def client_fixture(session: Session):
     yield client
     fastapi_app.dependency_overrides.pop(get_session, None)
     test_engine.dispose()
+
+
+def login_via_otp(client: TestClient, session: Session, email: str):
+    otp_request_response = client.post("/api/v1/auth/otp-request", json={"email": email})
+    assert otp_request_response.status_code == 200
+
+    otp = (
+        session.exec(
+            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+        )
+        .first()
+    )
+    assert otp is not None
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "otp": otp.code},
+    )
+    assert login_response.status_code == 200

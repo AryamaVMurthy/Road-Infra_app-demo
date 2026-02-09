@@ -125,3 +125,22 @@ def test_hsts_header_present(client: TestClient):
     response = client.get("/")
     assert "Strict-Transport-Security" in response.headers
     assert "max-age=31536000" in response.headers["Strict-Transport-Security"]
+
+
+def test_otp_single_use(client: TestClient, session: Session):
+    email = "singleuse@example.com"
+    otp = Otp(
+        email=email, code="222222", expires_at=datetime.utcnow() + timedelta(minutes=5)
+    )
+    session.add(otp)
+    session.commit()
+
+    first = client.post("/api/v1/auth/login", json={"email": email, "otp": "222222"})
+    assert first.status_code == 200
+
+    second = client.post("/api/v1/auth/login", json={"email": email, "otp": "222222"})
+    assert second.status_code == 400
+    assert second.json()["detail"] == "Invalid or expired OTP"
+
+    remaining = session.exec(select(Otp).where(Otp.email == email)).all()
+    assert remaining == []

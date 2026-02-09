@@ -30,15 +30,20 @@ async def request_otp(data: OTPRequest, session: Session = Depends(get_session))
 
 @router.post("/login")
 def login(response: Response, data: Login, session: Session = Depends(get_session)):
-    statement = (
-        select(Otp)
-        .where(Otp.email == data.email, Otp.code == data.otp)
-        .order_by(desc(Otp.created_at))
-    )
-    otp_record = session.exec(statement).first()
+    latest_otp_statement = select(Otp).where(Otp.email == data.email).order_by(desc(Otp.created_at))
+    otp_record = session.exec(latest_otp_statement).first()
 
-    if not otp_record or otp_record.expires_at < datetime.utcnow():
+    if (
+        not otp_record
+        or otp_record.code != data.otp
+        or otp_record.expires_at < datetime.utcnow()
+    ):
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
+    # Enforce one-time usage and invalidate any previous OTPs for this email.
+    otp_rows = session.exec(select(Otp).where(Otp.email == data.email)).all()
+    for row in otp_rows:
+        session.delete(row)
 
     statement = select(User).where(User.email == data.email)
     user = session.exec(statement).first()

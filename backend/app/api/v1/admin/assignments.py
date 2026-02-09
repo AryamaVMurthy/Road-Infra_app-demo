@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from app.db.session import get_session
-from app.api.deps import get_current_user
+from app.api.deps import require_admin_user
 from app.models.domain import User, Issue
 from app.schemas.admin import BulkAssignRequest
 from app.services.admin import AdminService
@@ -20,7 +20,7 @@ def assign_issue(
     issue_id: UUID,
     worker_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Assign an issue to a worker."""
     AdminService.assign_issue(session, issue_id, worker_id, current_user.id)
@@ -32,7 +32,7 @@ def assign_issue(
 def bulk_assign(
     data: BulkAssignRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Bulk assign multiple issues to a worker."""
     count = AdminService.bulk_assign(
@@ -47,7 +47,7 @@ def reassign_issue(
     issue_id: UUID,
     worker_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Reassign an issue to a different worker."""
     issue = AdminService.reassign_issue(session, issue_id, worker_id, current_user.id)
@@ -60,7 +60,7 @@ def reassign_issue(
 def unassign_issue(
     issue_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Remove worker assignment and reset issue to REPORTED."""
     issue = session.get(Issue, issue_id)

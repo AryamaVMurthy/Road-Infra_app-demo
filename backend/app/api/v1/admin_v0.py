@@ -6,7 +6,7 @@ from app.models.domain import Issue, User, Organization, Category, Invite
 from typing import List
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta
-from app.api.deps import get_current_user
+from app.api.deps import require_admin_user
 from app.services.audit import AuditService
 from app.services.admin import AdminService
 from app.schemas.admin import (
@@ -23,7 +23,7 @@ router = APIRouter()
 @router.get("/issues", response_model=List[IssueRead])
 def get_all_issues(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     # Eagerly load relationships for worker_name and category_name
     statement = select(Issue).options(
@@ -35,7 +35,7 @@ def get_all_issues(
 @router.get("/workers", response_model=List[User])
 def get_workers(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     return session.exec(select(User).where(User.role == "WORKER")).all()
 
@@ -43,7 +43,7 @@ def get_workers(
 @router.get("/workers-with-stats", response_model=List[WorkerWithStats])
 def get_workers_with_stats(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Get all workers with their current task counts for assignment dropdown"""
     workers = session.exec(select(User).where(User.role == "WORKER")).all()
@@ -90,7 +90,7 @@ def get_workers_with_stats(
 @router.get("/worker-analytics", response_model=WorkerAnalyticsResponse)
 def get_worker_analytics(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Get detailed worker analytics for dashboard"""
     workers = session.exec(select(User).where(User.role == "WORKER")).all()
@@ -215,7 +215,7 @@ def invite_worker(
     email: str,
     org_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     invite = Invite(
         email=email, org_id=org_id, status="INVITED", expires_at=uuid4()
@@ -232,7 +232,7 @@ def invite_worker(
 def deactivate_worker(
     worker_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     AdminService.deactivate_worker(session, worker_id, current_user.id)
     session.commit()
@@ -243,7 +243,7 @@ def deactivate_worker(
 def bulk_assign(
     data: BulkAssignRequest,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     count = AdminService.bulk_assign(
         session, data.issue_ids, data.worker_id, current_user.id
@@ -262,7 +262,7 @@ def assign_issue(
     issue_id: UUID,
     worker_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     issue = session.get(Issue, issue_id)
     if not issue:
@@ -288,7 +288,7 @@ def assign_issue(
 def approve_issue(
     issue_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     issue = session.get(Issue, issue_id)
     if not issue:
@@ -314,7 +314,7 @@ def reject_issue(
     issue_id: UUID,
     reason: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     issue = session.get(Issue, issue_id)
     if not issue:
@@ -351,7 +351,7 @@ def update_issue_status(
     issue_id: UUID,
     status: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     if status not in VALID_STATUSES:
         raise HTTPException(
@@ -401,7 +401,7 @@ def update_issue_status(
 def unassign_issue(
     issue_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     issue = session.get(Issue, issue_id)
     if not issue:
@@ -435,7 +435,7 @@ def reassign_issue(
     issue_id: UUID,
     worker_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     issue = session.get(Issue, issue_id)
     if not issue:

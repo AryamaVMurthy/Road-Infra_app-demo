@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 
 from app.db.session import get_session
-from app.api.deps import get_current_user
+from app.api.deps import require_admin_user
 from app.models.domain import User, Issue, Category
 from app.schemas.issue import IssueRead
 from app.services.workflow_service import WorkflowService
@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get("/issues", response_model=List[IssueRead])
 def get_all_issues(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Get all issues with eager loaded relationships"""
     statement = select(Issue).options(
@@ -32,7 +32,7 @@ def update_issue_status(
     issue_id: UUID,
     status: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Update issue status with proper workflow management"""
     issue = session.get(Issue, issue_id)
@@ -48,7 +48,7 @@ def update_issue_status(
 def approve_issue(
     issue_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Approve a resolved issue and close it"""
     issue = session.get(Issue, issue_id)
@@ -65,7 +65,7 @@ def reject_issue(
     issue_id: UUID,
     reason: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Reject a resolved issue and return it to worker"""
     issue = session.get(Issue, issue_id)
@@ -77,10 +77,9 @@ def reject_issue(
     return {"message": "Issue rejected and returned to worker"}
 
 
-@router.get("/categories")
 def get_categories(session: Session = Depends(get_session)):
     """Get all active issue categories"""
-    return session.exec(select(Category).where(Category.is_active == True)).all()
+    return session.exec(select(Category).where(Category.is_active.is_(True))).all()
 
 
 @router.post("/update-priority")
@@ -88,7 +87,7 @@ def update_issue_priority(
     issue_id: UUID,
     priority: str,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_user),
 ):
     """Update issue priority and audit the change."""
     if priority not in ["P1", "P2", "P3", "P4"]:

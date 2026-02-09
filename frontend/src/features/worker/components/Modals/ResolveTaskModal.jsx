@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Camera, X, Upload, WifiOff, Loader2, Calendar, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Camera, X, Upload, Loader2, Calendar, ArrowRight, ArrowLeft } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
 
 export const ResolveTaskModal = ({ 
@@ -9,7 +9,6 @@ export const ResolveTaskModal = ({
   onPhotoChange, 
   onSubmit, 
   onCancel,
-  isOnline,
   isResolving,
   etaDate,
   onEtaDateChange
@@ -92,15 +91,6 @@ export const ResolveTaskModal = ({
               <X size={18} />
             </button>
           </div>
-
-          {!isOnline && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 flex items-center gap-3">
-              <WifiOff size={18} className="text-amber-600 flex-shrink-0" />
-              <p className="text-xs sm:text-sm font-bold text-amber-700">
-                Offline mode - resolution will sync automatically
-              </p>
-            </div>
-          )}
 
           <AnimatePresence mode="wait">
             {step === 1 ? (
@@ -225,12 +215,12 @@ export const ResolveTaskModal = ({
                     {isResolving ? (
                       <>
                         <Loader2 size={18} className="animate-spin" />
-                        {isOnline ? 'Submitting...' : 'Saving offline...'}
+                        Submitting...
                       </>
                     ) : (
                       <>
                         <Upload size={18} />
-                        {isOnline ? 'Submit' : 'Save for Sync'}
+                        Submit
                       </>
                     )}
                   </button>

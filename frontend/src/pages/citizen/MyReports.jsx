@@ -85,11 +85,11 @@ export default function MyReports() {
   const { user } = useAuth()
 
   useEffect(() => {
-    if (user?.email) fetchReports()
+    if (user) fetchReports()
   }, [user])
 
   const fetchReports = () => {
-    api.get(`/issues/my-reports?email=${user.email}`)
+    api.get('/issues/my-reports')
       .then(res => setReports(res.data))
       .catch((err) => {
         console.error('Failed to fetch reports', err)

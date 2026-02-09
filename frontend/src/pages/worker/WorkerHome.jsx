@@ -12,8 +12,6 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { MapboxHeatmap } from '../../components/MapboxHeatmap'
 import { MapboxLocateControl } from '../../components/MapboxLocateControl'
 import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
-import { offlineService } from '../../services/offline'
-import { useWorkerOfflineSync } from '../../hooks/useWorkerOfflineSync'
 import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
 import { useWorkerTasks } from '../../hooks/useWorkerTasks'
 
@@ -21,7 +19,6 @@ import { TaskCard } from '../../features/worker/components/TaskList/TaskCard'
 import { AcceptTaskModal } from '../../features/worker/components/Modals/AcceptTaskModal'
 import { ResolveTaskModal } from '../../features/worker/components/Modals/ResolveTaskModal'
 import { Toast } from '../../features/common/components/Toast'
-import { OfflineBanner } from '../../features/common/components/OfflineBanner'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
@@ -32,8 +29,6 @@ export default function WorkerHome() {
   const [resolveTask, setResolveTask] = useState(null)
   const [eta, setEta] = useState('')
   const [resolveEtaDate, setResolveEtaDate] = useState('')
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
-  const [pendingResolutions, setPendingResolutions] = useState({})
   const [resolvePhoto, setResolvePhoto] = useState(null)
   const [isResolving, setIsResolving] = useState(false)
   const [toast, setToast] = useState(null)
@@ -53,51 +48,13 @@ export default function WorkerHome() {
 
   const { tasks, loading, fetchTasks } = useWorkerTasks(handleTaskFetchError)
 
-  const handleSyncComplete = useCallback((issueId, success) => {
-    setPendingResolutions(prev => {
-      const updated = { ...prev };
-      delete updated[issueId];
-      return updated;
-    });
-    if (success) {
-      showToast('Resolution synced successfully!', 'success');
-      fetchTasks();
-    } else {
-      showToast('Resolution sync failed', 'error');
-    }
-  }, [fetchTasks, showToast]);
-
-  const { pendingCount } = useWorkerOfflineSync(handleSyncComplete);
-
-  const loadPendingResolutions = useCallback(async () => {
-    try {
-      const pending = await offlineService.getPendingResolutions();
-      const pendingMap = {};
-      pending.forEach(r => { pendingMap[r.issueId] = true; });
-      setPendingResolutions(pendingMap);
-    } catch (err) {
-      showToast('Failed to load pending resolutions.', 'error')
-    }
-  }, [showToast]);
-
   useEffect(() => { 
-    loadPendingResolutions();
     api.get('/analytics/heatmap')
       .then(res => setHeatmapData(res.data))
       .catch(() => {
         showToast('Failed to load heatmap data.', 'error')
       });
-
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [fetchTasks, loadPendingResolutions, showToast]);
+  }, [showToast]);
 
   const handleAccept = async (taskId) => {
     try {
@@ -117,24 +74,6 @@ export default function WorkerHome() {
     
     setIsResolving(true);
 
-    if (!navigator.onLine) {
-      try {
-        await offlineService.saveResolution(resolveTask.id, resolvePhoto, {
-          category_name: resolveTask.category_name,
-          priority: resolveTask.priority,
-        });
-        setPendingResolutions(prev => ({ ...prev, [resolveTask.id]: true }));
-        showToast('Resolution saved offline. Will sync when connected.', 'info');
-        setResolveTask(null);
-        setResolvePhoto(null);
-        setResolveEtaDate('');
-      } catch (err) {
-        showToast('Failed to save offline resolution.', 'error');
-      }
-      setIsResolving(false);
-      return;
-    }
-
     try {
       const formData = new FormData();
       formData.append('photo', resolvePhoto);
@@ -153,8 +92,6 @@ export default function WorkerHome() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <OfflineBanner isOnline={isOnline} pendingCount={pendingCount} />
-
       <header className="px-8 py-10 bg-white/80 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-5">
            <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-primary/30">
@@ -163,9 +100,9 @@ export default function WorkerHome() {
            <div>
               <h1 className="text-xl font-black text-slate-900 leading-none tracking-tight">MARG</h1>
               <div className="flex items-center gap-2 mt-1.5">
-                <div className={cn("w-2 h-2 rounded-full", isOnline ? "bg-emerald-500" : "bg-amber-500")}></div>
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                 <p className="text-[10px] font-black text-slate-400 tracking-widest uppercase">
-                  Agent: {isOnline ? 'Online' : 'Offline'}
+                  Agent: Online
                 </p>
               </div>
            </div>
@@ -210,7 +147,6 @@ export default function WorkerHome() {
                           idx={idx} 
                           onSelect={setSelectedTask}
                           onResolve={setResolveTask}
-                          hasPendingSync={pendingResolutions[task.id]}
                         />
                     ))
                 )}
@@ -342,7 +278,6 @@ export default function WorkerHome() {
         onPhotoChange={setResolvePhoto}
         onSubmit={handleResolveSubmit}
         onCancel={() => { setResolveTask(null); setResolvePhoto(null); setResolveEtaDate(''); }}
-        isOnline={isOnline}
         isResolving={isResolving}
         etaDate={resolveEtaDate}
         onEtaDateChange={setResolveEtaDate}

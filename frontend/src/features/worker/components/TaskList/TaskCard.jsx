@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { MapPin, Navigation2, CloudOff, Camera, ArrowRight } from 'lucide-react'
+import { MapPin, Navigation2, Camera, ArrowRight } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
 
 /**
@@ -11,15 +11,13 @@ import { cn } from '../../../../utils/utils'
  * - Location information
  * - Status display
  * - Action buttons based on task status
- * - Pending sync indicator
  * 
  * @param {Object} task - Task data object
  * @param {number} idx - Index for animation delay
  * @param {Function} onSelect - Select task callback (for accepting)
  * @param {Function} onResolve - Resolve task callback
- * @param {boolean} hasPendingSync - Whether this task has pending offline sync
  */
-export const TaskCard = ({ task, idx, onSelect, onResolve, hasPendingSync }) => {
+export const TaskCard = ({ task, idx, onSelect, onResolve }) => {
   const isCritical = task.priority === 'P1'
   const isAssigned = task.status === 'ASSIGNED'
   const isInProgress = task.status === 'ACCEPTED' || task.status === 'IN_PROGRESS'
@@ -31,14 +29,6 @@ export const TaskCard = ({ task, idx, onSelect, onResolve, hasPendingSync }) => 
       transition={{ delay: idx * 0.05 }}
       className="bg-white rounded-[2.5rem] p-6 sm:p-8 border border-slate-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] relative overflow-hidden"
     >
-      {/* Pending Sync Badge */}
-      {hasPendingSync && (
-        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-full text-xs font-bold">
-          <CloudOff size={14} />
-          <span className="hidden sm:inline">Pending Sync</span>
-        </div>
-      )}
-      
       {/* Header */}
       <div className="flex justify-between items-start mb-4 sm:mb-6">
         <div className="space-y-2 sm:space-y-3 pr-16">
@@ -98,11 +88,10 @@ export const TaskCard = ({ task, idx, onSelect, onResolve, hasPendingSync }) => 
         ) : isInProgress ? (
           <ActionButton
             onClick={() => onResolve(task)}
-            disabled={hasPendingSync}
-            variant={hasPendingSync ? "warning" : "success"}
+            variant="success"
             icon={Camera}
           >
-            {hasPendingSync ? 'Awaiting Sync' : 'Resolve Task'}
+            Resolve Task
           </ActionButton>
         ) : (
           <div className="flex-1 py-4 sm:py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] font-black text-center text-sm sm:text-base">
@@ -112,7 +101,7 @@ export const TaskCard = ({ task, idx, onSelect, onResolve, hasPendingSync }) => 
       </div>
       
       {/* In Progress Indicator */}
-      {task.status === 'IN_PROGRESS' && !hasPendingSync && (
+      {task.status === 'IN_PROGRESS' && (
         <div className="absolute top-6 right-6 sm:top-8 sm:right-8">
           <span className="flex h-2.5 w-2.5 sm:h-3 sm:w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -147,8 +136,7 @@ const StatBox = ({ label, value, highlight = false }) => (
 const ActionButton = ({ onClick, disabled, variant, icon: Icon, children }) => {
   const variants = {
     primary: "bg-primary text-white shadow-xl shadow-primary/20 hover:bg-blue-700",
-    success: "bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700",
-    warning: "bg-amber-100 text-amber-600 cursor-not-allowed"
+    success: "bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700"
   }
 
   return (

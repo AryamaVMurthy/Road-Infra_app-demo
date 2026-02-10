@@ -9,7 +9,7 @@ from app.db.session import get_session
 from app.api.deps import require_admin_user
 from app.models.domain import User, Invite
 from app.schemas.admin import WorkerWithStats, BulkInviteRequest
-from app.services.analytics_service import AnalyticsService
+from app.services.analytics import AnalyticsService
 from app.services.worker_service import WorkerService
 from app.services.audit import AuditService
 from datetime import datetime, timedelta

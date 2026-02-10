@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session, select
+from sqlmodel import Session, select, col
 from app.db.session import get_session
 from app.api.deps import require_admin_user
 from app.models.domain import User, AuditLog, Issue
 from app.services.analytics import AnalyticsService
-from typing import List
+from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 
 router = APIRouter()
 
@@ -66,13 +67,28 @@ def get_entity_audit(entity_id: UUID, session: Session = Depends(get_session)):
 def get_all_audit_logs(
     limit: int = Query(default=200, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
+    action: Optional[str] = Query(default=None),
+    actor_id: Optional[UUID] = Query(default=None),
+    entity_id: Optional[UUID] = Query(default=None),
+    start_date: Optional[datetime] = Query(default=None),
+    end_date: Optional[datetime] = Query(default=None),
     session: Session = Depends(get_session),
     current_user: User = Depends(require_admin_user),
 ):
+    statement = select(AuditLog)
+
+    if action:
+        statement = statement.where(AuditLog.action == action)
+    if actor_id:
+        statement = statement.where(AuditLog.actor_id == actor_id)
+    if entity_id:
+        statement = statement.where(AuditLog.entity_id == entity_id)
+    if start_date:
+        statement = statement.where(AuditLog.created_at >= start_date)
+    if end_date:
+        statement = statement.where(AuditLog.created_at <= end_date)
+
     statement = (
-        select(AuditLog)
-        .order_by(AuditLog.created_at.desc())
-        .offset(offset)
-        .limit(limit)
+        statement.order_by(col(AuditLog.created_at).desc()).offset(offset).limit(limit)
     )
     return session.exec(statement).all()

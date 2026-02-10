@@ -20,7 +20,11 @@ test.describe('Sysadmin and Worker Onboarding Flows', () => {
     await nameInput.waitFor({ state: 'visible' })
     await nameInput.fill('Test Authority')
     
-    await page.getByRole('button', { name: 'Define Jurisdiction (Simulated)' }).click()
+    await page.evaluate(() => {
+        document.getElementById('btn-simulate-draw')?.click();
+    });
+    
+    await page.getByRole('button', { name: 'Confirm Jurisdiction Area' }).click()
     await expect(page.getByText('Jurisdiction Defined')).toBeVisible()
     
     await page.getByRole('button', { name: 'Register Authority' }).click()
@@ -60,8 +64,8 @@ test.describe('Sysadmin and Worker Onboarding Flows', () => {
     // Create
     await page.getByRole('button', { name: 'Create Category' }).first().click()
     await page.locator('input').filter({ hasText: '' }).nth(0).fill('Pothole V2')
-    await page.getByRole('button', { name: 'Create Category' }).last().click()
-    await expect(page.getByText('Pothole V2')).toBeVisible()
+    await page.locator('#btn-create-category-confirm').click()
+    await expect(page.getByRole('cell', { name: 'Pothole V2' })).toBeVisible({ timeout: 10000 })
     
     // Edit
     await page.locator('tr').filter({ hasText: 'Pothole V2' }).getByRole('button').first().click()

@@ -1,22 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useMap } from 'react-map-gl';
+import { useControl } from 'react-map-gl';
 import { Navigation } from 'lucide-react';
 import { renderToString } from 'react-dom/server';
 import mapboxgl from 'mapbox-gl';
 
-export function MapboxLocateControl({ onFound }) {
-  const { current: map } = useMap();
-  const [marker, setMarker] = useState(null);
-  const [circle, setCircle] = useState(null);
+class LocateControl {
+  constructor(onFound) {
+    this.onFound = onFound;
+  }
 
-  useEffect(() => {
-    if (!map) return;
+  onAdd(map) {
+    this._map = map;
+    this._container = document.createElement('div');
+    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+    this._container.style.margin = '10px';
 
-    // Create control container
-    const controlDiv = document.createElement('div');
-    controlDiv.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
-    controlDiv.style.margin = '10px';
-    
     const button = document.createElement('button');
     button.className = 'mapboxgl-ctrl-icon';
     button.type = 'button';
@@ -28,7 +25,7 @@ export function MapboxLocateControl({ onFound }) {
     button.style.alignItems = 'center';
     button.style.justifyContent = 'center';
     button.innerHTML = renderToString(<Navigation size={18} className="text-primary" />);
-    
+
     button.onclick = () => {
       if (!navigator.geolocation) {
         alert('Geolocation is not supported by your browser');
@@ -40,36 +37,26 @@ export function MapboxLocateControl({ onFound }) {
           const { latitude, longitude, accuracy } = position.coords;
           const lngLat = [longitude, latitude];
 
-          // Fly to location
-          map.flyTo({
+          this._map.flyTo({
             center: lngLat,
             zoom: 18,
             essential: true
           });
 
-          // Remove existing marker and circle
-          if (marker) {
-            marker.remove();
-          }
-          if (circle) {
-            if (map.getLayer('location-circle')) {
-              map.removeLayer('location-circle');
-            }
-            if (map.getSource('location-circle')) {
-              map.removeSource('location-circle');
-            }
-          }
+          if (this._marker) this._marker.remove();
+          
+          try {
+              if (this._map.getLayer('location-circle')) this._map.removeLayer('location-circle');
+              if (this._map.getSource('location-circle')) this._map.removeSource('location-circle');
+          } catch (e) {}
 
-          // Add marker
-          const newMarker = new mapboxgl.Marker()
+          this._marker = new mapboxgl.Marker()
             .setLngLat(lngLat)
             .setPopup(new mapboxgl.Popup().setHTML('<p>You are here</p>'))
-            .addTo(map);
+            .addTo(this._map);
           
-          newMarker.togglePopup();
-          setMarker(newMarker);
+          this._marker.togglePopup();
 
-          // Add accuracy circle
           const radiusInKm = accuracy / 1000;
           const points = 64;
           const coords = [];
@@ -84,7 +71,7 @@ export function MapboxLocateControl({ onFound }) {
           }
           coords.push(coords[0]);
 
-          map.addSource('location-circle', {
+          this._map.addSource('location-circle', {
             type: 'geojson',
             data: {
               type: 'Feature',
@@ -95,7 +82,7 @@ export function MapboxLocateControl({ onFound }) {
             }
           });
 
-          map.addLayer({
+          this._map.addLayer({
             id: 'location-circle',
             type: 'fill',
             source: 'location-circle',
@@ -105,8 +92,8 @@ export function MapboxLocateControl({ onFound }) {
             }
           });
 
-          if (onFound) {
-            onFound({ lat: latitude, lng: longitude });
+          if (this.onFound) {
+            this.onFound({ lat: latitude, lng: longitude });
           }
         },
         (error) => {
@@ -116,33 +103,20 @@ export function MapboxLocateControl({ onFound }) {
       );
     };
 
-    controlDiv.appendChild(button);
+    this._container.appendChild(button);
+    return this._container;
+  }
 
-    // Add control to map
-    const topRightControls = document.querySelector('.mapboxgl-ctrl-top-right');
-    if (topRightControls) {
-      topRightControls.appendChild(controlDiv);
+  onRemove() {
+    if (this._marker) this._marker.remove();
+    if (this._container && this._container.parentNode) {
+        this._container.parentNode.removeChild(this._container);
     }
+    this._map = undefined;
+  }
+}
 
-    return () => {
-      if (controlDiv && controlDiv.parentNode) {
-        controlDiv.parentNode.removeChild(controlDiv);
-      }
-      if (marker) {
-        marker.remove();
-      }
-      try {
-        if (map && map.getLayer && map.getLayer('location-circle')) {
-          map.removeLayer('location-circle');
-        }
-        if (map && map.getSource && map.getSource('location-circle')) {
-          map.removeSource('location-circle');
-        }
-      } catch (e) {
-        // Map might already be destroyed, ignore cleanup errors
-      }
-    };
-  }, [map, onFound]);
-
+export function MapboxLocateControl({ onFound }) {
+  useControl(() => new LocateControl(onFound), { position: 'top-right' });
   return null;
 }

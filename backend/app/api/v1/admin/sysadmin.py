@@ -15,7 +15,8 @@ from app.schemas.sysadmin import (
     CategoryRead,
 )
 from app.services.audit import AuditService
-from shapely.geometry import shape
+from shapely.geometry import shape, mapping
+from shapely.wkt import loads
 import json
 
 router = APIRouter()
@@ -27,7 +28,26 @@ def get_zones(
     current_user: User = Depends(require_sysadmin_user),
 ):
     """Retrieve all zones."""
-    return session.exec(select(Zone)).all()
+    zones = session.exec(select(Zone)).all()
+    result = []
+    for zone in zones:
+        geojson = None
+        if zone.boundary:
+            try:
+                geom = loads(zone.boundary_wkt)
+                geojson = mapping(geom)
+            except:
+                pass
+
+        result.append(
+            ZoneRead(
+                id=zone.id,
+                name=zone.name,
+                boundary_wkt=zone.boundary_wkt,
+                boundary_geojson=geojson,
+            )
+        )
+    return result
 
 
 @router.post("/zones", response_model=ZoneRead)
@@ -40,9 +60,44 @@ def create_zone(
     geom = shape(data.boundary_geojson)
     zone = Zone(name=data.name, boundary=geom.wkt)
     session.add(zone)
+
+    AuditService.log(
+        session, "CREATE_ZONE", "ZONE", zone.id, current_user.id, None, data.name
+    )
+
     session.commit()
     session.refresh(zone)
-    return zone
+
+    return ZoneRead(
+        id=zone.id,
+        name=zone.name,
+        boundary_wkt=zone.boundary_wkt,
+        boundary_geojson=mapping(geom),
+    )
+
+
+@router.post("/organizations", response_model=OrganizationRead)
+def create_organization(
+    data: OrganizationCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_sysadmin_user),
+):
+    """Create a new organization and link it to a zone."""
+    org = Organization(name=data.name, zone_id=data.zone_id)
+    session.add(org)
+
+    AuditService.log(
+        session, "CREATE_ORG", "ORGANIZATION", org.id, current_user.id, None, data.name
+    )
+
+    session.commit()
+    session.refresh(org)
+    return OrganizationRead(
+        id=org.id,
+        name=org.name,
+        zone_id=org.zone_id,
+        zone_name=org.zone.name if org.zone else None,
+    )
 
 
 @router.get("/organizations", response_model=List[OrganizationRead])
@@ -63,25 +118,6 @@ def get_organizations(
             )
         )
     return result
-
-
-@router.post("/organizations", response_model=OrganizationRead)
-def create_organization(
-    data: OrganizationCreate,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(require_sysadmin_user),
-):
-    """Create a new organization and link it to a zone."""
-    org = Organization(name=data.name, zone_id=data.zone_id)
-    session.add(org)
-    session.commit()
-    session.refresh(org)
-    return OrganizationRead(
-        id=org.id,
-        name=org.name,
-        zone_id=org.zone_id,
-        zone_name=org.zone.name if org.zone else None,
-    )
 
 
 @router.get("/categories", response_model=List[CategoryRead])

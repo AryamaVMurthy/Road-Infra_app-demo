@@ -17,6 +17,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { MapboxHeatmap } from '../components/MapboxHeatmap'
 import { MapboxLocateControl } from '../components/MapboxLocateControl'
 import { MapboxGeocoderControl } from '../components/MapboxGeocoder'
+import { InteractiveMap } from '../components/InteractiveMap'
 import { useGeolocation, DEFAULT_CENTER } from '../hooks/useGeolocation'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 
@@ -153,15 +154,12 @@ export default function AnalyticsDashboard() {
                     </div>
                 </div>
                 <div className="h-[500px] w-full rounded-[2.5rem] overflow-hidden border-8 border-slate-50 shadow-inner relative">
-                    <Map
+                    <InteractiveMap
                         initialViewState={{
                             longitude: userLocation[1],
                             latitude: userLocation[0],
                             zoom: 12
                         }}
-                        style={{ width: '100%', height: '100%' }}
-                        mapStyle="mapbox://styles/mapbox/streets-v12"
-                        mapboxAccessToken={MAPBOX_TOKEN}
                     >
                         {viewMode === 'heatmap' ? (
                             <MapboxHeatmap points={heatmapData} />
@@ -182,9 +180,7 @@ export default function AnalyticsDashboard() {
                                 </Marker>
                             ))
                         )}
-                        <MapboxLocateControl />
-                        <MapboxGeocoderControl mapboxAccessToken={MAPBOX_TOKEN} />
-                    </Map>
+                    </InteractiveMap>
                 </div>
             </motion.div>
 

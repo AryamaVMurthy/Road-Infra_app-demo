@@ -12,8 +12,9 @@ import Map, { Marker } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { EvidenceGallery } from '../../components/EvidenceGallery'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
+import { InteractiveMap } from '../../components/InteractiveMap'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -61,18 +62,17 @@ const TimelineItem = ({ log, isLast }) => (
 function ReportMap({ report }) {
     if (!report.lat || !report.lng) return null;
     return (
-        <Map
+        <InteractiveMap
             initialViewState={{
                 longitude: report.lng,
                 latitude: report.lat,
                 zoom: 16
             }}
-            style={{ width: '100%', height: '100%' }}
-            mapStyle="mapbox://styles/mapbox/streets-v12"
-            mapboxAccessToken={MAPBOX_TOKEN}
+            showGeocoder={false}
+            showLocate={false}
         >
             <Marker longitude={report.lng} latitude={report.lat} />
-        </Map>
+        </InteractiveMap>
     );
 }
 
@@ -198,7 +198,7 @@ export default function MyReports() {
                         <div className="flex-1 min-w-0 z-10">
                             <div className="flex flex-wrap items-center justify-between gap-6 mb-6">
                                 <div className="space-y-1">
-                                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Issue #{report.id.slice(0,8)}</h3>
+                                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Issue #{report.id?.slice(0,8) || 'Unknown'}</h3>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Verified Ticket</p>
                                 </div>
                                 <StatusBadge status={report.status} />
@@ -208,7 +208,7 @@ export default function MyReports() {
                                     <MapPin size={18} className="text-primary"/> {report.address || 'Location Confirmed'}
                                 </span>
                                 <span className="flex items-center gap-2.5 text-slate-500">
-                                    <Clock size={18}/> {new Date(report.created_at).toLocaleDateString()}
+                                    <Clock size={18}/> {report.created_at ? new Date(report.created_at).toLocaleDateString() : 'Date TBD'}
                                 </span>
                             </div>
                             
@@ -250,7 +250,7 @@ export default function MyReports() {
                                 </div>
                                 <div>
                                     <h3 className="text-3xl font-black text-slate-900 tracking-tight">Incident Intelligence</h3>
-                                    <p className="text-sm font-bold text-slate-400 tracking-[0.1em] uppercase">SYSTEM ID: {selectedReport.id}</p>
+                                    <p className="text-sm font-bold text-slate-400 tracking-[0.1em] uppercase">SYSTEM ID: {selectedReport.id || 'N/A'}</p>
                                 </div>
                             </div>
                             <button onClick={() => setSelectedReport(null)} className="w-14 h-14 rounded-3xl bg-slate-100 text-slate-500 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all shadow-inner">

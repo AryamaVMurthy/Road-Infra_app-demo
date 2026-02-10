@@ -13,6 +13,7 @@ class ZoneRead(BaseModel):
     id: UUID
     name: str
     boundary_wkt: str
+    boundary_geojson: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
 

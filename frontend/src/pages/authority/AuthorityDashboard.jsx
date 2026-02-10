@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom'
 import { MapboxHeatmap } from '../../components/MapboxHeatmap'
 import { MapboxLocateControl } from '../../components/MapboxLocateControl'
 import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
+import { InteractiveMap } from '../../components/InteractiveMap'
 import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
 
 import { SidebarItem } from '../../features/common/components/SidebarItem'
@@ -193,15 +194,12 @@ export default function AuthorityDashboard() {
                         </div>
                     </div>
                     <div className="flex-1 rounded-[3rem] overflow-hidden border-8 border-white shadow-2xl relative">
-                        <Map
+                        <InteractiveMap
                             initialViewState={{
                                 longitude: userLocation[1],
                                 latitude: userLocation[0],
                                 zoom: 14
                             }}
-                            style={{ width: '100%', height: '100%' }}
-                            mapStyle="mapbox://styles/mapbox/streets-v12"
-                            mapboxAccessToken={MAPBOX_TOKEN}
                         >
                             {mapMode === 'markers' ? (
                                 issues.map(issue => (
@@ -248,9 +246,7 @@ export default function AuthorityDashboard() {
                                     </Marker>
                                 ))
                             ) : ( <MapboxHeatmap points={heatmapData} /> )}
-                            <MapboxLocateControl />
-                            <MapboxGeocoderControl mapboxAccessToken={MAPBOX_TOKEN} />
-                        </Map>
+                        </InteractiveMap>
                     </div>
                 </motion.div>
             )}

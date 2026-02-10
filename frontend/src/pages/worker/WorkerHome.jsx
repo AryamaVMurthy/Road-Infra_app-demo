@@ -12,6 +12,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { MapboxHeatmap } from '../../components/MapboxHeatmap'
 import { MapboxLocateControl } from '../../components/MapboxLocateControl'
 import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
+import { InteractiveMap } from '../../components/InteractiveMap'
 import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
 import { useWorkerTasks } from '../../hooks/useWorkerTasks'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
@@ -179,20 +180,15 @@ export default function WorkerHome() {
                     <h2 className="text-3xl font-black text-slate-900">Workzone Map</h2>
                 </div>
                 <div className="h-full w-full rounded-[3rem] overflow-hidden border-8 border-white shadow-2xl relative">
-                    <Map
+                    <InteractiveMap
                         initialViewState={{
                             longitude: userLocation[1],
                             latitude: userLocation[0],
                             zoom: 12
                         }}
-                        style={{ width: '100%', height: '100%' }}
-                        mapStyle="mapbox://styles/mapbox/streets-v12"
-                        mapboxAccessToken={MAPBOX_TOKEN}
                     >
                         <MapboxHeatmap points={heatmapData} />
-                        <MapboxLocateControl />
-                        <MapboxGeocoderControl mapboxAccessToken={MAPBOX_TOKEN} />
-                    </Map>
+                    </InteractiveMap>
                 </div>
             </motion.div>
           ) : (

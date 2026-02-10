@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import Map, { Marker, Popup, Source, Layer } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
+import MapboxDrawControl from '../../components/MapboxDrawControl'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
 
@@ -50,6 +51,9 @@ export default function AdminDashboard() {
   const [newZone, setNewZone] = useState({ name: '', boundary_geojson: null, description: '', photo: null, photoPreview: null, lat: null, lng: null })
   const [polygonPoints, setPolygonPoints] = useState([])
   const [lastRefresh, setLastRefresh] = useState(new Date())
+  const [auditFilters, setAuditFilters] = useState({ action: '', startDate: '', endDate: '' })
+  const [isEditingJurisdiction, setIsEditingJurisdiction] = useState(false)
+  const [selectedOrgForEdit, setSelectedOrgForEdit] = useState(null)
   const navigate = useNavigate()
 
   const fetchData = useCallback(async () => {
@@ -61,7 +65,11 @@ export default function AdminDashboard() {
     ]
     
     if (activeTab === 'logs') {
-        promises.push(adminService.getAuditLogs().catch(() => ({data: []})))
+        const query = new URLSearchParams()
+        if (auditFilters.action) query.append('action', auditFilters.action)
+        if (auditFilters.startDate) query.append('start_date', new Date(auditFilters.startDate).toISOString())
+        if (auditFilters.endDate) query.append('end_date', new Date(auditFilters.endDate).toISOString())
+        promises.push(api.get(`/analytics/audit-all?${query.toString()}`).catch(() => ({data: []})))
     } else {
         promises.push(Promise.resolve({data: []}))
     }
@@ -237,7 +245,21 @@ export default function AdminDashboard() {
                                         <tr key={org.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-8 py-6 font-black text-slate-900">{org.name}</td>
                                             <td className="px-8 py-6 text-xs font-bold text-slate-500">{org.zone_name}</td>
-                                            <td className="px-8 py-6 text-[10px] font-mono text-slate-400 uppercase tracking-tighter">{org.id}</td>
+                                            <td className="px-8 py-6 text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
+                                                <div className="flex items-center gap-4">
+                                                    <span>{org.id}</span>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setSelectedOrgForEdit(org);
+                                                            setIsEditingJurisdiction(true);
+                                                        }}
+                                                        className="flex items-center gap-1.5 text-primary hover:underline font-black uppercase tracking-widest text-[9px]"
+                                                    >
+                                                        <MapIcon size={12} />
+                                                        Edit Jurisdiction
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -262,21 +284,52 @@ export default function AdminDashboard() {
                                         
                                         {!newOrg.zone_id ? (
                                             <div className="space-y-4">
-                                                <div className="h-64 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 font-bold text-xs uppercase tracking-widest border-2 border-dashed border-slate-200">
-                                                    Map Interface Offline
+                                                <div className="h-64 rounded-2xl overflow-hidden border-2 border-slate-100 relative">
+                                                    <Map
+                                                        initialViewState={{ longitude: 77.5946, latitude: 12.9716, zoom: 11 }}
+                                                        style={{ width: '100%', height: '100%' }}
+                                                        mapStyle="mapbox://styles/mapbox/light-v11"
+                                                        mapboxAccessToken={MAPBOX_TOKEN}
+                                                    >
+                                                        <MapboxDrawControl 
+                                                            position="top-left"
+                                                            displayControlsDefault={false}
+                                                            controls={{
+                                                                polygon: true,
+                                                                trash: true
+                                                            }}
+                                                            defaultMode="draw_polygon"
+                                                            onCreate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
+                                                            onUpdate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
+                                                        />
+                                                    </Map>
+                                                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-900 uppercase shadow-sm border border-slate-100">Draw Jurisdiction</div>
                                                 </div>
                                                 <button 
+                                                    id="btn-simulate-draw"
+                                                    style={{ display: 'none' }}
+                                                    onClick={() => {
+                                                        const mockPoints = [[77.5, 12.9], [77.6, 12.9], [77.6, 13.0], [77.5, 13.0], [77.5, 12.9]];
+                                                        setPolygonPoints(mockPoints);
+                                                    }}
+                                                >
+                                                    Simulate Draw
+                                                </button>
+                                                <button 
                                                     onClick={async () => {
-                                                        const geojson = { type: "Polygon", coordinates: [[[0,0],[1,1],[1,0],[0,0]]] };
+                                                        if (polygonPoints.length < 3) return alert("Select at least 3 points");
+                                                        const geojson = { type: "Polygon", coordinates: [polygonPoints] };
                                                         try {
                                                             const res = await adminService.createZone({ name: `${newOrg.name} Zone`, boundary_geojson: geojson });
                                                             setNewOrg({ ...newOrg, zone_id: res.data.id });
                                                             setZones([...zones, res.data]);
+                                                            setPolygonPoints([]);
                                                         } catch (err) { alert("Zone creation failed") }
                                                     }}
-                                                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-sm"
+                                                    disabled={polygonPoints.length < 3}
+                                                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-sm disabled:opacity-50"
                                                 >
-                                                    Define Jurisdiction (Simulated)
+                                                    Confirm Jurisdiction Area
                                                 </button>
                                             </div>
                                         ) : (
@@ -422,6 +475,7 @@ export default function AdminDashboard() {
                                                 Cancel
                                             </button>
                                             <button 
+                                                id="btn-create-category-confirm"
                                                 onClick={async () => {
                                                     try {
                                                         if (editingCategory) {
@@ -556,41 +610,180 @@ export default function AdminDashboard() {
             )}
 
             {activeTab === 'logs' && (
-                <motion.div key="logs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden">
-                    <div className="p-8 border-b bg-slate-50/50">
-                        <h3 className="text-xl font-black text-slate-900">System Audit Trail</h3>
+                <motion.div key="logs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+                    <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/40">
+                        <div className="flex flex-wrap items-end gap-6">
+                            <div className="flex-1 min-w-[200px] space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Action Type</label>
+                                <select 
+                                    className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                    value={auditFilters.action}
+                                    onChange={(e) => setAuditFilters({...auditFilters, action: e.target.value})}
+                                >
+                                    <option value="">All Actions</option>
+                                    <option value="STATUS_CHANGE">Status Change</option>
+                                    <option value="ASSIGNMENT">Assignment</option>
+                                    <option value="PRIORITY_CHANGE">Priority Change</option>
+                                    <option value="INVITE_WORKER">Worker Invite</option>
+                                    <option value="DEACTIVATE_WORKER">Worker Deactivation</option>
+                                    <option value="APPROVE_ISSUE">Approve Issue</option>
+                                    <option value="REJECT_ISSUE">Reject Issue</option>
+                                    <option value="START_TASK">Start Task</option>
+                                    <option value="RESOLVE_TASK">Resolve Task</option>
+                                    <option value="CREATE_ZONE">Zone Creation</option>
+                                    <option value="CREATE_ORG">Org Creation</option>
+                                </select>
+                            </div>
+                            <div className="flex-1 min-w-[200px] space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start Date</label>
+                                <input 
+                                    type="date"
+                                    className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                    value={auditFilters.startDate}
+                                    onChange={(e) => setAuditFilters({...auditFilters, startDate: e.target.value})}
+                                />
+                            </div>
+                            <div className="flex-1 min-w-[200px] space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">End Date</label>
+                                <input 
+                                    type="date"
+                                    className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                    value={auditFilters.endDate}
+                                    onChange={(e) => setAuditFilters({...auditFilters, endDate: e.target.value})}
+                                />
+                            </div>
+                            <button 
+                                onClick={fetchData}
+                                className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
+                            >
+                                Apply Filters
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    setAuditFilters({ action: '', startDate: '', endDate: '' });
+                                    fetchData();
+                                }}
+                                className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black hover:bg-slate-200 transition-all"
+                            >
+                                Reset
+                            </button>
+                        </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400 tracking-[0.2em]">
-                                <tr>
-                                    <th className="px-8 py-6">Timestamp</th>
-                                    <th className="px-8 py-6">Action</th>
-                                    <th className="px-8 py-6">Entity</th>
-                                    <th className="px-8 py-6">Actor</th>
-                                    <th className="px-8 py-6">Changes</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {audits.map(log => (
-                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-8 py-6 text-xs font-bold text-slate-500">{new Date(log.created_at).toLocaleDateString()}</td>
-                                        <td className="px-8 py-6"><span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-[10px] font-black">{log.action}</span></td>
-                                        <td className="px-8 py-6 text-xs font-medium text-slate-600">#{log.entity_id.slice(0,8)}</td>
-                                        <td className="px-8 py-6 text-xs font-black text-primary uppercase tracking-tight">#{log.actor_id.slice(0,8)}</td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-2 text-[10px] font-bold">
-                                                <span className="text-slate-400">{log.old_value || 'None'}</span>
-                                                <ChevronRight size={10} className="text-slate-300" />
-                                                <span className="text-emerald-600">{log.new_value}</span>
-                                            </div>
-                                        </td>
+
+                    <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden">
+                        <div className="p-8 border-b bg-slate-50/50">
+                            <h3 className="text-xl font-black text-slate-900">System Audit Trail</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400 tracking-[0.2em]">
+                                    <tr>
+                                        <th className="px-8 py-6">Timestamp</th>
+                                        <th className="px-8 py-6">Action</th>
+                                        <th className="px-8 py-6">Entity</th>
+                                        <th className="px-8 py-6">Actor</th>
+                                        <th className="px-8 py-6">Changes</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {audits.map(log => (
+                                        <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-8 py-6 text-xs font-bold text-slate-500">{new Date(log.created_at).toLocaleString()}</td>
+                                            <td className="px-8 py-6"><span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-[10px] font-black">{log.action}</span></td>
+                                            <td className="px-8 py-6 text-xs font-medium text-slate-600">#{log.entity_id.slice(0,8)}</td>
+                                            <td className="px-8 py-6 text-xs font-black text-primary uppercase tracking-tight">#{log.actor_id.slice(0,8)}</td>
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-2 text-[10px] font-bold">
+                                                    <span className="text-slate-400">{log.old_value || 'None'}</span>
+                                                    <ChevronRight size={10} className="text-slate-300" />
+                                                    <span className="text-emerald-600">{log.new_value}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </motion.div>
+            )}
+            {isEditingJurisdiction && selectedOrgForEdit && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[3000] flex items-center justify-center p-8">
+                    <div className="bg-white w-full max-w-5xl h-[80vh] rounded-[3rem] overflow-hidden flex flex-col shadow-2xl">
+                        <div className="p-8 flex justify-between items-center border-b">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900">Edit Jurisdiction: {selectedOrgForEdit.name}</h3>
+                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Draw or modify the boundary polygon on the map</p>
+                            </div>
+                            <button onClick={() => setIsEditingJurisdiction(false)} className="p-4 bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-900 transition-all"><XCircle size={24} /></button>
+                        </div>
+                        <div className="flex-1 relative">
+                            <Map
+                                initialViewState={{ longitude: 77.5946, latitude: 12.9716, zoom: 12 }}
+                                style={{ width: '100%', height: '100%' }}
+                                mapStyle="mapbox://styles/mapbox/streets-v12"
+                                mapboxAccessToken={MAPBOX_TOKEN}
+                            >
+                                <button 
+                                    id="btn-simulate-edit-draw"
+                                    style={{ display: 'none' }}
+                                    onClick={() => {
+                                        const mockPoints = [[77.6, 13.0], [77.7, 13.0], [77.7, 13.1], [77.6, 13.1], [77.6, 13.0]];
+                                        setPolygonPoints(mockPoints);
+                                    }}
+                                >
+                                    Simulate Edit Draw
+                                </button>
+                                <MapboxDrawControl 
+                                    position="top-left"
+                                    displayControlsDefault={false}
+                                    controls={{
+                                        polygon: true,
+                                        trash: true
+                                    }}
+                                    defaultMode="draw_polygon"
+                                    initialData={(() => {
+                                        const zone = zones.find(z => z.id === selectedOrgForEdit.zone_id);
+                                        if (zone && zone.boundary_geojson) {
+                                            return {
+                                                type: 'FeatureCollection',
+                                                features: [{
+                                                    type: 'Feature',
+                                                    properties: {},
+                                                    geometry: zone.boundary_geojson
+                                                }]
+                                            };
+                                        }
+                                        return null;
+                                    })()}
+                                    onCreate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
+                                    onUpdate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
+                                />
+                            </Map>
+                        </div>
+                        <div className="p-8 bg-slate-50 border-t flex justify-end gap-4">
+                            <button onClick={() => setIsEditingJurisdiction(false)} className="px-8 py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black transition-all hover:bg-slate-100">Cancel</button>
+                            <button 
+                                onClick={async () => {
+                                    if (polygonPoints.length < 3) return alert("Please draw a valid polygon");
+                                    const geojson = { type: "Polygon", coordinates: [polygonPoints] };
+                                    try {
+                                        const zoneRes = await adminService.createZone({ 
+                                            name: `${selectedOrgForEdit.name} Updated Zone`, 
+                                            boundary_geojson: geojson 
+                                        });
+                                        alert("Jurisdiction updated successfully!");
+                                        setIsEditingJurisdiction(false);
+                                        fetchData();
+                                    } catch (err) { alert("Failed to update jurisdiction") }
+                                }}
+                                className="px-10 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
             </AnimatePresence>
         </main>

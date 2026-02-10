@@ -9,6 +9,7 @@ import { cn } from '../../utils/utils'
 
 import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
 import { MapboxLocateControl } from '../../components/MapboxLocateControl'
+import { InteractiveMap } from '../../components/InteractiveMap'
 import { useGeolocation } from '../../hooks/useGeolocation'
 
 import { Toast } from '../../features/common/components/Toast'
@@ -140,24 +141,17 @@ export default function ReportIssue() {
                       <p className="text-slate-400 text-sm mt-1">Please allow location access when prompted</p>
                     </div>
                   ) : position ? (
-                    <Map
+                    <InteractiveMap
                       initialViewState={{
                         longitude: position.lng,
                         latitude: position.lat,
                         zoom: 17
                       }}
-                      style={{ width: '100%', height: '100%' }}
-                      mapStyle="mapbox://styles/mapbox/streets-v12"
-                      mapboxAccessToken={MAPBOX_TOKEN}
+                      onLocationSelect={(latlng) => setPosition(latlng)}
                       onClick={(e) => setPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
                     >
                       <Marker longitude={position.lng} latitude={position.lat} />
-                      <MapboxGeocoderControl 
-                        mapboxAccessToken={MAPBOX_TOKEN} 
-                        onFound={(latlng) => setPosition(latlng)}
-                      />
-                      <MapboxLocateControl onFound={(latlng) => setPosition(latlng)} />
-                    </Map>
+                    </InteractiveMap>
                   ) : (
                     <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
                       <AlertCircle className="text-slate-400 mb-4" size={40} />

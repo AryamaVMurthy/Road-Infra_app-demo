@@ -117,4 +117,28 @@ describe('Auth Interceptor', () => {
 
     window.location = originalLocation;
   });
+
+  it('should not redirect to login when refresh fails with server error', async () => {
+    await import('../services/api');
+
+    const responseInterceptorFail = currentMock.interceptors.response.use.mock.calls[0][1];
+
+    const originalRequest = { url: '/auth/me', _retry: false };
+    const error = {
+      response: { status: 401 },
+      config: originalRequest
+    };
+
+    const refreshError = { response: { status: 500 } };
+    currentMock.post.mockRejectedValueOnce(refreshError);
+
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { href: '/authority', pathname: '/authority' };
+
+    await expect(responseInterceptorFail(error)).rejects.toBe(refreshError);
+    expect(window.location.href).toBe('/authority');
+
+    window.location = originalLocation;
+  });
 });

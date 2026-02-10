@@ -3,13 +3,14 @@ import api from '../../services/api'
 import { 
     Settings, Shield, Globe, Activity, Database, LogOut, 
     TrendingUp, Users, AlertTriangle, CheckCircle, 
-    ChevronRight, ArrowRight
+    ChevronRight, ArrowRight, RefreshCw
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useNavigate } from 'react-router-dom'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 
 const AdminStat = ({ label, value, trend, icon: Icon, color }) => (
     <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group">
@@ -33,9 +34,10 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const [data, setData] = useState(null)
   const [audits, setAudits] = useState([])
+  const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
 
-  const fetchAdminData = useCallback(() => {
+  const fetchAdminData = useCallback(async () => {
     const promises = [
       api.get('/admin/issues'),
       api.get('/admin/workers'),
@@ -48,17 +50,21 @@ export default function AdminDashboard() {
         promises.push(Promise.resolve({data: []}))
     }
 
-    Promise.all(promises).then(([, , statsRes, auditRes]) => {
+    try {
+      const [, , statsRes, auditRes] = await Promise.all(promises)
       setData(statsRes.data)
       setAudits(auditRes.data)
-    }).catch((err) => {
+      setLastRefresh(new Date())
+    } catch (err) {
       console.error('Failed to fetch admin data', err)
-    })
+    }
   }, [activeTab])
 
   useEffect(() => {
     fetchAdminData()
   }, [fetchAdminData])
+
+  useAutoRefresh(fetchAdminData, { intervalMs: 30000, runOnMount: false })
 
   const stats = [
     { name: 'Total Issues', value: data?.summary.reported || 0, color: 'bg-rose-500', icon: AlertTriangle },
@@ -107,6 +113,10 @@ export default function AdminDashboard() {
                 <h2 className="text-3xl font-black text-slate-900 tracking-tight capitalize">{activeTab.replace('-', ' ')}</h2>
             </div>
             <div className="flex items-center gap-4 pl-6 border-l border-slate-200">
+                <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl text-xs font-bold text-slate-500 border border-slate-100">
+                    <RefreshCw size={12} />
+                    <span>Synced {lastRefresh.toLocaleTimeString()}</span>
+                </div>
                 <div className="text-right">
                     <p className="text-sm font-black text-slate-900">Chief Officer</p>
                     <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Verified Node</p>

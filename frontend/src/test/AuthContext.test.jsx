@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthProvider, useAuth } from '../hooks/useAuth';
 import { render, screen, waitFor, act } from '@testing-library/react';
-import React from 'react';
 import { authService } from '../services/auth';
 
 vi.mock('../services/auth', () => ({
@@ -14,7 +13,7 @@ vi.mock('../services/auth', () => ({
 }));
 
 const TestComponent = () => {
-  const { user, loading, login, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   if (loading) return <div>Loading...</div>;
   if (!user) return <div>Guest</div>;
   return (
@@ -54,6 +53,25 @@ describe('AuthContext', () => {
     );
 
     await waitFor(() => expect(screen.getByText('hydrated@test.com')).toBeDefined());
+  });
+
+  it('should retry hydration on transient error before logging out', async () => {
+    const mockUser = { email: 'retry@test.com', role: 'ADMIN' };
+    authService.getCurrentUser.mockRejectedValueOnce(new Error('Network Error'));
+    authService.getCurrentUser.mockResolvedValueOnce(mockUser);
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(
+      () => expect(screen.getByText('retry@test.com')).toBeDefined(),
+      { timeout: 3000 }
+    );
+
+    expect(authService.getCurrentUser).toHaveBeenCalledTimes(2);
   });
 
   it('should update state after successful login', async () => {

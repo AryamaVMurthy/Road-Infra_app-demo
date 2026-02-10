@@ -1,7 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/auth';
 
 const AuthContext = createContext();
+const RETRY_DELAYS_MS = [250, 500];
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -9,8 +12,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, otp) => {
     await authService.login(email, otp);
-    const userData = await authService.getCurrentUser();
-    setUser(userData);
+    const userData = await refreshUser();
     return userData;
   };
 
@@ -20,14 +22,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   const refreshUser = async () => {
-    try {
-      const userData = await authService.getCurrentUser();
-      setUser(userData);
-      return userData;
-    } catch (error) {
-      setUser(null);
-      return null;
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+      try {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+        return userData;
+      } catch (error) {
+        if (attempt >= RETRY_DELAYS_MS.length) {
+          setUser(null);
+          return null;
+        }
+        await wait(RETRY_DELAYS_MS[attempt]);
+      }
     }
+
+    setUser(null);
+    return null;
   };
 
   useEffect(() => {

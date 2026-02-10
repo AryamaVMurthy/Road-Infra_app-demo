@@ -67,7 +67,10 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         processQueue(err, null);
-        if (shouldRedirectToLogin()) {
+        const refreshStatus = err?.response?.status;
+        const shouldForceLogin = refreshStatus === 401 || refreshStatus === 403;
+
+        if (shouldForceLogin && shouldRedirectToLogin()) {
           window.location.href = '/login';
         }
         return Promise.reject(err);

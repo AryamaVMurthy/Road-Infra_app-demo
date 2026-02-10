@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api, { API_URL } from '../../services/api'
 import { useAuth } from '../../hooks/useAuth'
 import { 
@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import Map, { Marker } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { EvidenceGallery } from '../../components/EvidenceGallery'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
@@ -81,21 +82,38 @@ export default function MyReports() {
   const [selectedReport, setSelectedReport] = useState(null)
   const [auditLogs, setAuditLogs] = useState([])
   const [loadingAudit, setLoadingAudit] = useState(false)
+  const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
   const { user } = useAuth()
 
   useEffect(() => {
-    if (user) fetchReports()
-  }, [user])
+    if (user) {
+      fetchReports({ showLoader: true })
+    }
+  }, [user, fetchReports])
 
-  const fetchReports = () => {
+  const fetchReports = useCallback(async ({ showLoader = false } = {}) => {
+    if (showLoader) {
+      setLoading(true)
+    }
+
     api.get('/issues/my-reports')
       .then(res => setReports(res.data))
       .catch((err) => {
         console.error('Failed to fetch reports', err)
       })
-      .finally(() => setLoading(false))
-  }
+      .finally(() => {
+        setLastRefresh(new Date())
+        if (showLoader) {
+          setLoading(false)
+        }
+      })
+  }, [])
+
+  useAutoRefresh(
+    () => fetchReports({ showLoader: false }),
+    { intervalMs: 45000, enabled: Boolean(user), runOnMount: false }
+  )
 
   const handleViewDetails = async (report) => {
     setSelectedReport(report)
@@ -122,7 +140,10 @@ export default function MyReports() {
             </div>
             <h1 className="text-xl font-black tracking-tight text-slate-900">Infrastructure Portal</h1>
         </div>
-        <div className="w-24"></div>
+        <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl text-xs font-bold text-slate-500 border border-slate-100">
+            <Clock size={12} />
+            <span>Synced {lastRefresh.toLocaleTimeString()}</span>
+        </div>
       </header>
 
       <main className="flex-1 max-w-4xl mx-auto w-full p-8 pb-32">

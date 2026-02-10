@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useMap } from 'react-map-gl';
 import { Navigation } from 'lucide-react';
 import { renderToString } from 'react-dom/server';
@@ -6,11 +6,10 @@ import mapboxgl from 'mapbox-gl';
 
 export function MapboxLocateControl({ onFound }) {
   const { current: map } = useMap();
-  const [marker, setMarker] = useState(null);
-  const [circle, setCircle] = useState(null);
 
   useEffect(() => {
     if (!map) return;
+    let marker = null;
 
     // Create control container
     const controlDiv = document.createElement('div');
@@ -51,23 +50,20 @@ export function MapboxLocateControl({ onFound }) {
           if (marker) {
             marker.remove();
           }
-          if (circle) {
-            if (map.getLayer('location-circle')) {
-              map.removeLayer('location-circle');
-            }
-            if (map.getSource('location-circle')) {
-              map.removeSource('location-circle');
-            }
+          if (map.getLayer('location-circle')) {
+            map.removeLayer('location-circle');
+          }
+          if (map.getSource('location-circle')) {
+            map.removeSource('location-circle');
           }
 
           // Add marker
-          const newMarker = new mapboxgl.Marker()
+          marker = new mapboxgl.Marker()
             .setLngLat(lngLat)
             .setPopup(new mapboxgl.Popup().setHTML('<p>You are here</p>'))
             .addTo(map);
           
-          newMarker.togglePopup();
-          setMarker(newMarker);
+          marker.togglePopup();
 
           // Add accuracy circle
           const radiusInKm = accuracy / 1000;
@@ -119,7 +115,9 @@ export function MapboxLocateControl({ onFound }) {
     controlDiv.appendChild(button);
 
     // Add control to map
-    const topRightControls = document.querySelector('.mapboxgl-ctrl-top-right');
+    const topRightControls = map
+      .getContainer()
+      .querySelector('.mapboxgl-ctrl-top-right');
     if (topRightControls) {
       topRightControls.appendChild(controlDiv);
     }

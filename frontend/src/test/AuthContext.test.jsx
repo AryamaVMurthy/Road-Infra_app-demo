@@ -14,7 +14,7 @@ vi.mock('../services/auth', () => ({
 }));
 
 const TestComponent = () => {
-  const { user, loading, login, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   if (loading) return <div>Loading...</div>;
   if (!user) return <div>Guest</div>;
   return (

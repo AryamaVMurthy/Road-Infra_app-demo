@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from app.db.session import get_session
 from app.api.deps import require_admin_user
 from app.models.domain import User, AuditLog, Issue
-from app.services.analytics import AnalyticsService
+from app.services.public_analytics_service import PublicAnalyticsService
 from typing import List
 from uuid import UUID
 
@@ -15,7 +15,7 @@ def get_heatmap(
     session: Session = Depends(get_session),
 ):
     """Public endpoint - returns heatmap data for all issues"""
-    return AnalyticsService.get_heatmap_data(session)
+    return PublicAnalyticsService.get_heatmap_data(session)
 
 
 @router.get("/stats")
@@ -23,7 +23,7 @@ def get_global_stats(
     session: Session = Depends(get_session),
 ):
     """Public endpoint - returns aggregate statistics"""
-    return AnalyticsService.get_global_stats(session)
+    return PublicAnalyticsService.get_global_stats(session)
 
 
 @router.get("/issues-public")
@@ -59,7 +59,7 @@ def get_public_issues(
 @router.get("/audit/{entity_id}", response_model=List[AuditLog])
 def get_entity_audit(entity_id: UUID, session: Session = Depends(get_session)):
     # Anyone can see the audit trail for an issue they have access to
-    return AnalyticsService.get_audit_trail(session, entity_id)
+    return PublicAnalyticsService.get_audit_trail(session, entity_id)
 
 
 @router.get("/audit-all", response_model=List[AuditLog])

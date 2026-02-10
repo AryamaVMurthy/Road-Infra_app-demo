@@ -1,19 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import Map, { Marker } from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import React, { useState, useEffect } from 'react'
+import { Marker } from 'react-map-gl'
 import api from '../../services/api'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Check, ArrowLeft, ArrowRight, Map as MapIcon, Loader2, Info, AlertCircle, Navigation } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 
-import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
-import { MapboxLocateControl } from '../../components/MapboxLocateControl'
+import { BaseMap } from '../../components/BaseMap'
+import { MapControls } from '../../components/MapControls'
 import { useGeolocation } from '../../hooks/useGeolocation'
 
 import { Toast } from '../../features/common/components/Toast'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
 const StepIndicator = ({ step }) => (
     <div className="flex items-center gap-2 mb-10">
@@ -140,24 +137,17 @@ export default function ReportIssue() {
                       <p className="text-slate-400 text-sm mt-1">Please allow location access when prompted</p>
                     </div>
                   ) : position ? (
-                    <Map
+                    <BaseMap
                       initialViewState={{
                         longitude: position.lng,
                         latitude: position.lat,
                         zoom: 17
                       }}
-                      style={{ width: '100%', height: '100%' }}
-                      mapStyle="mapbox://styles/mapbox/streets-v12"
-                      mapboxAccessToken={MAPBOX_TOKEN}
                       onClick={(e) => setPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
                     >
                       <Marker longitude={position.lng} latitude={position.lat} />
-                      <MapboxGeocoderControl 
-                        mapboxAccessToken={MAPBOX_TOKEN} 
-                        onFound={(latlng) => setPosition(latlng)}
-                      />
-                      <MapboxLocateControl onFound={(latlng) => setPosition(latlng)} />
-                    </Map>
+                      <MapControls onFound={(latlng) => setPosition(latlng)} />
+                    </BaseMap>
                   ) : (
                     <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
                       <AlertCircle className="text-slate-400 mb-4" size={40} />

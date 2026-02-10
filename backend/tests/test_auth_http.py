@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
 from datetime import datetime, timedelta
+from app.core.time import utc_now
 import hashlib
 from unittest.mock import patch, AsyncMock
 
@@ -65,7 +66,7 @@ def test_refresh_token_rotation_integration(client: TestClient, session: Session
     user = User(email=email, role="CITIZEN")
     session.add(user)
     otp = Otp(
-        email=email, code="123456", expires_at=datetime.utcnow() + timedelta(minutes=5)
+        email=email, code="123456", expires_at=utc_now() + timedelta(minutes=5)
     )
     session.add(otp)
     session.commit()
@@ -95,7 +96,7 @@ def test_logout_clears_cookies(client: TestClient, session: Session):
     user = User(email=email, role="CITIZEN")
     session.add(user)
     otp = Otp(
-        email=email, code="111111", expires_at=datetime.utcnow() + timedelta(minutes=5)
+        email=email, code="111111", expires_at=utc_now() + timedelta(minutes=5)
     )
     session.add(otp)
     session.commit()
@@ -130,7 +131,7 @@ def test_hsts_header_present(client: TestClient):
 def test_otp_single_use(client: TestClient, session: Session):
     email = "singleuse@example.com"
     otp = Otp(
-        email=email, code="222222", expires_at=datetime.utcnow() + timedelta(minutes=5)
+        email=email, code="222222", expires_at=utc_now() + timedelta(minutes=5)
     )
     session.add(otp)
     session.commit()

@@ -7,11 +7,9 @@ import { authService } from '../../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import Map from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import { BaseMap } from '../../components/BaseMap'
+import { MapControls } from '../../components/MapControls'
 import { MapboxHeatmap } from '../../components/MapboxHeatmap'
-import { MapboxLocateControl } from '../../components/MapboxLocateControl'
-import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
 import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
 import { useWorkerTasks } from '../../hooks/useWorkerTasks'
 
@@ -19,8 +17,6 @@ import { TaskCard } from '../../features/worker/components/TaskList/TaskCard'
 import { AcceptTaskModal } from '../../features/worker/components/Modals/AcceptTaskModal'
 import { ResolveTaskModal } from '../../features/worker/components/Modals/ResolveTaskModal'
 import { Toast } from '../../features/common/components/Toast'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
 export default function WorkerHome() {
   const [activeTab, setActiveTab] = useState('tasks') 
@@ -157,20 +153,16 @@ export default function WorkerHome() {
                     <h2 className="text-3xl font-black text-slate-900">Workzone Map</h2>
                 </div>
                 <div className="h-full w-full rounded-[3rem] overflow-hidden border-8 border-white shadow-2xl relative">
-                    <Map
+                    <BaseMap
                         initialViewState={{
                             longitude: userLocation[1],
                             latitude: userLocation[0],
                             zoom: 12
                         }}
-                        style={{ width: '100%', height: '100%' }}
-                        mapStyle="mapbox://styles/mapbox/streets-v12"
-                        mapboxAccessToken={MAPBOX_TOKEN}
                     >
                         <MapboxHeatmap points={heatmapData} />
-                        <MapboxLocateControl />
-                        <MapboxGeocoderControl mapboxAccessToken={MAPBOX_TOKEN} />
-                    </Map>
+                        <MapControls />
+                    </BaseMap>
                 </div>
             </motion.div>
           ) : (

@@ -5,11 +5,13 @@ from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 import io
 
+from app.core.time import utc_now
+
 
 class ExifService:
     @staticmethod
     def extract_metadata(file_content: bytes) -> dict:
-        metadata = {"timestamp": datetime.utcnow(), "lat": None, "lng": None}
+        metadata = {"timestamp": utc_now(), "lat": None, "lng": None}
         try:
             image = Image.open(io.BytesIO(file_content))
             exif = image.getexif()
@@ -81,5 +83,5 @@ class ExifService:
 
     @staticmethod
     def validate_timestamp(exif_time: datetime, threshold_days: int = 7) -> bool:
-        now = datetime.utcnow()
+        now = utc_now()
         return (now - exif_time) <= timedelta(days=threshold_days)

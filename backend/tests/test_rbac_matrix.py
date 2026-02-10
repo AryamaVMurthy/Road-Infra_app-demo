@@ -1,5 +1,6 @@
 import io
 from datetime import datetime, timedelta
+from app.core.time import utc_now
 from uuid import UUID
 
 import pytest
@@ -134,7 +135,7 @@ class TestWorkerRBAC:
         session.commit()
 
         login_via_otp(client, session, users[role].email)
-        eta = (datetime.utcnow() + timedelta(hours=2)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=2)).isoformat() + "Z"
         response = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert response.status_code == 403
 
@@ -151,7 +152,7 @@ class TestWorkerRBAC:
         session.commit()
 
         login_via_otp(client, session, worker2.email)
-        eta = (datetime.utcnow() + timedelta(hours=2)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=2)).isoformat() + "Z"
         response = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert response.status_code == 404
 

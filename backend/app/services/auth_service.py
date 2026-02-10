@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import hashlib
 import secrets
 from typing import Tuple
@@ -12,6 +12,7 @@ from jose import jwt
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.core.time import utc_now
 from app.models.auth import RefreshToken
 
 
@@ -19,7 +20,7 @@ class AuthService:
     @staticmethod
     def create_access_token(data: dict) -> str:
         to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(
+        expire = utc_now() + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
         to_encode.update({"exp": expire})
@@ -106,7 +107,7 @@ class AuthService:
         commit: bool = True,
     ) -> Tuple[str, RefreshToken]:
         token_str = secrets.token_urlsafe(64)
-        expires_at = datetime.utcnow() + timedelta(
+        expires_at = utc_now() + timedelta(
             days=settings.REFRESH_TOKEN_EXPIRE_DAYS
         )
 
@@ -132,7 +133,7 @@ class AuthService:
 
     @staticmethod
     def _revoke_all_user_tokens(session: Session, user_id: UUID):
-        now = datetime.utcnow()
+        now = utc_now()
         stmt = select(RefreshToken).where(RefreshToken.user_id == user_id)
         tokens = session.exec(stmt).all()
         for token in tokens:
@@ -160,13 +161,13 @@ class AuthService:
                 detail="Security breach detected. Please log in again.",
             )
 
-        if old_token.expires_at < datetime.utcnow():
+        if old_token.expires_at < utc_now():
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token expired",
             )
 
-        old_token.revoked_at = datetime.utcnow()
+        old_token.revoked_at = utc_now()
         session.add(old_token)
 
         new_token_str, new_db_token = AuthService.create_refresh_token(
@@ -195,7 +196,7 @@ class AuthService:
             return False
 
         if token.revoked_at is None:
-            token.revoked_at = datetime.utcnow()
+            token.revoked_at = utc_now()
             session.add(token)
             session.commit()
 

@@ -1,11 +1,8 @@
 import pytest
 import asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlmodel import select
-from datetime import datetime, timedelta
 from app.main import app
-from app.models.domain import User, Otp
-from app.models.auth import RefreshToken
+from app.models.domain import User
 from app.services.auth_service import AuthService
 from sqlmodel import Session
 
@@ -25,10 +22,11 @@ async def test_refresh_token_concurrency_protection(session: Session):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as ac:
+        ac.cookies.set("refresh_token", token_str)
         tasks = [
-            ac.post("/api/v1/auth/refresh", cookies={"refresh_token": token_str}),
-            ac.post("/api/v1/auth/refresh", cookies={"refresh_token": token_str}),
-            ac.post("/api/v1/auth/refresh", cookies={"refresh_token": token_str}),
+            ac.post("/api/v1/auth/refresh"),
+            ac.post("/api/v1/auth/refresh"),
+            ac.post("/api/v1/auth/refresh"),
         ]
 
         responses = await asyncio.gather(*tasks)

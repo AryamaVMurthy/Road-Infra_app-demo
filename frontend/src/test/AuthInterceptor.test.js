@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
 
 const { createMockInstance } = vi.hoisted(() => {
   return {
@@ -73,6 +72,7 @@ describe('Auth Interceptor', () => {
     try {
       await responseInterceptorFail(error);
     } catch (e) {
+      expect(e).toBeDefined();
     }
 
     expect(window.location.href).toBe('/login');

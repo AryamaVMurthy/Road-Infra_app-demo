@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.session import get_session
 from app.api.deps import require_admin_user
-from app.models.domain import User, Issue, Category
+from app.models.domain import User, Issue
 from app.schemas.issue import IssueRead
 from app.services.workflow_service import WorkflowService
 
@@ -75,11 +75,6 @@ def reject_issue(
     WorkflowService.reject_resolution(session, issue, reason, current_user.id)
     session.commit()
     return {"message": "Issue rejected and returned to worker"}
-
-
-def get_categories(session: Session = Depends(get_session)):
-    """Get all active issue categories"""
-    return session.exec(select(Category).where(Category.is_active.is_(True))).all()
 
 
 @router.post("/update-priority")

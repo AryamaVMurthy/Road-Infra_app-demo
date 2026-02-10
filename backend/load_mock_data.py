@@ -21,6 +21,7 @@ from sqlmodel import Session, create_engine, select
 from sqlalchemy import text
 from app.models.domain import Zone, Category, User, Issue, Organization, Evidence
 from app.core.config import settings
+from app.core.time import utc_now
 
 # City locations with realistic coordinates
 CITY_LOCATIONS = [
@@ -82,7 +83,7 @@ def create_point_wkt(lat: float, lng: float) -> str:
 
 def random_date(days_back: int = 60) -> datetime:
     """Generate random datetime within the last N days."""
-    return datetime.utcnow() - timedelta(
+    return utc_now() - timedelta(
         days=random.randint(0, days_back),
         hours=random.randint(0, 23),
         minutes=random.randint(0, 59),

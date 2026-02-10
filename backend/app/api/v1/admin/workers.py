@@ -8,7 +8,7 @@ from sqlmodel import Session
 from app.db.session import get_session
 from app.api.deps import get_current_user
 from app.models.domain import User, Invite
-from app.schemas.admin import WorkerWithStats
+from app.schemas.admin import WorkerWithStats, CreateAuthorityRequest
 from app.services.analytics_service import AnalyticsService
 from app.services.worker_service import WorkerService
 from app.services.audit import AuditService
@@ -54,15 +54,55 @@ def invite_worker(
     current_user: User = Depends(get_current_user),
 ):
     """Invite a new worker"""
-    # TODO: Implement proper invite logic
+    from datetime import datetime, timedelta
     from uuid import uuid4
 
     invite = Invite(
-        email=email, org_id=org_id, status="INVITED", expires_at=uuid4()
-    )  # Placeholder
+        email=email, 
+        org_id=org_id, 
+        status="INVITED", 
+        expires_at=datetime.utcnow() + timedelta(days=7)
+    )
     session.add(invite)
     AuditService.log(
         session, "INVITE_WORKER", "USER", uuid4(), current_user.id, None, email
     )
     session.commit()
     return {"message": f"Invite sent to {email}"}
+
+
+@router.post("/onboard")
+def onboard_authority(
+    data: CreateAuthorityRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in ["SYSADMIN", "ADMIN"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    if current_user.role == "ADMIN":
+        if data.role != "WORKER":
+            raise HTTPException(status_code=403, detail="Authority Admins can only onboard workers")
+        data.org_id = current_user.org_id
+
+    from sqlmodel import select
+
+    statement = select(User).where(User.email == data.email)
+    user = session.exec(statement).first()
+
+    if user:
+        user.role = data.role
+        user.org_id = data.org_id
+        user.full_name = data.full_name
+        session.add(user)
+    else:
+        user = User(
+            email=data.email,
+            full_name=data.full_name,
+            role=data.role,
+            org_id=data.org_id,
+        )
+        session.add(user)
+
+    session.commit()
+    return {"message": f"User {data.email} onboarded as {data.role}"}

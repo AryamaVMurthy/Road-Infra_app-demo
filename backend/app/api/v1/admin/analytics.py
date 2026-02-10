@@ -30,3 +30,16 @@ def get_dashboard_stats(
 ):
     """Get quick dashboard statistics"""
     return AnalyticsService.get_dashboard_stats(session)
+
+
+@router.get("/diagnostics")
+def run_diagnostics(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Run system diagnostics for platform health"""
+    if current_user.role != "SYSADMIN":
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=403, detail="Only SysAdmins can run diagnostics")
+    return AnalyticsService.run_diagnostics(session)

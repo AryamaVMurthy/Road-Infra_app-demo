@@ -17,6 +17,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { MapboxHeatmap } from '../components/MapboxHeatmap'
 import { MapboxLocateControl } from '../components/MapboxLocateControl'
 import { MapboxGeocoderControl } from '../components/MapboxGeocoder'
+import { MapErrorBoundary, MapTokenGuard } from '../components/MapSafeGuard'
 import { useGeolocation, DEFAULT_CENTER } from '../hooks/useGeolocation'
 
 
@@ -142,38 +143,42 @@ export default function AnalyticsDashboard() {
                     </div>
                 </div>
                 <div className="h-[500px] w-full rounded-[2.5rem] overflow-hidden border-8 border-slate-50 shadow-inner relative">
-                    <Map
-                        initialViewState={{
-                            longitude: userLocation[1],
-                            latitude: userLocation[0],
-                            zoom: 12
-                        }}
-                        style={{ width: '100%', height: '100%' }}
-                        mapStyle="mapbox://styles/mapbox/streets-v12"
-                        mapboxAccessToken={MAPBOX_TOKEN}
-                    >
-                        {viewMode === 'heatmap' ? (
-                            <MapboxHeatmap points={heatmapData} />
-                        ) : (
-                            issues.map(issue => (
-                                <Marker key={issue.id} longitude={issue.lng} latitude={issue.lat}>
-                                    <Popup
-                                        longitude={issue.lng}
-                                        latitude={issue.lat}
-                                        closeButton={true}
-                                        closeOnClick={false}
-                                    >
-                                        <div className="p-2 space-y-2">
-                                            <p className="font-black text-slate-900">{issue.category_name}</p>
-                                            <p className="text-xs text-slate-500">{issue.status}</p>
-                                        </div>
-                                    </Popup>
-                                </Marker>
-                            ))
-                        )}
-                        <MapboxLocateControl />
-                        <MapboxGeocoderControl mapboxAccessToken={MAPBOX_TOKEN} />
-                    </Map>
+                    <MapErrorBoundary>
+                        <MapTokenGuard token={MAPBOX_TOKEN}>
+                            <Map
+                                initialViewState={{
+                                    longitude: userLocation[1],
+                                    latitude: userLocation[0],
+                                    zoom: 12
+                                }}
+                                style={{ width: '100%', height: '100%' }}
+                                mapStyle="mapbox://styles/mapbox/streets-v12"
+                                mapboxAccessToken={MAPBOX_TOKEN}
+                            >
+                                {viewMode === 'heatmap' ? (
+                                    <MapboxHeatmap points={heatmapData} />
+                                ) : (
+                                    issues.map(issue => (
+                                        <Marker key={issue.id} longitude={issue.lng} latitude={issue.lat}>
+                                            <Popup
+                                                longitude={issue.lng}
+                                                latitude={issue.lat}
+                                                closeButton={true}
+                                                closeOnClick={false}
+                                            >
+                                                <div className="p-2 space-y-2">
+                                                    <p className="font-black text-slate-900">{issue.category_name}</p>
+                                                    <p className="text-xs text-slate-500">{issue.status}</p>
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    ))
+                                )}
+                                <MapboxLocateControl />
+                                <MapboxGeocoderControl mapboxAccessToken={MAPBOX_TOKEN} />
+                            </Map>
+                        </MapTokenGuard>
+                    </MapErrorBoundary>
                 </div>
             </motion.div>
 

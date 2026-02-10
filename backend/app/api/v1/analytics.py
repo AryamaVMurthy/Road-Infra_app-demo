@@ -60,3 +60,16 @@ def get_public_issues(
 def get_entity_audit(entity_id: UUID, session: Session = Depends(get_session)):
     # Anyone can see the audit trail for an issue they have access to
     return AnalyticsService.get_audit_trail(session, entity_id)
+
+
+@router.get("/audit-all", response_model=List[AuditLog])
+def get_all_audits(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Admin endpoint - returns all system audits"""
+    if current_user.role != "SYSADMIN":
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=403, detail="Only SysAdmins can see global audits")
+    return AnalyticsService.get_all_audits(session)

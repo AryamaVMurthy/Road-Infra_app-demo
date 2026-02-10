@@ -214,3 +214,23 @@ class AnalyticsService:
                 )
             ).one(),
         }
+
+    @staticmethod
+    def run_diagnostics(session: Session) -> Dict[str, Any]:
+        results = []
+        # 1. Database & PostGIS Check
+        try:
+            session.exec(select(func.ST_AsText(func.ST_Point(0, 0)))).one()
+            results.append({"name": "PostGIS Engine", "status": "HEALTHY", "message": "Operational"})
+        except Exception as e:
+            results.append({"name": "PostGIS Engine", "status": "ERROR", "message": str(e)})
+
+        # 2. MinIO Check
+        from app.services.minio_client import minio_client
+        try:
+            minio_client.list_buckets()
+            results.append({"name": "MinIO Storage", "status": "HEALTHY", "message": "Reachable"})
+        except Exception:
+            results.append({"name": "MinIO Storage", "status": "ERROR", "message": "Auth/Conn Failed"})
+
+        return {"timestamp": datetime.utcnow().isoformat(), "results": results}

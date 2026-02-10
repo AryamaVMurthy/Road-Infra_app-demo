@@ -52,3 +52,17 @@ class WorkerAnalyticsResponse(BaseModel):
 
     workers: List[WorkerPerformance]
     summary: dict  # totals, averages
+
+
+class CreateAuthorityRequest(BaseModel):
+    email: str
+    full_name: str
+    role: str  # ADMIN or SYSADMIN
+    org_id: Optional[UUID] = None
+
+
+class CategoryCreate(BaseModel):
+    name: str
+    default_priority: str = "P3"
+    expected_sla_days: int = 3
+    is_active: bool = True

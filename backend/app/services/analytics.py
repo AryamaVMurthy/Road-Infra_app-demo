@@ -1,4 +1,4 @@
-from sqlmodel import Session, select, func, col, asc
+from sqlmodel import Session, select, func, col, asc, desc
 from app.models.domain import Issue, AuditLog, Category, User
 from typing import List, Dict, Any
 from uuid import UUID
@@ -25,6 +25,11 @@ class AnalyticsService:
             .where(AuditLog.entity_id == entity_id)
             .order_by(asc(AuditLog.created_at))
         )
+        return session.exec(statement).all()
+
+    @staticmethod
+    def get_all_audits(session: Session, limit: int = 100) -> List[AuditLog]:
+        statement = select(AuditLog).order_by(desc(AuditLog.created_at)).limit(limit)
         return session.exec(statement).all()
 
     @staticmethod
@@ -110,3 +115,23 @@ class AnalyticsService:
             )
 
         return trend
+
+    @staticmethod
+    def run_diagnostics(session: Session) -> Dict[str, Any]:
+        results = []
+        # 1. Database & PostGIS Check
+        try:
+            session.exec(select(func.ST_AsText(func.ST_Point(0, 0)))).one()
+            results.append({"name": "PostGIS Engine", "status": "HEALTHY", "message": "Operational"})
+        except Exception as e:
+            results.append({"name": "PostGIS Engine", "status": "ERROR", "message": str(e)})
+
+        # 2. MinIO Check
+        from app.services.minio_client import minio_client
+        try:
+            minio_client.list_buckets()
+            results.append({"name": "MinIO Storage", "status": "HEALTHY", "message": "Reachable"})
+        except Exception:
+            results.append({"name": "MinIO Storage", "status": "ERROR", "message": "Auth/Conn Failed"})
+
+        return {"timestamp": datetime.utcnow().isoformat(), "results": results}

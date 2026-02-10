@@ -8,8 +8,9 @@ from sqlalchemy.orm import selectinload
 
 from app.db.session import get_session
 from app.api.deps import get_current_user
-from app.models.domain import User, Issue, Category
+from app.models.domain import User, Issue, Category, Organization, Zone
 from app.schemas.issue import IssueRead
+from app.schemas.admin import CategoryCreate
 from app.services.workflow_service import WorkflowService
 
 router = APIRouter()
@@ -79,8 +80,44 @@ def reject_issue(
 
 @router.get("/categories")
 def get_categories(session: Session = Depends(get_session)):
-    """Get all active issue categories"""
-    return session.exec(select(Category).where(Category.is_active == True)).all()
+    return session.exec(
+        select(Category)
+        .where(Category.is_active == True)
+        .order_by(Category.default_priority)
+    ).all()
+
+
+@router.post("/categories")
+def create_category(
+    data: CategoryCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "SYSADMIN":
+        raise HTTPException(status_code=403, detail="Only SysAdmins can manage categories")
+
+    category = Category(
+        name=data.name,
+        default_priority=data.default_priority,
+        expected_sla_days=data.expected_sla_days,
+        is_active=data.is_active,
+    )
+    session.add(category)
+    session.commit()
+    session.refresh(category)
+    return category
+
+
+@router.get("/organizations", response_model=List[Organization])
+def get_organizations(session: Session = Depends(get_session)):
+    """Retrieve all registered organizations."""
+    return session.exec(select(Organization)).all()
+
+
+@router.get("/zones", response_model=List[Zone])
+def get_zones(session: Session = Depends(get_session)):
+    """Retrieve all defined zones."""
+    return session.exec(select(Zone)).all()
 
 
 @router.post("/update-priority")

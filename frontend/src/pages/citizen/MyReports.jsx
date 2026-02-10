@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import Map, { Marker } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { EvidenceGallery } from '../../components/EvidenceGallery'
+import { MapErrorBoundary, MapTokenGuard } from '../../components/MapSafeGuard'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
@@ -60,18 +61,22 @@ const TimelineItem = ({ log, isLast }) => (
 function ReportMap({ report }) {
     if (!report.lat || !report.lng) return null;
     return (
-        <Map
-            initialViewState={{
-                longitude: report.lng,
-                latitude: report.lat,
-                zoom: 16
-            }}
-            style={{ width: '100%', height: '100%' }}
-            mapStyle="mapbox://styles/mapbox/streets-v12"
-            mapboxAccessToken={MAPBOX_TOKEN}
-        >
-            <Marker longitude={report.lng} latitude={report.lat} />
-        </Map>
+        <MapErrorBoundary>
+            <MapTokenGuard token={MAPBOX_TOKEN}>
+                <Map
+                    initialViewState={{
+                        longitude: report.lng,
+                        latitude: report.lat,
+                        zoom: 16
+                    }}
+                    style={{ width: '100%', height: '100%' }}
+                    mapStyle="mapbox://styles/mapbox/streets-v12"
+                    mapboxAccessToken={MAPBOX_TOKEN}
+                >
+                    <Marker longitude={report.lng} latitude={report.lat} />
+                </Map>
+            </MapTokenGuard>
+        </MapErrorBoundary>
     );
 }
 

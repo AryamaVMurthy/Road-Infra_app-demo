@@ -11,6 +11,7 @@ import { cn } from '../../utils/utils'
 
 import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
 import { MapboxLocateControl } from '../../components/MapboxLocateControl'
+import { MapErrorBoundary, MapTokenGuard } from '../../components/MapSafeGuard'
 import { useGeolocation } from '../../hooks/useGeolocation'
 
 import { Toast } from '../../features/common/components/Toast'
@@ -141,33 +142,38 @@ export default function ReportIssue() {
                   </div>
                 )}
 
-                <div className="h-[400px] w-full rounded-[2rem] overflow-hidden border-4 border-slate-100 mb-8 shadow-inner relative">
-                  {geoLoading ? (
-                    <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
-                      <Loader2 className="animate-spin text-primary mb-4" size={40} />
-                      <p className="text-slate-500 font-medium">Getting your location...</p>
-                      <p className="text-slate-400 text-sm mt-1">Please allow location access when prompted</p>
-                    </div>
-                  ) : position ? (
-                    <Map
-                      initialViewState={{
-                        longitude: position.lng,
-                        latitude: position.lat,
-                        zoom: 17
-                      }}
-                      style={{ width: '100%', height: '100%' }}
-                      mapStyle="mapbox://styles/mapbox/streets-v12"
-                      mapboxAccessToken={MAPBOX_TOKEN}
-                      onClick={(e) => setPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
-                    >
-                      <Marker longitude={position.lng} latitude={position.lat} />
-                      <MapboxGeocoderControl 
-                        mapboxAccessToken={MAPBOX_TOKEN} 
-                        onFound={(latlng) => setPosition(latlng)}
-                      />
-                      <MapboxLocateControl onFound={(latlng) => setPosition(latlng)} />
-                    </Map>
-                  ) : (
+                 <div className="h-[400px] w-full rounded-[2rem] overflow-hidden border-4 border-slate-100 mb-8 shadow-inner relative">
+                   {geoLoading ? (
+                     <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
+                       <Loader2 className="animate-spin text-primary mb-4" size={40} />
+                       <p className="text-slate-500 font-medium">Getting your location...</p>
+                       <p className="text-slate-400 text-sm mt-1">Please allow location access when prompted</p>
+                     </div>
+                   ) : position ? (
+                     <MapErrorBoundary>
+                        <MapTokenGuard token={MAPBOX_TOKEN}>
+                            <Map
+                            initialViewState={{
+                                longitude: position.lng,
+                                latitude: position.lat,
+                                zoom: 17
+                            }}
+                            style={{ width: '100%', height: '100%' }}
+                            mapStyle="mapbox://styles/mapbox/streets-v12"
+                            mapboxAccessToken={MAPBOX_TOKEN}
+                            onClick={(e) => setPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
+                            >
+                            <Marker longitude={position.lng} latitude={position.lat} />
+                            <MapboxGeocoderControl 
+                                mapboxAccessToken={MAPBOX_TOKEN} 
+                                onFound={(latlng) => setPosition(latlng)}
+                            />
+                            <MapboxLocateControl onFound={(latlng) => setPosition(latlng)} />
+                            </Map>
+                        </MapTokenGuard>
+                     </MapErrorBoundary>
+                   ) : (
+
                     <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
                       <AlertCircle className="text-slate-400 mb-4" size={40} />
                       <p className="text-slate-500 font-medium">Unable to load map</p>

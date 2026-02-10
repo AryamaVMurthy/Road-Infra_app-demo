@@ -14,6 +14,18 @@ const api = axios.create({
 let isRefreshing = false;
 let failedQueue = [];
 
+const isRefreshRequest = (request) => {
+  const requestUrl = request?.url;
+  return typeof requestUrl === 'string' && requestUrl.includes('/auth/refresh');
+};
+
+const shouldRedirectToLogin = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  return window.location.pathname !== '/login';
+};
+
 const processQueue = (error, token = null) => {
   failedQueue.forEach(prom => {
     if (error) {
@@ -31,7 +43,11 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401
+      && !originalRequest._retry
+      && !isRefreshRequest(originalRequest)
+    ) {
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -51,7 +67,12 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         processQueue(err, null);
-        window.location.href = '/login'; // Redirect on refresh fail
+        const refreshStatus = err?.response?.status;
+        const shouldForceLogin = refreshStatus === 401 || refreshStatus === 403;
+
+        if (shouldForceLogin && shouldRedirectToLogin()) {
+          window.location.href = '/login';
+        }
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

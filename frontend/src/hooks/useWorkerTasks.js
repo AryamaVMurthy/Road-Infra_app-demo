@@ -5,8 +5,11 @@ export const useWorkerTasks = (onError) => {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const fetchTasks = useCallback(async () => {
-    setLoading(true)
+  const fetchTasks = useCallback(async ({ showLoader = true } = {}) => {
+    if (showLoader) {
+      setLoading(true)
+    }
+
     try {
       const res = await api.get('/worker/tasks')
       setTasks(res.data)
@@ -15,12 +18,14 @@ export const useWorkerTasks = (onError) => {
         onError('Failed to fetch tasks')
       }
     } finally {
-      setLoading(false)
+      if (showLoader) {
+        setLoading(false)
+      }
     }
   }, [onError])
 
   useEffect(() => {
-    fetchTasks()
+    fetchTasks({ showLoader: true })
   }, [fetchTasks])
 
   return { tasks, setTasks, loading, fetchTasks }

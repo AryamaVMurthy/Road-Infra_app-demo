@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
 
 const { createMockInstance } = vi.hoisted(() => {
   return {
@@ -76,6 +75,70 @@ describe('Auth Interceptor', () => {
     }
 
     expect(window.location.href).toBe('/login');
+    window.location = originalLocation;
+  });
+
+  it('should not try to refresh when refresh endpoint returns 401', async () => {
+    await import('../services/api');
+
+    const responseInterceptorFail = currentMock.interceptors.response.use.mock.calls[0][1];
+
+    const refreshRequest = { url: '/auth/refresh', _retry: false };
+    const error = {
+      response: { status: 401 },
+      config: refreshRequest
+    };
+
+    await expect(responseInterceptorFail(error)).rejects.toBe(error);
+    expect(currentMock.post).not.toHaveBeenCalled();
+    expect(refreshRequest._retry).toBe(false);
+  });
+
+  it('should not force reload when already on login route', async () => {
+    await import('../services/api');
+
+    const responseInterceptorFail = currentMock.interceptors.response.use.mock.calls[0][1];
+
+    const originalRequest = { url: '/auth/me', _retry: false };
+    const error = {
+      response: { status: 401 },
+      config: originalRequest
+    };
+
+    const refreshError = { response: { status: 401 } };
+    currentMock.post.mockRejectedValueOnce(refreshError);
+
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { href: '/login', pathname: '/login' };
+
+    await expect(responseInterceptorFail(error)).rejects.toBe(refreshError);
+    expect(window.location.href).toBe('/login');
+
+    window.location = originalLocation;
+  });
+
+  it('should not redirect to login when refresh fails with server error', async () => {
+    await import('../services/api');
+
+    const responseInterceptorFail = currentMock.interceptors.response.use.mock.calls[0][1];
+
+    const originalRequest = { url: '/auth/me', _retry: false };
+    const error = {
+      response: { status: 401 },
+      config: originalRequest
+    };
+
+    const refreshError = { response: { status: 500 } };
+    currentMock.post.mockRejectedValueOnce(refreshError);
+
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { href: '/authority', pathname: '/authority' };
+
+    await expect(responseInterceptorFail(error)).rejects.toBe(refreshError);
+    expect(window.location.href).toBe('/authority');
+
     window.location = originalLocation;
   });
 });

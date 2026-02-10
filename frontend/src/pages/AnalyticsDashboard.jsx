@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../services/api'
 import { 
     XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -18,6 +18,7 @@ import { MapboxHeatmap } from '../components/MapboxHeatmap'
 import { MapboxLocateControl } from '../components/MapboxLocateControl'
 import { MapboxGeocoderControl } from '../components/MapboxGeocoder'
 import { useGeolocation, DEFAULT_CENTER } from '../hooks/useGeolocation'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
@@ -49,17 +50,17 @@ export default function AnalyticsDashboard() {
   const [issues, setIssues] = useState([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState('heatmap')
+  const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
 
   const { position: geoPosition } = useGeolocation()
   const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]
 
-  useEffect(() => {
-    fetchAnalytics()
-  }, [])
+  const fetchAnalytics = useCallback(async ({ showLoader = false } = {}) => {
+    if (showLoader) {
+      setLoading(true)
+    }
 
-  const fetchAnalytics = async () => {
-    setLoading(true)
     try {
       const [statsRes, heatRes, issuesRes] = await Promise.all([
         api.get('/analytics/stats'),
@@ -69,11 +70,21 @@ export default function AnalyticsDashboard() {
       setData(statsRes.data)
       setHeatmapData(heatRes.data)
       setIssues(issuesRes.data)
+      setLastRefresh(new Date())
     } catch (err) {
       console.error("Failed to fetch analytics", err)
+    } finally {
+      if (showLoader) {
+        setLoading(false)
+      }
     }
-    setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchAnalytics({ showLoader: true })
+  }, [fetchAnalytics])
+
+  useAutoRefresh(() => fetchAnalytics(), { intervalMs: 30000, runOnMount: false })
 
   if (loading) {
       return (
@@ -98,9 +109,9 @@ export default function AnalyticsDashboard() {
         <div className="flex items-center gap-4">
             <div className="px-5 py-2.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
                 <Clock size={16} className="text-slate-400" />
-                <span className="text-sm font-bold text-slate-600">Last Sync: Just Now</span>
+                <span className="text-sm font-bold text-slate-600">Last Sync: {lastRefresh.toLocaleTimeString()}</span>
             </div>
-            <button onClick={fetchAnalytics} className="p-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20 hover:bg-blue-700 transition-all active:scale-95">
+            <button onClick={() => fetchAnalytics()} className="p-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20 hover:bg-blue-700 transition-all active:scale-95">
                 <ActivityIcon size={20} />
             </button>
         </div>
@@ -197,7 +208,7 @@ export default function AnalyticsDashboard() {
                                     stroke="none"
                                 >
                                     {(data?.category_split || []).map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][index % 4]} />
+                                        <Cell key={entry.name ?? `cell-${index}`} fill={['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][index % 4]} />
                                     ))}
                                 </Pie>
                                 <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)'}} />

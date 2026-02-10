@@ -14,6 +14,7 @@ import { MapboxLocateControl } from '../../components/MapboxLocateControl'
 import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
 import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
 import { useWorkerTasks } from '../../hooks/useWorkerTasks'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 
 import { TaskCard } from '../../features/worker/components/TaskList/TaskCard'
 import { AcceptTaskModal } from '../../features/worker/components/Modals/AcceptTaskModal'
@@ -32,6 +33,7 @@ export default function WorkerHome() {
   const [resolvePhoto, setResolvePhoto] = useState(null)
   const [isResolving, setIsResolving] = useState(false)
   const [toast, setToast] = useState(null)
+  const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
 
   const { position: geoPosition } = useGeolocation()
@@ -48,13 +50,27 @@ export default function WorkerHome() {
 
   const { tasks, loading, fetchTasks } = useWorkerTasks(handleTaskFetchError)
 
-  useEffect(() => { 
-    api.get('/analytics/heatmap')
-      .then(res => setHeatmapData(res.data))
-      .catch(() => {
-        showToast('Failed to load heatmap data.', 'error')
-      });
-  }, [showToast]);
+  const fetchHeatmap = useCallback(async () => {
+    try {
+      const response = await api.get('/analytics/heatmap')
+      setHeatmapData(response.data)
+    } catch {
+      showToast('Failed to load heatmap data.', 'error')
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    fetchHeatmap()
+    setLastRefresh(new Date())
+  }, [fetchHeatmap])
+
+  const refreshDashboardData = useCallback(() => {
+    fetchTasks({ showLoader: false })
+    fetchHeatmap()
+    setLastRefresh(new Date())
+  }, [fetchTasks, fetchHeatmap])
+
+  useAutoRefresh(refreshDashboardData, { intervalMs: 30000, runOnMount: false })
 
   const handleAccept = async (taskId) => {
     try {
@@ -107,9 +123,15 @@ export default function WorkerHome() {
               </div>
            </div>
         </div>
-        <button onClick={() => authService.logout()} className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border border-slate-100 shadow-sm">
-          <LogOut size={20} />
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl text-xs font-bold text-slate-500 border border-slate-100">
+            <Activity size={12} />
+            <span>Synced {lastRefresh.toLocaleTimeString()}</span>
+          </div>
+          <button onClick={() => authService.logout()} className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border border-slate-100 shadow-sm">
+            <LogOut size={20} />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 overflow-auto p-8 pb-32 max-w-3xl mx-auto w-full">

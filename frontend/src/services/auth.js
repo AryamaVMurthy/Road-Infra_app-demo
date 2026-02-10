@@ -1,5 +1,7 @@
 import api from './api'
 
+const isUnauthorized = (error) => error?.response?.status === 401
+
 export const authService = {
   requestOtp: async (email) => {
     return api.post('/auth/otp-request', { email })
@@ -18,7 +20,10 @@ export const authService = {
       const response = await api.get('/auth/me')
       return response.data
     } catch (error) {
-      return null
+      if (isUnauthorized(error)) {
+        return null
+      }
+      throw error
     }
   }
 }

@@ -3,7 +3,7 @@ import api from '../../services/api'
 import { 
     Settings, Shield, Globe, Activity, Database, LogOut, 
     TrendingUp, Users, AlertTriangle, CheckCircle, 
-    ChevronRight, ArrowRight, Map as MapIcon, Plus, Trash2, Edit2, UserPlus, MapPin, XCircle
+    ChevronRight, ArrowRight, Map as MapIcon, Plus, Trash2, Edit2, UserPlus, MapPin, XCircle, RefreshCw
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import adminService from '../../services/admin'
@@ -13,6 +13,7 @@ import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import Map, { Marker, Popup, Source, Layer } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
 
@@ -48,9 +49,10 @@ export default function AdminDashboard() {
   const [newCat, setNewCat] = useState({ name: '', default_priority: 'P3', expected_sla_days: 7, id: '' })
   const [newZone, setNewZone] = useState({ name: '', boundary_geojson: null, description: '', photo: null, photoPreview: null, lat: null, lng: null })
   const [polygonPoints, setPolygonPoints] = useState([])
+  const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
 
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
     const promises = [
       api.get('/analytics/stats'),
       adminService.getOrganizations(),
@@ -64,20 +66,24 @@ export default function AdminDashboard() {
         promises.push(Promise.resolve({data: []}))
     }
 
-    Promise.all(promises).then(([statsRes, orgsRes, catsRes, zonesRes, auditRes]) => {
+    try {
+      const [statsRes, orgsRes, catsRes, zonesRes, auditRes] = await Promise.all(promises)
       setData(statsRes.data)
       setAuthorities(orgsRes.data)
       setCategories(catsRes.data)
       setZones(zonesRes.data)
       setAudits(auditRes.data)
-    }).catch((err) => {
+      setLastRefresh(new Date())
+    } catch (err) {
       console.error('Failed to fetch admin data', err)
-    })
+    }
   }, [activeTab])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  useAutoRefresh(fetchData, { intervalMs: 30000, runOnMount: false })
 
   const stats = [
     { name: 'Total Issues', value: data?.summary?.reported || 0, color: 'bg-rose-500', icon: AlertTriangle },
@@ -136,6 +142,10 @@ export default function AdminDashboard() {
                 <h2 className="text-3xl font-black text-slate-900 tracking-tight capitalize">{activeTab.replace('-', ' ')}</h2>
             </div>
             <div className="flex items-center gap-4 pl-6 border-l border-slate-200">
+                <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl text-xs font-bold text-slate-500 border border-slate-100">
+                    <RefreshCw size={12} />
+                    <span>Synced {lastRefresh.toLocaleTimeString()}</span>
+                </div>
                 <div className="text-right">
                     <p className="text-sm font-black text-slate-900">Chief Officer</p>
                     <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Verified Node</p>

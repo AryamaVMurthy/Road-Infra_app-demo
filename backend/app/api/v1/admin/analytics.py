@@ -20,7 +20,8 @@ def get_worker_analytics(
     current_user: User = Depends(require_admin_user),
 ):
     """Get detailed worker analytics for dashboard"""
-    return AnalyticsService.get_worker_analytics(session)
+    org_id = current_user.org_id if current_user.role == "ADMIN" else None
+    return AnalyticsService.get_worker_analytics(session, org_id=org_id)
 
 
 @router.get("/dashboard-stats")
@@ -29,4 +30,5 @@ def get_dashboard_stats(
     current_user: User = Depends(require_admin_user),
 ):
     """Get quick dashboard statistics"""
-    return AnalyticsService.get_dashboard_stats(session)
+    org_id = current_user.org_id if current_user.role == "ADMIN" else None
+    return AnalyticsService.get_dashboard_stats(session, org_id=org_id)

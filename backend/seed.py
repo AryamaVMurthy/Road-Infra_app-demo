@@ -36,12 +36,37 @@ def seed_data():
             Zone(name="East Zone", boundary="POLYGON((2 0,3 0,3 1,2 1,2 0))"),
             Zone(name="West Zone", boundary="POLYGON((-1 0,0 0,0 1,-1 1,-1 0))"),
         ]
+        seeded_zones = []
         for z in zones:
             existing = session.exec(select(Zone).where(Zone.name == z.name)).first()
             if not existing:
                 session.add(z)
+                seeded_zones.append(z)
+            else:
+                seeded_zones.append(existing)
 
-        # 3. Seed Users
+        # 3. Seed Organizations
+        from app.models.domain import Organization
+
+        orgs = [
+            Organization(name="BBMP Central", zone_id=seeded_zones[0].id),
+        ]
+        seeded_orgs = []
+        for o in orgs:
+            existing = session.exec(
+                select(Organization).where(Organization.name == o.name)
+            ).first()
+            if not existing:
+                session.add(o)
+                seeded_orgs.append(o)
+            else:
+                seeded_orgs.append(existing)
+
+        session.commit()
+        for o in seeded_orgs:
+            session.refresh(o)
+
+        # 4. Seed Users
         users = [
             User(
                 email="sysadmin@marg.gov.in",
@@ -52,19 +77,25 @@ def seed_data():
                 email="admin@authority.gov.in",
                 role="ADMIN",
                 full_name="Authority Admin",
+                org_id=seeded_orgs[0].id,
             ),
             User(
-                email="worker@authority.gov.in", role="WORKER", full_name="Field Worker"
+                email="worker@authority.gov.in",
+                role="WORKER",
+                full_name="Field Worker",
+                org_id=seeded_orgs[0].id,
             ),
             User(
                 email="worker2@authority.gov.in",
                 role="WORKER",
                 full_name="Field Worker 2",
+                org_id=seeded_orgs[0].id,
             ),
             User(
                 email="worker3@authority.gov.in",
                 role="WORKER",
                 full_name="Field Worker 3",
+                org_id=seeded_orgs[0].id,
             ),
             User(email="citizen@example.com", role="CITIZEN", full_name="Citizen"),
         ]

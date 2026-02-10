@@ -14,12 +14,17 @@ class AnalyticsService:
     """Service for computing analytics and statistics"""
 
     @staticmethod
-    def get_worker_analytics(session: Session) -> Dict[str, Any]:
+    def get_worker_analytics(
+        session: Session, org_id: Optional[UUID] = None
+    ) -> Dict[str, Any]:
         """
         Get comprehensive analytics for all workers.
         Returns worker stats with task counts and performance metrics.
         """
-        workers = session.exec(select(User).where(User.role == "WORKER")).all()
+        stmt = select(User).where(User.role == "WORKER")
+        if org_id:
+            stmt = stmt.where(User.org_id == org_id)
+        workers = session.exec(stmt).all()
 
         now = datetime.utcnow()
         week_ago = now - timedelta(days=7)
@@ -150,12 +155,17 @@ class AnalyticsService:
         return round(total_hours / len(resolved_issues), 1) if resolved_issues else None
 
     @staticmethod
-    def get_workers_with_stats(session: Session) -> List[Dict[str, Any]]:
+    def get_workers_with_stats(
+        session: Session, org_id: Optional[UUID] = None
+    ) -> List[Dict[str, Any]]:
         """
         Get all workers with their current task counts for assignment dropdown.
         Returns workers sorted by workload (least busy first).
         """
-        workers = session.exec(select(User).where(User.role == "WORKER")).all()
+        stmt = select(User).where(User.role == "WORKER")
+        if org_id:
+            stmt = stmt.where(User.org_id == org_id)
+        workers = session.exec(stmt).all()
 
         result = []
         for worker in workers:
@@ -197,20 +207,25 @@ class AnalyticsService:
         return result
 
     @staticmethod
-    def get_dashboard_stats(session: Session) -> Dict[str, int]:
+    def get_dashboard_stats(
+        session: Session, org_id: Optional[UUID] = None
+    ) -> Dict[str, int]:
         """Get quick dashboard statistics"""
+        reported_stmt = select(func.count(Issue.id)).where(Issue.status == "REPORTED")
+        in_progress_stmt = select(func.count(Issue.id)).where(
+            Issue.status.in_(["ASSIGNED", "ACCEPTED", "IN_PROGRESS"])
+        )
+        resolved_stmt = select(func.count(Issue.id)).where(
+            Issue.status.in_(["RESOLVED", "CLOSED"])
+        )
+
+        if org_id:
+            reported_stmt = reported_stmt.where(Issue.org_id == org_id)
+            in_progress_stmt = in_progress_stmt.where(Issue.org_id == org_id)
+            resolved_stmt = resolved_stmt.where(Issue.org_id == org_id)
+
         return {
-            "reported": session.exec(
-                select(func.count(Issue.id)).where(Issue.status == "REPORTED")
-            ).one(),
-            "in_progress": session.exec(
-                select(func.count(Issue.id)).where(
-                    Issue.status.in_(["ASSIGNED", "ACCEPTED", "IN_PROGRESS"])
-                )
-            ).one(),
-            "resolved": session.exec(
-                select(func.count(Issue.id)).where(
-                    Issue.status.in_(["RESOLVED", "CLOSED"])
-                )
-            ).one(),
+            "reported": session.exec(reported_stmt).one(),
+            "in_progress": session.exec(in_progress_stmt).one(),
+            "resolved": session.exec(resolved_stmt).one(),
         }

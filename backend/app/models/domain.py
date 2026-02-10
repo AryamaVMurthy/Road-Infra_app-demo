@@ -61,6 +61,12 @@ class Zone(ZoneBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     organizations: List[Organization] = Relationship(back_populates="zone")
 
+    @property
+    def boundary_wkt(self) -> str:
+        if self.boundary is None:
+            return ""
+        return to_shape(self.boundary).wkt
+
 
 class CategoryBase(SQLModel):
     name: str

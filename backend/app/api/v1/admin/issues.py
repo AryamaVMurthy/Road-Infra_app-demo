@@ -24,6 +24,8 @@ def get_all_issues(
     statement = select(Issue).options(
         selectinload(Issue.category), selectinload(Issue.worker)
     )
+    if current_user.role == "ADMIN":
+        statement = statement.where(Issue.org_id == current_user.org_id)
     return session.exec(statement).all()
 
 

@@ -65,3 +65,16 @@ class IssueService:
             exif_lat=exif_data.get("lat"),
             exif_lng=exif_data.get("lng"),
         )
+
+    @staticmethod
+    def find_org_for_location(session: Session, point_wkt: str) -> Optional[UUID]:
+        """Find the organization whose zone contains the given location."""
+        from app.models.domain import Organization, Zone
+
+        statement = (
+            select(Organization)
+            .join(Zone)
+            .where(func.ST_Contains(Zone.boundary, func.ST_GeomFromText(point_wkt)))
+        )
+        org = session.exec(statement).first()
+        return org.id if org else None

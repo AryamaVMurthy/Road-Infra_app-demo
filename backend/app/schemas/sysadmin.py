@@ -1,0 +1,54 @@
+from pydantic import BaseModel, ConfigDict
+from uuid import UUID
+from typing import Optional, List, Any
+from datetime import datetime
+
+
+class ZoneCreate(BaseModel):
+    name: str
+    boundary_geojson: dict  # GeoJSON Polygon
+
+
+class ZoneRead(BaseModel):
+    id: UUID
+    name: str
+    boundary_wkt: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OrganizationCreate(BaseModel):
+    name: str
+    zone_id: UUID
+
+
+class OrganizationRead(BaseModel):
+    id: UUID
+    name: str
+    zone_id: UUID
+    zone_name: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CategoryCreate(BaseModel):
+    name: str
+    default_priority: str = "P3"
+    expected_sla_days: int = 7
+
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    default_priority: Optional[str] = None
+    expected_sla_days: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class CategoryRead(BaseModel):
+    id: UUID
+    name: str
+    default_priority: str
+    expected_sla_days: int
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)

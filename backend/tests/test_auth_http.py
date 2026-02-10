@@ -8,7 +8,7 @@ from unittest.mock import patch, AsyncMock
 
 from app.main import app
 from app.db.session import get_session
-from app.models.domain import User, Otp
+from app.models.domain import User, Otp, Invite
 from app.models.auth import RefreshToken
 from app.core.config import settings
 
@@ -19,7 +19,13 @@ def session_fixture():
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     SQLModel.metadata.create_all(
-        engine, tables=[User.__table__, Otp.__table__, RefreshToken.__table__]
+        engine,
+        tables=[
+            User.__table__,
+            Otp.__table__,
+            RefreshToken.__table__,
+            Invite.__table__,
+        ],
     )
     with Session(engine) as session:
         yield session

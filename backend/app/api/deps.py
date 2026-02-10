@@ -73,5 +73,6 @@ def require_roles(*allowed_roles: str):
 
 
 require_admin_user = require_roles("ADMIN", "SYSADMIN")
+require_sysadmin_user = require_roles("SYSADMIN")
 require_worker_user = require_roles("WORKER")
-require_citizen_user = require_roles("CITIZEN")
+require_citizen_user = require_roles("CITIZEN", "ADMIN", "SYSADMIN")

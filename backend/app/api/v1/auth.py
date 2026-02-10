@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from app.core.config import settings
 from app.schemas.auth import Login, OTPRequest
-from app.models.domain import User, Otp
+from app.models.domain import User, Otp, Invite
 from sqlmodel import Session, select, desc
 from app.db.session import get_session
 from datetime import datetime, timedelta
@@ -30,7 +30,9 @@ async def request_otp(data: OTPRequest, session: Session = Depends(get_session))
 
 @router.post("/login")
 def login(response: Response, data: Login, session: Session = Depends(get_session)):
-    latest_otp_statement = select(Otp).where(Otp.email == data.email).order_by(desc(Otp.created_at))
+    latest_otp_statement = (
+        select(Otp).where(Otp.email == data.email).order_by(desc(Otp.created_at))
+    )
     otp_record = session.exec(latest_otp_statement).first()
 
     if (
@@ -49,7 +51,21 @@ def login(response: Response, data: Login, session: Session = Depends(get_sessio
     user = session.exec(statement).first()
 
     if not user:
-        user = User(email=data.email, role="CITIZEN")
+        # Check for active invite
+        invite_stmt = select(Invite).where(
+            Invite.email == data.email,
+            Invite.status == "INVITED",
+            Invite.expires_at > datetime.utcnow(),
+        )
+        invite = session.exec(invite_stmt).first()
+
+        if invite:
+            user = User(email=data.email, role="WORKER", org_id=invite.org_id)
+            invite.status = "ACCEPTED"
+            session.add(invite)
+        else:
+            user = User(email=data.email, role="CITIZEN")
+
         session.add(user)
 
     user.last_login_at = datetime.utcnow()

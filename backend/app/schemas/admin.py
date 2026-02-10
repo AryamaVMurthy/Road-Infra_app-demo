@@ -9,6 +9,10 @@ class BulkAssignRequest(BaseModel):
     worker_id: UUID
 
 
+class BulkInviteRequest(BaseModel):
+    emails: List[str]
+
+
 class WorkerWithStats(BaseModel):
     """Worker info with task statistics for assignment dropdown"""
 

@@ -42,12 +42,14 @@ async def report_issue(
             "issue_id": str(duplicate_issue.id),
         }
     else:
+        org_id = IssueService.find_org_for_location(session, point_wkt)
         new_issue = Issue(
             category_id=category_id,
             status="REPORTED",
             location=point_wkt,
             address=address,
             reporter_id=reporter.id,
+            org_id=org_id,
             report_count=1,
         )
         session.add(new_issue)

@@ -2,7 +2,7 @@
 Worker Service - Handles worker management and operations
 """
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from fastapi import HTTPException
 from sqlmodel import Session, select, col
@@ -15,9 +15,12 @@ class WorkerService:
     """Service for managing workers and their tasks"""
 
     @staticmethod
-    def get_all_workers(session: Session) -> List[User]:
-        """Get all workers"""
-        return session.exec(select(User).where(User.role == "WORKER")).all()
+    def get_all_workers(session: Session, org_id: Optional[UUID] = None) -> List[User]:
+        """Get all workers, optionally filtered by organization"""
+        stmt = select(User).where(User.role == "WORKER")
+        if org_id:
+            stmt = stmt.where(User.org_id == org_id)
+        return session.exec(stmt).all()
 
     @staticmethod
     def get_worker_by_id(session: Session, worker_id: UUID) -> User:

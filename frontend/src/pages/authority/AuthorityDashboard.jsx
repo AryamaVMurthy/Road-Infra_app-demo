@@ -5,9 +5,10 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { 
     LayoutDashboard, Map as MapIcon, Users, LogOut, 
     CheckCircle2, AlertCircle, Clock,
-    CheckSquare, Globe, RefreshCw, XCircle
+    CheckSquare, Globe, RefreshCw, XCircle, UserPlus
 } from 'lucide-react'
 import { authService } from '../../services/auth'
+import adminService from '../../services/admin'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
@@ -25,6 +26,7 @@ import { IssueActionsDropdown } from '../../features/authority/components/IssueK
 import { IssueReviewModal } from '../../features/authority/components/Modals/IssueReviewModal'
 import { WorkersTable } from '../../features/authority/components/WorkerAnalytics/WorkersTable'
 import { AnalyticsPanel } from '../../features/authority/components/WorkerAnalytics/AnalyticsPanel'
+import { OnboardWorkersModal } from '../../features/authority/components/Modals/OnboardWorkersModal'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
@@ -40,6 +42,7 @@ export default function AuthorityDashboard() {
   const [heatmapData, setHeatmapData] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
+  const [showOnboardModal, setShowOnboardModal] = useState(false)
   const navigate = useNavigate()
   
   const { position: geoPosition } = useGeolocation()
@@ -101,6 +104,24 @@ export default function AuthorityDashboard() {
         fetchData()
     } catch (e) { alert("Rejection failed") }
     setSubmitting(false)
+  }
+
+  const handleOnboard = async (emails) => {
+    setSubmitting(true)
+    try {
+        await adminService.bulkInviteWorkers(emails)
+        setShowOnboardModal(false)
+        fetchData()
+    } catch (e) { alert("Onboarding failed") }
+    setSubmitting(false)
+  }
+
+  const handleDeactivateWorker = async (workerId) => {
+    if (!window.confirm("Are you sure you want to deactivate this worker?")) return
+    try {
+        await adminService.deactivateWorker(workerId)
+        fetchData()
+    } catch (e) { alert("Deactivation failed") }
   }
 
   // Calculate stats
@@ -296,8 +317,21 @@ export default function AuthorityDashboard() {
 
             {activeTab === 'workers' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-                    <AnalyticsPanel analytics={workerAnalytics} />
-                    <WorkersTable workers={workers} analytics={workerAnalytics} />
+                    <div className="flex justify-between items-center">
+                        <AnalyticsPanel analytics={workerAnalytics} />
+                        <button 
+                            onClick={() => setShowOnboardModal(true)}
+                            className="bg-primary text-white px-6 py-4 rounded-2xl font-black shadow-xl shadow-primary/20 flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95"
+                        >
+                            <UserPlus size={20} />
+                            Onboard Workers
+                        </button>
+                    </div>
+                    <WorkersTable 
+                        workers={workers} 
+                        analytics={workerAnalytics} 
+                        onDeactivate={handleDeactivateWorker}
+                    />
                 </motion.div>
             )}
            </AnimatePresence>
@@ -309,6 +343,14 @@ export default function AuthorityDashboard() {
                 onReject={handleReject}
                 submitting={submitting}
            />
+
+           {showOnboardModal && (
+               <OnboardWorkersModal 
+                    onOnboard={handleOnboard}
+                    onCancel={() => setShowOnboardModal(false)}
+                    isSubmitting={submitting}
+               />
+           )}
         </main>
       </div>
     </div>

@@ -14,7 +14,7 @@ import { cn } from '../../../../utils/utils'
  * @param {Array} workers - List of worker objects
  * @param {Object} analytics - Analytics data for workers
  */
-export const WorkersTable = ({ workers, analytics }) => {
+export const WorkersTable = ({ workers, analytics, onDeactivate }) => {
   if (!workers || workers.length === 0) {
     return (
       <div className="bg-white rounded-[3rem] p-12 text-center border border-slate-100 shadow-xl">
@@ -45,9 +45,10 @@ export const WorkersTable = ({ workers, analytics }) => {
               <th className="px-4 sm:px-8 py-4 sm:py-6">Member</th>
               <th className="px-4 sm:px-8 py-4 sm:py-6">Status</th>
               <th className="px-4 sm:px-8 py-4 sm:py-6">Active Tasks</th>
-              <th className="px-4 sm:px-8 py-4 sm:py-6">Resolved</th>
+               <th className="px-4 sm:px-8 py-4 sm:py-6">Resolved</th>
               <th className="px-4 sm:px-8 py-4 sm:py-6">This Week</th>
               <th className="px-4 sm:px-8 py-4 sm:py-6">Performance</th>
+              <th className="px-4 sm:px-8 py-4 sm:py-6 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -56,9 +57,11 @@ export const WorkersTable = ({ workers, analytics }) => {
                 key={worker.id} 
                 worker={worker}
                 workerAnalytics={analytics?.workers?.find(w => w.worker_id === worker.id)}
+                onDeactivate={onDeactivate}
               />
             ))}
           </tbody>
+
         </table>
       </div>
     </motion.div>
@@ -68,7 +71,7 @@ export const WorkersTable = ({ workers, analytics }) => {
 /**
  * WorkerRow - Individual worker row
  */
-const WorkerRow = ({ worker, workerAnalytics }) => {
+const WorkerRow = ({ worker, workerAnalytics, onDeactivate }) => {
   const statusColors = {
     ACTIVE: "bg-emerald-50 text-emerald-600",
     INACTIVE: "bg-slate-100 text-slate-500"
@@ -147,6 +150,17 @@ const WorkerRow = ({ worker, workerAnalytics }) => {
           </div>
         ) : (
           <span className="text-xs text-slate-400">No data</span>
+        )}
+      </td>
+
+      <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+        {worker.status === 'ACTIVE' && (
+          <button 
+            onClick={() => onDeactivate(worker.id)}
+            className="text-[10px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-all"
+          >
+            Deactivate
+          </button>
         )}
       </td>
     </tr>

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import api from '../../services/api'
 import { 
     Settings, Shield, Globe, Activity, Database, LogOut, 
     TrendingUp, Users, AlertTriangle, CheckCircle, 
-    ChevronRight, ArrowRight, Map as MapIcon, Plus, Trash2, Edit2, UserPlus, MapPin, XCircle, RefreshCw
+    ChevronRight, ArrowRight, Map as MapIcon, Plus, Trash2, Edit2, UserPlus, MapPin, XCircle, RefreshCw,
+    Building2, PlusCircle, Tags
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import adminService from '../../services/admin'
@@ -15,6 +16,7 @@ import Map, { Marker, Popup, Source, Layer } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import MapboxDrawControl from '../../components/MapboxDrawControl'
+import { InteractiveMap } from '../../components/InteractiveMap'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
 
@@ -37,6 +39,7 @@ const AdminStat = ({ label, value, trend, icon: Icon, color }) => (
 )
 
 export default function AdminDashboard() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('overview')
   const [data, setData] = useState(null)
   const [audits, setAudits] = useState([])
@@ -46,7 +49,7 @@ export default function AdminDashboard() {
   const [showAddAuthority, setShowAddAuthority] = useState(false)
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
-  const [newOrg, setNewOrg] = useState({ name: '', zone_id: '' })
+  const [newOrg, setNewOrg] = useState({ name: '', zone_id: '', admin_email: '' })
   const [newCat, setNewCat] = useState({ name: '', default_priority: 'P3', expected_sla_days: 7, id: '' })
   const [newZone, setNewZone] = useState({ name: '', boundary_geojson: null, description: '', photo: null, photoPreview: null, lat: null, lng: null })
   const [polygonPoints, setPolygonPoints] = useState([])
@@ -54,7 +57,6 @@ export default function AdminDashboard() {
   const [auditFilters, setAuditFilters] = useState({ action: '', startDate: '', endDate: '' })
   const [isEditingJurisdiction, setIsEditingJurisdiction] = useState(false)
   const [selectedOrgForEdit, setSelectedOrgForEdit] = useState(null)
-  const navigate = useNavigate()
 
   const fetchData = useCallback(async () => {
     const promises = [
@@ -85,7 +87,7 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error('Failed to fetch admin data', err)
     }
-  }, [activeTab])
+  }, [activeTab, auditFilters])
 
   useEffect(() => {
     fetchData()
@@ -100,6 +102,17 @@ export default function AdminDashboard() {
     { name: 'Compliance', value: data?.summary?.compliance || '0%', color: 'bg-purple-500', icon: Shield },
   ]
 
+  const tabButton = (id, label, Icon) => (
+    <button 
+        onClick={() => setActiveTab(id)} 
+        id={`btn-${id}`}
+        className={cn("w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold transition-all", 
+        activeTab === id ? "bg-white text-slate-950 shadow-xl" : "text-slate-500 hover:text-white hover:bg-white/5")}
+    >
+      <Icon size={20} /> <span className="text-sm">{label}</span>
+    </button>
+  )
+
   return (
     <div className="flex h-screen bg-[#F8FAFC]">
       <aside className="w-80 bg-slate-950 text-white flex flex-col p-8">
@@ -113,28 +126,14 @@ export default function AdminDashboard() {
         </div>
 
         <nav className="flex-1 space-y-3">
-            <button onClick={() => setActiveTab('overview')} className={cn("w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold transition-all", activeTab === 'overview' ? "bg-white text-slate-950 shadow-xl" : "text-slate-500 hover:text-white hover:bg-white/5")}>
-              <Activity size={20} /> <span className="text-sm">Summary</span>
-            </button>
-            <button 
-                id="btn-authorities"
-                onClick={() => setActiveTab('authorities')} 
-                className={cn("w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold transition-all", activeTab === 'authorities' ? "bg-white text-slate-950 shadow-xl" : "text-slate-500 hover:text-white hover:bg-white/5")}
-            >
-              <Users size={20} /> <span className="text-sm">Authorities</span>
-            </button>
-            <button onClick={() => setActiveTab('categories')} className={cn("w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold transition-all", activeTab === 'categories' ? "bg-white text-slate-950 shadow-xl" : "text-slate-500 hover:text-white hover:bg-white/5")}>
-              <Settings size={20} /> <span className="text-sm">Issue Types</span>
-            </button>
-            <button onClick={() => setActiveTab('manual-issue')} className={cn("w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold transition-all", activeTab === 'manual-issue' ? "bg-white text-slate-950 shadow-xl" : "text-slate-500 hover:text-white hover:bg-white/5")}>
-              <AlertTriangle size={20} /> <span className="text-sm">Manual Report</span>
-            </button>
+            {tabButton('overview', 'Summary', Activity)}
+            {tabButton('authorities', 'Authorities', Building2)}
+            {tabButton('categories', 'Issue Types', Tags)}
+            {tabButton('manual-issue', 'Manual Report', PlusCircle)}
             <button onClick={() => navigate('/analytics')} className="w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold text-slate-500 hover:text-white hover:bg-white/5 transition-all">
               <Globe size={20} /> <span className="text-sm">Full Analytics</span>
             </button>
-            <button onClick={() => setActiveTab('logs')} className={cn("w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold transition-all", activeTab === 'logs' ? "bg-white text-slate-950 shadow-xl" : "text-slate-500 hover:text-white hover:bg-white/5")}>
-              <Database size={20} /> <span className="text-sm">Audit Trails</span>
-            </button>
+            {tabButton('logs', 'Audit Trails', Database)}
         </nav>
 
         <div className="mt-auto pt-8 border-t border-white/5">
@@ -276,10 +275,16 @@ export default function AdminDashboard() {
                                     <div className="space-y-4">
                                         <input 
                                             data-testid="input-authority-name"
-                                            placeholder="Authority Name (e.g. BBMP)" 
+                                            placeholder="Authority Name" 
                                             className="w-full p-4 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
                                             value={newOrg.name}
                                             onChange={(e) => setNewOrg({...newOrg, name: e.target.value})}
+                                        />
+                                        <input 
+                                            placeholder="Admin Email" 
+                                            className="w-full p-4 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
+                                            value={newOrg.admin_email}
+                                            onChange={(e) => setNewOrg({...newOrg, admin_email: e.target.value})}
                                         />
                                         
                                         {!newOrg.zone_id ? (
@@ -343,8 +348,13 @@ export default function AdminDashboard() {
                                             onClick={async () => {
                                                 if (!newOrg.name || !newOrg.zone_id) return alert("Complete all steps");
                                                 try {
-                                                    await adminService.createOrganization(newOrg);
-                                                    setNewOrg({ name: '', zone_id: '' });
+                                                    // In standard branch, it might expect different schema
+                                                    await api.post('/admin/authorities', {
+                                                        name: newOrg.name,
+                                                        admin_email: newOrg.admin_email,
+                                                        zone_id: newOrg.zone_id
+                                                    });
+                                                    setNewOrg({ name: '', zone_id: '', admin_email: '' });
                                                     setShowAddAuthority(false);
                                                     fetchData();
                                                 } catch (err) { alert("Registration failed") }
@@ -515,15 +525,12 @@ export default function AdminDashboard() {
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">1. Set Location</label>
                                     <div className="h-80 rounded-3xl overflow-hidden border-4 border-slate-50 relative shadow-inner">
-                                        <Map
+                                        <InteractiveMap
                                             initialViewState={{ longitude: 77.5946, latitude: 12.9716, zoom: 12 }}
-                                            style={{ width: '100%', height: '100%' }}
-                                            mapStyle="mapbox://styles/mapbox/streets-v12"
-                                            mapboxAccessToken={MAPBOX_TOKEN}
                                             onClick={(e) => setNewZone({...newZone, lat: e.lngLat.lat, lng: e.lngLat.lng})}
                                         >
                                             {newZone.lat && <Marker longitude={newZone.lng} latitude={newZone.lat} />}
-                                        </Map>
+                                        </InteractiveMap>
                                     </div>
                                     {newZone.lat && (
                                         <div className="p-4 bg-blue-50 rounded-2xl flex items-center gap-3 border border-blue-100">
@@ -707,6 +714,7 @@ export default function AdminDashboard() {
                     </div>
                 </motion.div>
             )}
+
             {isEditingJurisdiction && selectedOrgForEdit && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[3000] flex items-center justify-center p-8">
                     <div className="bg-white w-full max-w-5xl h-[80vh] rounded-[3rem] overflow-hidden flex flex-col shadow-2xl">
@@ -768,7 +776,7 @@ export default function AdminDashboard() {
                                     if (polygonPoints.length < 3) return alert("Please draw a valid polygon");
                                     const geojson = { type: "Polygon", coordinates: [polygonPoints] };
                                     try {
-                                        const zoneRes = await adminService.createZone({ 
+                                        await adminService.createZone({ 
                                             name: `${selectedOrgForEdit.name} Updated Zone`, 
                                             boundary_geojson: geojson 
                                         });

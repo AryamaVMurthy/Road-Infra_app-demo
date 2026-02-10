@@ -3,18 +3,7 @@ import { motion } from 'framer-motion'
 import { Zap } from 'lucide-react'
 import { cn } from '../../../../utils/utils'
 
-/**
- * WorkersTable - Displays worker information with analytics
- * 
- * Features:
- * - Worker list with stats
- * - Performance indicators
- * - Task counts and resolution times
- * 
- * @param {Array} workers - List of worker objects
- * @param {Object} analytics - Analytics data for workers
- */
-export const WorkersTable = ({ workers, analytics, onDeactivate }) => {
+export const WorkersTable = ({ workers, analytics, onActivate, onDeactivate }) => {
   if (!workers || workers.length === 0) {
     return (
       <div className="bg-white rounded-[3rem] p-12 text-center border border-slate-100 shadow-xl">
@@ -29,7 +18,6 @@ export const WorkersTable = ({ workers, analytics, onDeactivate }) => {
       animate={{ opacity: 1 }} 
       className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden"
     >
-      {/* Table Header */}
       <div className="p-6 sm:p-8 border-b bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h3 className="text-lg sm:text-xl font-black text-slate-900">Active Field Force</h3>
         <div className="text-sm text-slate-500">
@@ -37,7 +25,6 @@ export const WorkersTable = ({ workers, analytics, onDeactivate }) => {
         </div>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
@@ -57,21 +44,18 @@ export const WorkersTable = ({ workers, analytics, onDeactivate }) => {
                 key={worker.id} 
                 worker={worker}
                 workerAnalytics={analytics?.workers?.find(w => w.worker_id === worker.id)}
+                onActivate={onActivate}
                 onDeactivate={onDeactivate}
               />
             ))}
           </tbody>
-
         </table>
       </div>
     </motion.div>
   )
 }
 
-/**
- * WorkerRow - Individual worker row
- */
-const WorkerRow = ({ worker, workerAnalytics, onDeactivate }) => {
+const WorkerRow = ({ worker, workerAnalytics, onActivate, onDeactivate }) => {
   const statusColors = {
     ACTIVE: "bg-emerald-50 text-emerald-600",
     INACTIVE: "bg-slate-100 text-slate-500"
@@ -85,7 +69,6 @@ const WorkerRow = ({ worker, workerAnalytics, onDeactivate }) => {
 
   return (
     <tr className="hover:bg-slate-50/50 transition-colors">
-      {/* Member Info */}
       <td className="px-4 sm:px-8 py-4 sm:py-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-100 rounded-xl flex items-center justify-center text-primary font-black text-sm sm:text-base shadow-sm flex-shrink-0">
@@ -102,7 +85,6 @@ const WorkerRow = ({ worker, workerAnalytics, onDeactivate }) => {
         </div>
       </td>
 
-      {/* Status */}
       <td className="px-4 sm:px-8 py-4 sm:py-6">
         <span className={cn(
           "px-2 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider",
@@ -112,7 +94,6 @@ const WorkerRow = ({ worker, workerAnalytics, onDeactivate }) => {
         </span>
       </td>
 
-      {/* Active Tasks */}
       <td className="px-4 sm:px-8 py-4 sm:py-6">
         <div className="flex items-center gap-2">
           <span className={cn(
@@ -125,21 +106,18 @@ const WorkerRow = ({ worker, workerAnalytics, onDeactivate }) => {
         </div>
       </td>
 
-      {/* Resolved */}
       <td className="px-4 sm:px-8 py-4 sm:py-6">
         <span className="text-base sm:text-lg font-black text-emerald-600">
           {worker.resolved_count}
         </span>
       </td>
 
-      {/* This Week */}
       <td className="px-4 sm:px-8 py-4 sm:py-6">
         <span className="text-base sm:text-lg font-black text-purple-600">
           {workerAnalytics?.tasks_this_week || 0}
         </span>
       </td>
 
-      {/* Performance */}
       <td className="px-4 sm:px-8 py-4 sm:py-6">
         {workerAnalytics?.avg_resolution_hours ? (
           <div className="flex items-center gap-2">
@@ -153,13 +131,20 @@ const WorkerRow = ({ worker, workerAnalytics, onDeactivate }) => {
         )}
       </td>
 
-      <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-        {worker.status === 'ACTIVE' && (
+      <td className="px-4 sm:px-8 py-4 sm:py-6 text-right flex gap-2 justify-end">
+        {worker.status === 'ACTIVE' ? (
           <button 
-            onClick={() => onDeactivate(worker.id)}
+            onClick={() => onDeactivate?.(worker.id)}
             className="text-[10px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-all"
           >
             Deactivate
+          </button>
+        ) : (
+          <button
+            onClick={() => onActivate?.(worker.id)}
+            className="text-[10px] font-black uppercase tracking-wider text-emerald-500 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-all"
+          >
+            Activate
           </button>
         )}
       </td>

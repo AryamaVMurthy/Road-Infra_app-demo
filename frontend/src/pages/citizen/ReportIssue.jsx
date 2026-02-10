@@ -1,137 +1,186 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import Map, { Marker } from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import { useState, useEffect } from 'react'
 import api from '../../services/api'
-import { useNavigate } from 'react-router-dom'
-import { Camera, Check, ArrowLeft, ArrowRight, Map as MapIcon, Loader2, Info, AlertCircle, Navigation } from 'lucide-react'
+import { 
+    Camera, MapPin, Send, ArrowLeft, Loader2,
+    ShieldCheck, AlertCircle, Plus, X, CheckCircle2
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
-
+import { useNavigate } from 'react-router-dom'
+import { Marker } from 'react-map-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
 import { MapboxLocateControl } from '../../components/MapboxLocateControl'
 import { InteractiveMap } from '../../components/InteractiveMap'
 import { useGeolocation } from '../../hooks/useGeolocation'
 
-import { Toast } from '../../features/common/components/Toast'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
-
-const StepIndicator = ({ step }) => (
-    <div className="flex items-center gap-2 mb-10">
-        {[1, 2, 3].map((s) => (
-            <React.Fragment key={s}>
-                <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all shadow-md",
-                    step === s ? "bg-primary text-white scale-110 ring-4 ring-primary/10" : 
-                    step > s ? "bg-green-500 text-white" : "bg-slate-200 text-slate-400"
-                )}>
-                    {step > s ? <Check size={18} /> : s}
-                </div>
-                {s < 3 && <div className={cn("flex-1 h-1 rounded-full", step > s ? "bg-green-500" : "bg-slate-200")}></div>}
-            </React.Fragment>
-        ))}
-    </div>
-)
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
 
 export default function ReportIssue() {
-  const [step, setStep] = useState(1) 
-  const [position, setPosition] = useState(null)
-  const [photo, setPhoto] = useState(null)
-  const [photoPreview, setPhotoPreview] = useState(null)
   const [categories, setCategories] = useState([])
   const [selectedCategory, setSelectedCategory] = useState('')
   const [description, setDescription] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [toast, setToast] = useState(null)
+  const [photo, setPhoto] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const [position, setPosition] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [step, setStep] = useState(1)
   const navigate = useNavigate()
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 4000)
-  }
-
-  const { 
-    position: geoPosition, 
-    loading: geoLoading, 
-    error: geoError,
-    refresh: refreshLocation,
-    isUsingFallback 
-  } = useGeolocation()
+  const { loading: geoLoading, error: geoError, position: geoPosition } = useGeolocation()
 
   useEffect(() => {
-    if (geoPosition && !position) {
-      setPosition({ lat: geoPosition.lat, lng: geoPosition.lng })
-    }
-  }, [geoPosition, position])
-
-  useEffect(() => {
-    api.get('/categories').then(res => setCategories(res.data)).catch(() => {
-        setCategories([
-            {id: '1', name: 'Pothole'}, {id: '2', name: 'Drainage'}, {id: '3', name: 'Garbage'}
-        ])
+    api.get('/categories').then(res => {
+      setCategories(res.data.filter(c => c.is_active))
     })
   }, [])
 
+  useEffect(() => {
+    if (geoPosition && !position) {
+      setPosition(geoPosition)
+    }
+  }, [geoPosition, position])
+
   const handlePhotoChange = (e) => {
-    if (e.target.files[0]) {
-      setPhoto(e.target.files[0])
-      setPhotoPreview(URL.createObjectURL(e.target.files[0]))
+    const file = e.target.files[0]
+    if (file) {
+      setPhoto(file)
+      setPhotoPreview(URL.createObjectURL(file))
     }
   }
 
-   const handleSubmit = async () => {
-    setLoading(true)
+  const handleSubmit = async () => {
+    if (!selectedCategory || !position || !photo) {
+      alert("Please complete all required fields")
+      return
+    }
+
+    setSubmitting(true)
+    const formData = new FormData()
+    formData.append('category_id', selectedCategory)
+    formData.append('description', description)
+    formData.append('lat', position.lat)
+    formData.append('lng', position.lng)
+    formData.append('photo', photo)
 
     try {
-      const formData = new FormData()
-      formData.append('category_id', selectedCategory)
-      formData.append('lat', position.lat)
-      formData.append('lng', position.lng)
-      formData.append('photo', photo)
-      if (description) {
-        formData.append('description', description)
-      }
-
       await api.post('/issues/report', formData)
-      showToast('Successfully reported!', 'success')
-      setTimeout(() => navigate('/citizen/my-reports'), 2000)
+      setStep(3)
+      setTimeout(() => navigate('/citizen/my-reports'), 3000)
     } catch (err) {
-      showToast('Failed to submit report.', 'error')
+      alert("Failed to submit report. Please try again.")
+    } finally {
+      setSubmitting(false)
     }
-    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="px-8 py-6 bg-white border-b border-slate-100 flex items-center justify-between">
-        <button onClick={() => step > 1 ? setStep(step - 1) : navigate('/citizen')} className="flex items-center gap-2 text-slate-500 font-bold hover:text-primary transition-colors">
-          <ArrowLeft size={18} /> {step === 1 ? 'Cancel' : 'Back'}
+    <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans">
+      <header className="px-6 py-6 flex items-center justify-between sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-50">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-primary transition-all">
+          <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-extrabold tracking-tight">New Report</h1>
-        <div className="w-20"></div>
+        <h1 className="text-sm font-black tracking-[0.2em] uppercase text-slate-900">New Incident Report</h1>
+        <div className="w-10 h-10"></div>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto w-full p-8">
-        <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-slate-200/60 border border-slate-100 relative overflow-hidden">
-          <StepIndicator step={step} />
+      <main className="flex-1 max-w-2xl mx-auto w-full p-6 pt-10">
+        <div className="flex gap-2 mb-12">
+            {[1, 2].map((i) => (
+                <div key={i} className={cn("h-1.5 flex-1 rounded-full transition-all duration-500", step >= i ? "bg-primary shadow-[0_0_15px_rgba(59,130,246,0.5)]" : "bg-slate-100")}></div>
+            ))}
+        </div>
 
-          <AnimatePresence mode="wait">
-            {step === 1 && (
-              <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <div className="mb-8">
-                    <h2 className="text-3xl font-extrabold mb-2 text-slate-900">Pinpoint Location</h2>
-                    <p className="text-slate-500 font-medium">Click on the map to mark the exact spot of the issue.</p>
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <motion.div 
+              key="step1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-10"
+            >
+                <div className="space-y-2">
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">Capture Evidence</h2>
+                    <p className="text-slate-500 font-medium">Start by providing clear visual context of the issue.</p>
                 </div>
-                
-                {isUsingFallback && (
-                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 mb-4">
-                    <AlertCircle className="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
-                    <div>
-                      <p className="text-sm font-bold text-amber-800">Using default location</p>
-                      <p className="text-xs text-amber-600">{geoError} Please click on the map to set the correct location.</p>
+
+                <div className="relative group">
+                    <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment"
+                        onChange={handlePhotoChange}
+                        className="hidden" 
+                        id="photo-upload"
+                    />
+                    <label 
+                        htmlFor="photo-upload"
+                        className={cn(
+                            "block aspect-square w-full rounded-[3rem] border-4 border-dashed cursor-pointer transition-all relative overflow-hidden",
+                            photoPreview ? "border-primary shadow-2xl" : "border-slate-100 bg-slate-50 hover:bg-slate-100 hover:border-slate-200"
+                        )}
+                    >
+                        {photoPreview ? (
+                            <img src={photoPreview} className="w-full h-full object-cover" alt="Preview" />
+                        ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                                <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                    <Camera size={32} />
+                                </div>
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Tap to Capture</p>
+                            </div>
+                        )}
+                    </label>
+                    {photoPreview && (
+                        <button onClick={(e) => { e.preventDefault(); setPhoto(null); setPhotoPreview(null); }} className="absolute -top-3 -right-3 w-10 h-10 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-xl">
+                            <X size={20} />
+                        </button>
+                    )}
+                </div>
+
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Incident Category</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        {categories.map((cat) => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setSelectedCategory(cat.id)}
+                                className={cn(
+                                    "p-4 rounded-2xl text-xs font-bold text-left border-2 transition-all active:scale-95",
+                                    selectedCategory === cat.id 
+                                        ? "bg-primary text-white border-primary shadow-xl shadow-primary/20" 
+                                        : "bg-white text-slate-600 border-slate-100 hover:border-slate-200"
+                                )}
+                            >
+                                {cat.name}
+                            </button>
+                        ))}
                     </div>
-                  </div>
-                )}
+                </div>
+
+                <button 
+                    disabled={!photo || !selectedCategory}
+                    onClick={() => setStep(2)}
+                    className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black shadow-2xl disabled:bg-slate-200 disabled:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                >
+                    Continue to Location <Send size={18} />
+                </button>
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div 
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-10"
+            >
+                <div className="space-y-2">
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">Pin Location</h2>
+                    <p className="text-slate-500 font-medium">Verify the exact coordinates for the response team.</p>
+                </div>
 
                 <div className="h-[400px] w-full rounded-[2rem] overflow-hidden border-4 border-slate-100 mb-8 shadow-inner relative">
                   {geoLoading ? (
@@ -153,103 +202,67 @@ export default function ReportIssue() {
                       <Marker longitude={position.lng} latitude={position.lat} />
                     </InteractiveMap>
                   ) : (
-                    <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
-                      <AlertCircle className="text-slate-400 mb-4" size={40} />
-                      <p className="text-slate-500 font-medium">Unable to load map</p>
-                      <button onClick={refreshLocation} className="mt-4 px-4 py-2 bg-primary text-white rounded-lg font-medium flex items-center gap-2">
-                        <Navigation size={16} /> Retry Location
-                      </button>
+                    <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50 gap-4">
+                        <AlertCircle className="text-slate-300" size={40} />
+                        <p className="text-slate-400 font-bold text-sm">Location unavailable</p>
+                        <button onClick={() => window.location.reload()} className="text-primary font-black text-xs uppercase underline">Retry Geolocation</button>
                     </div>
                   )}
                 </div>
-                <div className="bg-blue-50 p-6 rounded-2xl flex items-start gap-4 mb-8">
-                    <div className="p-2 bg-primary text-white rounded-lg"><MapIcon size={20} /></div>
-                    <div>
-                        <p className="text-sm font-bold text-slate-800">Precision Lock</p>
-                        <p className="text-xs text-slate-500 font-medium">
-                          Current coordinates: {position?.lat.toFixed(6)}, {position?.lng.toFixed(6)}
-                          {geoPosition?.accuracy && <span className="ml-2">(±{Math.round(geoPosition.accuracy)}m accuracy)</span>}
-                        </p>
-                    </div>
-                </div>
-                <button onClick={() => setStep(2)} disabled={!position} className="w-full py-5 bg-primary text-white rounded-[1.5rem] font-extrabold shadow-xl shadow-primary/20 hover:bg-blue-800 transition-all flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:shadow-none">
-                    Confirm & Proceed <ArrowRight size={20} />
-                </button>
-              </motion.div>
-            )}
 
-            {step === 2 && (
-              <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <div className="mb-8 text-center">
-                    <h2 className="text-3xl font-extrabold mb-2 text-slate-900">Visual Evidence</h2>
-                    <p className="text-slate-500 font-medium">Please provide a clear photo of the infrastructure damage.</p>
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Additional Notes (Optional)</label>
+                    <textarea 
+                        className="w-full p-6 bg-slate-50 rounded-[2rem] border-2 border-transparent focus:border-primary focus:bg-white transition-all outline-none font-medium text-slate-700 resize-none"
+                        rows="4"
+                        placeholder="Provide any extra details that might help the field force..."
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                    />
                 </div>
-                <div className="group relative w-full aspect-video bg-slate-50 rounded-[2rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-hidden transition-colors hover:border-primary/30 mb-8">
-                    {photoPreview ? (
-                        <img src={photoPreview} className="w-full h-full object-cover" />
-                    ) : (
-                        <>
-                            <div className="w-20 h-20 bg-white rounded-full shadow-lg flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-                                <Camera size={32} />
-                            </div>
-                            <p className="text-lg font-bold text-slate-400">Click to capture or upload</p>
-                        </>
-                    )}
-                    <input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} className="absolute inset-0 opacity-0 cursor-pointer" />
-                </div>
+
                 <div className="flex gap-4">
-                    <button onClick={() => setStep(1)} className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-[1.5rem] font-bold">Change Location</button>
-                    <button onClick={() => setStep(3)} disabled={!photo} className="flex-[2] py-5 bg-primary text-white rounded-[1.5rem] font-extrabold disabled:bg-slate-200 shadow-xl shadow-primary/20">Next Step</button>
+                    <button 
+                        onClick={() => setStep(1)}
+                        className="p-6 bg-slate-100 text-slate-500 rounded-[2rem] font-black active:scale-95 transition-all"
+                    >
+                        Back
+                    </button>
+                    <button 
+                        disabled={submitting || !position}
+                        onClick={handleSubmit}
+                        className="flex-1 py-6 bg-primary text-white rounded-[2rem] font-black shadow-2xl shadow-primary/20 disabled:bg-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                    >
+                        {submitting ? (
+                            <> <Loader2 className="animate-spin" size={20} /> Transmitting... </>
+                        ) : (
+                            <> Broadcast Report <ShieldCheck size={20} /> </>
+                        )}
+                    </button>
                 </div>
-              </motion.div>
-            )}
+            </motion.div>
+          )}
 
-            {step === 3 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <div className="mb-10 text-center">
-                    <h2 className="text-3xl font-extrabold mb-2 text-slate-900">Final Details</h2>
-                    <p className="text-slate-500 font-medium">Help us prioritize this issue by providing a category and short description.</p>
+          {step === 3 && (
+            <motion.div 
+              key="step3"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="py-20 flex flex-col items-center text-center space-y-8"
+            >
+                <div className="w-32 h-32 bg-emerald-50 rounded-[3rem] flex items-center justify-center text-emerald-500 shadow-inner">
+                    <CheckCircle2 size={64} className="animate-bounce" />
                 </div>
-                <div className="space-y-8 mb-10">
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Issue Category</label>
-                        <select 
-                            className="w-full p-4 bg-slate-100/50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-primary outline-none font-medium transition-all"
-                            value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}
-                        >
-                            <option value="">Choose a category...</option>
-                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Notes (Optional)</label>
-                        <textarea 
-                            rows="4" placeholder="Describe the severity or any landmark..."
-                            className="w-full p-4 bg-slate-100/50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-primary outline-none font-medium transition-all"
-                            value={description} onChange={(e) => setDescription(e.target.value)}
-                        />
-                    </div>
+                <div className="space-y-3">
+                    <h2 className="text-4xl font-black text-slate-900">Successfully Logged</h2>
+                    <p className="text-slate-500 font-medium max-w-xs mx-auto">Your report has been received by the central dispatch system.</p>
                 </div>
-                 <button 
-                    type="button" 
-                    disabled={loading}
-                    className="w-full py-5 px-8 bg-primary text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-primary/20 disabled:bg-slate-200 disabled:shadow-none active:scale-[0.98]"
-                    onClick={handleSubmit}
-                >
-                    {loading ? <Loader2 className="animate-spin" /> : <>Submit Report <Check size={20} /></>}
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        
-        <div className="mt-12 bg-primary text-white p-6 rounded-[2rem] flex items-center gap-6 shadow-xl shadow-primary/20">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center"><Info size={24} /></div>
-            <p className="text-sm font-medium leading-relaxed">
-                Your report will be automatically grouped with others in the same area to ensure faster processing.
-            </p>
-        </div>
-        <Toast toast={toast} onClose={() => setToast(null)} />
+                <div className="pt-10">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Redirecting to Dashboard...</p>
+                </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   )

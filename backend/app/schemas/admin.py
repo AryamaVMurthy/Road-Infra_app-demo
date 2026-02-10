@@ -56,3 +56,13 @@ class WorkerAnalyticsResponse(BaseModel):
 
     workers: List[WorkerPerformance]
     summary: dict  # totals, averages
+
+
+class WorkerBulkRegisterRequest(BaseModel):
+    emails_csv: str
+
+
+class WorkerBulkRegisterResult(BaseModel):
+    created: List[str]
+    reactivated: List[str]
+    skipped: List[str]

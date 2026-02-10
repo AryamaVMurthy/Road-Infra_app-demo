@@ -10,6 +10,7 @@ from sqlmodel import Session
 
 from app.models.domain import Issue
 from app.services.audit import AuditService
+from app.core.time import utc_now
 
 
 # Valid status transitions
@@ -63,13 +64,13 @@ class WorkflowService:
             issue.resolved_at = None
         elif new_status == "ACCEPTED":
             if not issue.accepted_at:
-                issue.accepted_at = datetime.utcnow()
+                issue.accepted_at = utc_now()
             issue.resolved_at = None
         elif new_status == "IN_PROGRESS":
             issue.resolved_at = None
         elif new_status == "RESOLVED":
             if not issue.resolved_at:
-                issue.resolved_at = datetime.utcnow()
+                issue.resolved_at = utc_now()
 
         # Handle rejection reason
         if rejection_reason:
@@ -178,7 +179,7 @@ class WorkflowService:
         """Worker accepts a task with ETA date"""
         issue.status = "ACCEPTED"
         issue.eta_date = eta_date
-        issue.accepted_at = datetime.utcnow()
+        issue.accepted_at = utc_now()
         session.add(issue)
 
         AuditService.log(
@@ -225,7 +226,7 @@ class WorkflowService:
         """Worker marks task as resolved"""
         old_status = issue.status
         issue.status = "RESOLVED"
-        issue.resolved_at = datetime.utcnow()
+        issue.resolved_at = utc_now()
         session.add(issue)
 
         AuditService.log(

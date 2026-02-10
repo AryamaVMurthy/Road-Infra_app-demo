@@ -4,12 +4,13 @@ from app.schemas.auth import Login, OTPRequest
 from app.models.domain import User, Otp, Invite
 from sqlmodel import Session, select, desc
 from app.db.session import get_session
-from datetime import datetime, timedelta
+from datetime import timedelta
 from app.services.email import EmailService
 from app.services.auth_service import AuthService
 from app.api.deps import get_current_user
 
 from app.core.security import check_otp_rate_limit
+from app.core.time import utc_now
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ router = APIRouter()
 async def request_otp(data: OTPRequest, session: Session = Depends(get_session)):
     check_otp_rate_limit(data.email)
     otp_code = EmailService.generate_otp()
-    expires_at = datetime.utcnow() + timedelta(minutes=10)
+    expires_at = utc_now() + timedelta(minutes=10)
 
     otp_entry = Otp(email=data.email, code=otp_code, expires_at=expires_at)
     session.add(otp_entry)
@@ -38,7 +39,7 @@ def login(response: Response, data: Login, session: Session = Depends(get_sessio
     if (
         not otp_record
         or otp_record.code != data.otp
-        or otp_record.expires_at < datetime.utcnow()
+        or otp_record.expires_at < utc_now()
     ):
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
 
@@ -68,7 +69,7 @@ def login(response: Response, data: Login, session: Session = Depends(get_sessio
 
         session.add(user)
 
-    user.last_login_at = datetime.utcnow()
+    user.last_login_at = utc_now()
     session.add(user)
     session.commit()
     session.refresh(user)

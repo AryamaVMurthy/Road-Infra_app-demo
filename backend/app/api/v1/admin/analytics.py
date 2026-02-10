@@ -9,7 +9,7 @@ from sqlmodel import Session
 from app.db.session import get_session
 from app.api.deps import require_admin_user
 from app.models.domain import User
-from app.services.analytics import AnalyticsService
+from app.services.admin_analytics_service import AdminAnalyticsService
 
 router = APIRouter()
 
@@ -20,8 +20,8 @@ def get_worker_analytics(
     current_user: User = Depends(require_admin_user),
 ):
     """Get detailed worker analytics for dashboard"""
-    org_id = current_user.org_id if current_user.role == "ADMIN" else None
-    return AnalyticsService.get_worker_analytics(session, org_id=org_id)
+    org_id = None if current_user.role == "SYSADMIN" else current_user.org_id
+    return AdminAnalyticsService.get_worker_analytics(session, org_id=org_id)
 
 
 @router.get("/dashboard-stats")
@@ -30,5 +30,5 @@ def get_dashboard_stats(
     current_user: User = Depends(require_admin_user),
 ):
     """Get quick dashboard statistics"""
-    org_id = current_user.org_id if current_user.role == "ADMIN" else None
-    return AnalyticsService.get_dashboard_stats(session, org_id=org_id)
+    org_id = None if current_user.role == "SYSADMIN" else current_user.org_id
+    return AdminAnalyticsService.get_dashboard_stats(session, org_id=org_id)

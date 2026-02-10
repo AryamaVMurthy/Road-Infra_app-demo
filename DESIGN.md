@@ -325,8 +325,8 @@ REPORTED → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED
 |---------|------|
 | Issue report + dedup | `backend/app/api/v1/issues.py` |
 | Worker resolve flow | `backend/app/api/v1/worker.py` |
-| Admin operations | `backend/app/api/v1/admin.py` |
-| Heatmap data | `backend/app/services/analytics.py` |
+| Admin operations | `backend/app/api/v1/admin/` |
+| Heatmap data | `backend/app/services/public_analytics_service.py` |
 | Maps (UI) | `frontend/src/pages/*` |
 | Heatmap layer | `frontend/src/components/HeatmapLayer.jsx` |
 | Geocoding search | `frontend/src/components/SearchField.jsx` |

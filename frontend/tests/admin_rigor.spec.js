@@ -31,7 +31,7 @@ test.describe('Admin Rigorous Flow', () => {
 
     const status = runSql(`SELECT status FROM issue WHERE id='${createdIssueId}';`)
     const workerEmail = runSql(
-      `SELECT u.email FROM issue i JOIN \"user\" u ON i.worker_id=u.id WHERE i.id='${createdIssueId}';`
+      `SELECT u.email FROM issue i JOIN "user" u ON i.worker_id=u.id WHERE i.id='${createdIssueId}';`
     )
 
     expect(status).toBe('ASSIGNED')

@@ -31,7 +31,7 @@ backend/
 
 ## ANTI-PATTERNS
 - Do not import and use production engine inside tests.
-- Do not place new admin features in legacy `app/api/v1/admin_v0.py`.
+- Do not add a legacy catch-all admin router; keep admin APIs in `app/api/v1/admin/`.
 - Do not embed hardcoded API prefixes outside config (`API_V1_STR`).
 
 ## NOTES

@@ -14,6 +14,7 @@ Covers:
 
 import pytest
 from datetime import datetime, timedelta
+from app.core.time import utc_now
 from uuid import uuid4
 from sqlmodel import Session, select, desc
 
@@ -110,7 +111,7 @@ class TestGoldenPath:
 
         # -- Step 3: Worker accepts → ACCEPTED --
         _login(client, session, worker_a.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 200
         session.refresh(issue)
@@ -182,7 +183,7 @@ class TestAdminOperations:
         issue = _create_issue(
             session, cat, citizen, status="IN_PROGRESS", worker=worker_a
         )
-        issue.accepted_at = datetime.utcnow()
+        issue.accepted_at = utc_now()
         session.add(issue)
         session.commit()
 
@@ -213,7 +214,7 @@ class TestAdminOperations:
     def test_reject_returns_to_in_progress(self, client, session):
         cat, citizen, admin, worker_a, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="RESOLVED", worker=worker_a)
-        issue.resolved_at = datetime.utcnow()
+        issue.resolved_at = utc_now()
         session.add(issue)
         session.commit()
 
@@ -312,7 +313,7 @@ class TestWorkerOperations:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
         _login(client, session, worker_a.email)
-        eta = (datetime.utcnow() + timedelta(hours=8)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=8)).isoformat() + "Z"
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 200
         session.refresh(issue)
@@ -323,7 +324,7 @@ class TestWorkerOperations:
     def test_start_transitions_to_in_progress(self, client, session):
         cat, citizen, admin, worker_a, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ACCEPTED", worker=worker_a)
-        issue.accepted_at = datetime.utcnow()
+        issue.accepted_at = utc_now()
         session.add(issue)
         session.commit()
 
@@ -389,7 +390,7 @@ class TestWrongWorkerGuards:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
         _login(client, session, worker_b.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 404
 
@@ -441,7 +442,7 @@ class TestRejectReresolveCycle:
     def test_reject_then_reresolve(self, client, session):
         cat, citizen, admin, worker_a, *_ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="RESOLVED", worker=worker_a)
-        issue.resolved_at = datetime.utcnow()
+        issue.resolved_at = utc_now()
         session.add(issue)
         session.commit()
 
@@ -491,8 +492,8 @@ class TestFieldIntegrity:
         issue = _create_issue(
             session, cat, citizen, status="IN_PROGRESS", worker=worker_a
         )
-        issue.accepted_at = datetime.utcnow()
-        issue.eta_date = datetime.utcnow() + timedelta(hours=4)
+        issue.accepted_at = utc_now()
+        issue.eta_date = utc_now() + timedelta(hours=4)
         session.add(issue)
         session.commit()
 
@@ -509,7 +510,7 @@ class TestFieldIntegrity:
     def test_reassign_clears_accepted_and_resolved(self, client, session):
         cat, citizen, admin, worker_a, worker_b, _ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ACCEPTED", worker=worker_a)
-        issue.accepted_at = datetime.utcnow()
+        issue.accepted_at = utc_now()
         session.add(issue)
         session.commit()
 

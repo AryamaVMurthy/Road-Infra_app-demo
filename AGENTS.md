@@ -35,7 +35,7 @@ Core flow is OTP auth plus role-gated lifecycle transitions from report to closu
 | Symbol | Type | Location | Refs | Role |
 |--------|------|----------|------|------|
 | `app` | variable | `backend/app/main.py` | high | FastAPI application root |
-| `on_startup` | function | `backend/app/main.py` | medium | Initializes MinIO dependency |
+| `lifespan` | function | `backend/app/main.py` | medium | Initializes MinIO dependency |
 | `api_router` | variable | `backend/app/api/v1/api.py` | high | V1 route composition point |
 | `queryClient` | constant | `frontend/src/main.jsx` | medium | React Query cache root |
 | `App` | function | `frontend/src/App.jsx` | high | Frontend route tree + auth shell |
@@ -77,7 +77,53 @@ make test-frontend
 make test-e2e
 ```
 
+## MANDATORY VALIDATION GATE (HEAVY TESTING)
+- Do not stop after code edits without running validation commands.
+- If any command fails, fix the root cause and rerun the failed gate and all dependent gates.
+- Do not ship partial-green states.
+
+### Required run order (strict)
+```bash
+# 1) Backend env + deps
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+pip install pytest pytest-asyncio pytest-anyio
+
+# 2) Frontend deps
+npm --prefix frontend ci
+
+# 3) Infra
+docker compose up -d db minio
+
+# 4) Backend tests
+PYTHONPATH=backend .venv/bin/pytest backend/tests -q
+
+# 5) Frontend checks
+npm --prefix frontend run lint
+npm --prefix frontend run test
+npm --prefix frontend run build
+
+# 6) Frontend E2E
+npm --prefix frontend exec playwright test
+```
+
+### Required security/behavior checks
+- `citizen` and `worker` must receive `403` on admin endpoints.
+- worker endpoints must reject non-workers (`403`) and wrong-worker task access must remain `404`.
+- no `/auth/google-mock` endpoint or references.
+- no `reporter_email`/email ownership trust in issue flows.
+- refresh tokens must not be stored in plaintext; lookup via deterministic hash + verify via bcrypt.
+- logout must revoke refresh token server-side, not only clear cookies.
+- no offline service worker/queue code paths.
+- `/api/v1/analytics/audit-all` must exist and return data for admin/system admin.
+
+### Final grep gate (must be clean)
+```bash
+rg "google-mock|offlineService|serviceWorker\\.register\\('/sw\\.js'\\)|reporter_email" backend frontend docs README.md DESIGN.md
+```
+
 ## NOTES
 - `docker_data/` includes local DB volume data; avoid indexing/scanning it during analysis.
 - Root `pyrightconfig.json` points to `backend/.venv`; local type-check setup is backend-centric.
-- `backend/app/api/v1/admin_v0.py` exists alongside modular admin routes; prefer modular `admin/` package.
+- Admin routes are modular under `backend/app/api/v1/admin/`; keep new endpoints in that package.

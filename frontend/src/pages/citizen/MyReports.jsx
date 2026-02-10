@@ -8,13 +8,11 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import Map, { Marker } from 'react-map-gl'
+import { Marker } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { EvidenceGallery } from '../../components/EvidenceGallery'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { InteractiveMap } from '../../components/InteractiveMap'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -86,12 +84,6 @@ export default function MyReports() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  useEffect(() => {
-    if (user) {
-      fetchReports({ showLoader: true })
-    }
-  }, [user, fetchReports])
-
   const fetchReports = useCallback(async ({ showLoader = false } = {}) => {
     if (showLoader) {
       setLoading(true)
@@ -109,6 +101,12 @@ export default function MyReports() {
         }
       })
   }, [])
+
+  useEffect(() => {
+    if (user) {
+      fetchReports({ showLoader: true })
+    }
+  }, [user, fetchReports])
 
   useAutoRefresh(
     () => fetchReports({ showLoader: false }),

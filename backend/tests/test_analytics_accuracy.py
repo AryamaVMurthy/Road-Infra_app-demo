@@ -16,6 +16,7 @@ Covers:
 
 import pytest
 from datetime import datetime, timedelta
+from app.core.time import utc_now
 from uuid import uuid4
 from sqlmodel import Session, select, desc
 
@@ -308,7 +309,7 @@ class TestAuditEndpoint:
 
         # Accept
         _login(client, session, worker_a.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         resp = client.get(f"/api/v1/analytics/audit/{issue.id}")
@@ -483,7 +484,7 @@ class TestWorkerAnalytics:
 
         # Issue with known accepted_at and resolved_at (6 hours apart)
         issue = _create_issue(session, cat, citizen, status="RESOLVED", worker=worker_a)
-        now = datetime.utcnow()
+        now = utc_now()
         issue.accepted_at = now - timedelta(hours=6)
         issue.resolved_at = now
         session.add(issue)

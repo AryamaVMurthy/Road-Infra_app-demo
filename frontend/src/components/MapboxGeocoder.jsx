@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
 import { useControl } from 'react-map-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
+import { MAPBOX_TOKEN } from '../config/map';
 
-export function MapboxGeocoderControl({ onFound, mapboxAccessToken }) {
-  const geocoder = useControl(
+export function MapboxGeocoderControl({ onFound, mapboxAccessToken = MAPBOX_TOKEN }) {
+  useControl(
     () => {
       const ctrl = new MapboxGeocoder({
         accessToken: mapboxAccessToken,

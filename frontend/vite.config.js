@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [
     react()
   ],
+  build: {
+    chunkSizeWarningLimit: 3000,
+  },
   server: {
     proxy: {
       '/api': {

@@ -7,8 +7,6 @@ import { authService } from '../../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import Map from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
 import { MapboxHeatmap } from '../../components/MapboxHeatmap'
 import { MapboxLocateControl } from '../../components/MapboxLocateControl'
 import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
@@ -22,7 +20,7 @@ import { AcceptTaskModal } from '../../features/worker/components/Modals/AcceptT
 import { ResolveTaskModal } from '../../features/worker/components/Modals/ResolveTaskModal'
 import { Toast } from '../../features/common/components/Toast'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
 
 export default function WorkerHome() {
   const [activeTab, setActiveTab] = useState('tasks') 

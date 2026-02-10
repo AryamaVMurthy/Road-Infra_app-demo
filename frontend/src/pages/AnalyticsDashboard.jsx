@@ -12,17 +12,11 @@ import {
 import { motion } from 'framer-motion'
 import { cn } from '../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import Map, { Marker, Popup } from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
-import { MapboxHeatmap } from '../components/MapboxHeatmap'
-import { MapboxLocateControl } from '../components/MapboxLocateControl'
-import { MapboxGeocoderControl } from '../components/MapboxGeocoder'
 import { InteractiveMap } from '../components/InteractiveMap'
+import { MapboxHeatmap } from '../components/MapboxHeatmap'
+import { IssueMarkersLayer } from '../components/IssueMarkersLayer'
 import { useGeolocation, DEFAULT_CENTER } from '../hooks/useGeolocation'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
-
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
 const StatBox = ({ label, value, trend, icon: Icon, colorClass }) => (
     <motion.div 
@@ -126,7 +120,6 @@ export default function AnalyticsDashboard() {
             <StatBox label="SLA Compliance" value={data?.summary.compliance || '0%'} icon={ShieldCheck} colorClass="bg-purple-500" />
         </section>
 
-        {/* Central Visualization Hub */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <motion.div 
                 initial={{ opacity: 0, scale: 0.98 }}
@@ -164,21 +157,15 @@ export default function AnalyticsDashboard() {
                         {viewMode === 'heatmap' ? (
                             <MapboxHeatmap points={heatmapData} />
                         ) : (
-                            issues.map(issue => (
-                                <Marker key={issue.id} longitude={issue.lng} latitude={issue.lat}>
-                                    <Popup
-                                        longitude={issue.lng}
-                                        latitude={issue.lat}
-                                        closeButton={true}
-                                        closeOnClick={false}
-                                    >
-                                        <div className="p-2 space-y-2">
-                                            <p className="font-black text-slate-900">{issue.category_name}</p>
-                                            <p className="text-xs text-slate-500">{issue.status}</p>
-                                        </div>
-                                    </Popup>
-                                </Marker>
-                            ))
+                            <IssueMarkersLayer
+                                issues={issues}
+                                renderPopupContent={(issue) => (
+                                    <div className="p-2 space-y-2">
+                                        <p className="font-black text-slate-900">{issue.category_name}</p>
+                                        <p className="text-xs text-slate-500">{issue.status}</p>
+                                    </div>
+                                )}
+                            />
                         )}
                     </InteractiveMap>
                 </div>
@@ -250,7 +237,6 @@ export default function AnalyticsDashboard() {
             </div>
         </div>
 
-        {/* Velocity Timeline Graph */}
         <section className="bg-white p-12 rounded-[4rem] border border-slate-100 shadow-2xl">
             <div className="flex items-center justify-between mb-12 px-2">
                 <div className="space-y-1">

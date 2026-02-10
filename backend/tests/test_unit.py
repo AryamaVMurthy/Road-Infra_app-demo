@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
+from app.core.time import utc_now
 from app.services.exif import ExifService
 from app.services.audit import AuditService
 from app.models.domain import AuditLog
@@ -57,7 +58,7 @@ def test_exif_metadata_missing_tags():
 
 
 def test_exif_timestamp_boundary():
-    now = datetime.utcnow()
+    now = utc_now()
 
     # 6 days, 23 hours (Pass)
     recent = now - timedelta(days=6, hours=23)

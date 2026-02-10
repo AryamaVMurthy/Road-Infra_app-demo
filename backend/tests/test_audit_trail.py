@@ -15,6 +15,7 @@ Covers:
 
 import pytest
 from datetime import datetime, timedelta
+from app.core.time import utc_now
 from uuid import uuid4
 from sqlmodel import Session, select, desc
 
@@ -196,7 +197,7 @@ class TestStatusChangeAudits:
     def test_reject_logs_in_progress(self, client, session):
         cat, citizen, admin, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="RESOLVED", worker=worker_a)
-        issue.resolved_at = datetime.utcnow()
+        issue.resolved_at = utc_now()
         session.add(issue)
         session.commit()
 
@@ -224,7 +225,7 @@ class TestWorkerAudits:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
         _login(client, session, worker_a.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 200
 
@@ -238,7 +239,7 @@ class TestWorkerAudits:
     def test_start_logs_to_in_progress(self, client, session):
         cat, citizen, _, worker_a, _ = _seed(session)
         issue = _create_issue(session, cat, citizen, status="ACCEPTED", worker=worker_a)
-        issue.accepted_at = datetime.utcnow()
+        issue.accepted_at = utc_now()
         session.add(issue)
         session.commit()
 
@@ -332,7 +333,7 @@ class TestAuditEndpoint:
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
         _login(client, session, worker_a.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
@@ -351,7 +352,7 @@ class TestAuditEndpoint:
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
         _login(client, session, worker_a.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         resp = client.get(f"/api/v1/analytics/audit/{issue.id}")
@@ -392,7 +393,7 @@ class TestGoldenPathAuditTrail:
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
         _login(client, session, worker_a.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")

@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from app.models.domain import User, Otp
 from sqlmodel import Session
 from datetime import datetime, timedelta
+from app.core.time import utc_now
 
 
 def test_csrf_samesite_protection_simulation(client: TestClient, session: Session):
@@ -10,7 +11,7 @@ def test_csrf_samesite_protection_simulation(client: TestClient, session: Sessio
     user = User(email=email, role="CITIZEN")
     session.add(user)
     otp = Otp(
-        email=email, code="123456", expires_at=datetime.utcnow() + timedelta(minutes=5)
+        email=email, code="123456", expires_at=utc_now() + timedelta(minutes=5)
     )
     session.add(otp)
     session.commit()

@@ -5,6 +5,8 @@ from sqlmodel import SQLModel, Field, Relationship, Column
 from geoalchemy2 import Geometry
 from shapely.wkt import loads
 
+from app.core.time import utc_now
+
 
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True)
@@ -96,8 +98,8 @@ from geoalchemy2.shape import to_shape
 
 class Issue(IssueBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
 
     @property
     def location_wkt(self) -> str:
@@ -150,7 +152,7 @@ class EvidenceBase(SQLModel):
 
 class Evidence(EvidenceBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     issue: Issue = Relationship(back_populates="evidence")
 
@@ -164,7 +166,7 @@ class InviteBase(SQLModel):
 
 class Invite(InviteBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class FeedbackBase(SQLModel):
@@ -175,7 +177,7 @@ class FeedbackBase(SQLModel):
 
 class Feedback(FeedbackBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class Otp(SQLModel, table=True):
@@ -183,7 +185,7 @@ class Otp(SQLModel, table=True):
     email: str = Field(index=True)
     code: str
     expires_at: datetime
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class AuditLog(SQLModel, table=True):
@@ -194,4 +196,4 @@ class AuditLog(SQLModel, table=True):
     actor_id: UUID
     old_value: Optional[str] = None
     new_value: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)

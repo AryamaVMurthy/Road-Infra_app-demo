@@ -1,20 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import api, { API_URL } from '../../services/api'
-import Map, { Marker, Popup } from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
 import { 
     LayoutDashboard, Map as MapIcon, Users, LogOut, 
     CheckCircle2, AlertCircle, Clock,
-    CheckSquare, Globe, RefreshCw, XCircle
+    CheckSquare, Globe, RefreshCw, XCircle, MailPlus
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
 
+import { BaseMap } from '../../components/BaseMap'
+import { IssueMarkersLayer } from '../../components/IssueMarkersLayer'
+import { MapControls } from '../../components/MapControls'
 import { MapboxHeatmap } from '../../components/MapboxHeatmap'
-import { MapboxLocateControl } from '../../components/MapboxLocateControl'
-import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
 import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
 
 import { SidebarItem } from '../../features/common/components/SidebarItem'
@@ -25,8 +24,6 @@ import { IssueActionsDropdown } from '../../features/authority/components/IssueK
 import { IssueReviewModal } from '../../features/authority/components/Modals/IssueReviewModal'
 import { WorkersTable } from '../../features/authority/components/WorkerAnalytics/WorkersTable'
 import { AnalyticsPanel } from '../../features/authority/components/WorkerAnalytics/AnalyticsPanel'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
 export default function AuthorityDashboard() {
   const [activeTab, setActiveTab] = useState('map') 
@@ -39,6 +36,7 @@ export default function AuthorityDashboard() {
   const [mapMode, setMapMode] = useState('markers')
   const [heatmapData, setHeatmapData] = useState([])
   const [submitting, setSubmitting] = useState(false)
+  const [workerEmailsCsv, setWorkerEmailsCsv] = useState('')
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
   
@@ -101,6 +99,37 @@ export default function AuthorityDashboard() {
         fetchData()
     } catch (e) { alert("Rejection failed") }
     setSubmitting(false)
+  }
+
+  const handleBulkWorkerRegister = async () => {
+    if (!workerEmailsCsv.trim()) return
+    setSubmitting(true)
+    try {
+      await api.post('/admin/bulk-register', { emails_csv: workerEmailsCsv })
+      setWorkerEmailsCsv('')
+      fetchData()
+    } catch (e) {
+      alert('Worker onboarding failed')
+    }
+    setSubmitting(false)
+  }
+
+  const handleActivateWorker = async (workerId) => {
+    try {
+      await api.post(`/admin/activate-worker?worker_id=${workerId}`)
+      fetchData()
+    } catch (e) {
+      alert('Failed to activate worker')
+    }
+  }
+
+  const handleDeactivateWorker = async (workerId) => {
+    try {
+      await api.post(`/admin/deactivate-worker?worker_id=${workerId}`)
+      fetchData()
+    } catch (e) {
+      alert('Failed to deactivate worker')
+    }
   }
 
   // Calculate stats
@@ -172,64 +201,54 @@ export default function AuthorityDashboard() {
                         </div>
                     </div>
                     <div className="flex-1 rounded-[3rem] overflow-hidden border-8 border-white shadow-2xl relative">
-                        <Map
+                        <BaseMap
                             initialViewState={{
                                 longitude: userLocation[1],
                                 latitude: userLocation[0],
                                 zoom: 14
                             }}
-                            style={{ width: '100%', height: '100%' }}
-                            mapStyle="mapbox://styles/mapbox/streets-v12"
-                            mapboxAccessToken={MAPBOX_TOKEN}
                         >
                             {mapMode === 'markers' ? (
-                                issues.map(issue => (
-                                    <Marker key={issue.id} longitude={issue.lng} latitude={issue.lat}>
-                                        <Popup
-                                            longitude={issue.lng}
-                                            latitude={issue.lat}
-                                            closeButton={true}
-                                            closeOnClick={false}
-                                        >
-                                            <div className="p-3 w-64 space-y-3">
-                                                <div className="flex justify-between items-start">
-                                                    <p className="font-black text-slate-900">{issue.category_name}</p>
-                                                    <span className="text-[9px] font-black uppercase text-primary px-1.5 py-0.5 bg-primary/5 rounded">{issue.status}</span>
-                                                </div>
-                                                <div className="text-[10px] text-slate-500 space-y-1">
-                                                    <div className="flex items-center gap-1">
-                                                        <Clock size={10} />
-                                                        Registered: {new Date(issue.created_at).toLocaleDateString()}
-                                                    </div>
-                                                    {issue.eta_date && (
-                                                        <div className="flex items-center gap-1 text-amber-600 font-bold">
-                                                            <Clock size={10} />
-                                                            ETA: {new Date(issue.eta_date).toLocaleDateString()}
-                                                        </div>
-                                                    )}
-                                                    {issue.accepted_at && (
-                                                        <div className="flex items-center gap-1">
-                                                            Accepted: {new Date(issue.accepted_at).toLocaleDateString()}
-                                                        </div>
-                                                    )}
-                                                    {issue.resolved_at && (
-                                                        <div className="flex items-center gap-1 text-emerald-600 font-bold">
-                                                            Resolved: {new Date(issue.resolved_at).toLocaleDateString()}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="aspect-video bg-slate-100 rounded-lg overflow-hidden border">
-                                                    <img src={`${API_URL}/media/${issue.id}/before`} className="w-full h-full object-cover" alt="Issue" />
-                                                </div>
-                                                <button onClick={() => setReviewIssue(issue)} className="w-full py-2 bg-primary text-white rounded-lg text-[10px] font-bold">Open Operations Console</button>
+                                <IssueMarkersLayer
+                                    issues={issues}
+                                    renderPopupContent={(issue) => (
+                                        <div className="p-3 w-64 space-y-3">
+                                            <div className="flex justify-between items-start">
+                                                <p className="font-black text-slate-900">{issue.category_name}</p>
+                                                <span className="text-[9px] font-black uppercase text-primary px-1.5 py-0.5 bg-primary/5 rounded">{issue.status}</span>
                                             </div>
-                                        </Popup>
-                                    </Marker>
-                                ))
+                                            <div className="text-[10px] text-slate-500 space-y-1">
+                                                <div className="flex items-center gap-1">
+                                                    <Clock size={10} />
+                                                    Registered: {new Date(issue.created_at).toLocaleDateString()}
+                                                </div>
+                                                {issue.eta_date && (
+                                                    <div className="flex items-center gap-1 text-amber-600 font-bold">
+                                                        <Clock size={10} />
+                                                        ETA: {new Date(issue.eta_date).toLocaleDateString()}
+                                                    </div>
+                                                )}
+                                                {issue.accepted_at && (
+                                                    <div className="flex items-center gap-1">
+                                                        Accepted: {new Date(issue.accepted_at).toLocaleDateString()}
+                                                    </div>
+                                                )}
+                                                {issue.resolved_at && (
+                                                    <div className="flex items-center gap-1 text-emerald-600 font-bold">
+                                                        Resolved: {new Date(issue.resolved_at).toLocaleDateString()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="aspect-video bg-slate-100 rounded-lg overflow-hidden border">
+                                                <img src={`${API_URL}/media/${issue.id}/before`} className="w-full h-full object-cover" alt="Issue" />
+                                            </div>
+                                            <button onClick={() => setReviewIssue(issue)} className="w-full py-2 bg-primary text-white rounded-lg text-[10px] font-bold">Open Operations Console</button>
+                                        </div>
+                                    )}
+                                />
                             ) : ( <MapboxHeatmap points={heatmapData} /> )}
-                            <MapboxLocateControl />
-                            <MapboxGeocoderControl mapboxAccessToken={MAPBOX_TOKEN} />
-                        </Map>
+                            <MapControls />
+                        </BaseMap>
                     </div>
                 </motion.div>
             )}
@@ -297,7 +316,37 @@ export default function AuthorityDashboard() {
             {activeTab === 'workers' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
                     <AnalyticsPanel analytics={workerAnalytics} />
-                    <WorkersTable workers={workers} analytics={workerAnalytics} />
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 sm:p-8 space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                                <MailPlus size={18} />
+                            </div>
+                            <div>
+                                <h3 className="font-black text-slate-900">Worker Onboarding</h3>
+                                <p className="text-xs font-medium text-slate-500">Add comma separated worker emails for bulk registration.</p>
+                            </div>
+                        </div>
+                        <textarea
+                            value={workerEmailsCsv}
+                            onChange={(e) => setWorkerEmailsCsv(e.target.value)}
+                            rows={3}
+                            placeholder="worker1@authority.gov.in, worker2@authority.gov.in"
+                            className="w-full p-3 rounded-xl border border-slate-200 focus:border-primary outline-none text-sm"
+                        />
+                        <button
+                            onClick={handleBulkWorkerRegister}
+                            disabled={submitting}
+                            className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold disabled:bg-slate-300"
+                        >
+                            {submitting ? 'Registering...' : 'Register Workers'}
+                        </button>
+                    </div>
+                    <WorkersTable
+                      workers={workers}
+                      analytics={workerAnalytics}
+                      onActivate={handleActivateWorker}
+                      onDeactivate={handleDeactivateWorker}
+                    />
                 </motion.div>
             )}
            </AnimatePresence>

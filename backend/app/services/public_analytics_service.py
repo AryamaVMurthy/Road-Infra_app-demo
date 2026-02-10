@@ -1,21 +1,26 @@
-from sqlmodel import Session, select, func, col, asc
-from app.models.domain import Issue, AuditLog, Category, User
-from typing import List, Dict, Any
-from uuid import UUID
 from datetime import datetime, timedelta
+import logging
+from typing import Any, Dict, List
+from uuid import UUID
+
+from sqlmodel import Session, asc, col, func, select
+
+from app.models.domain import AuditLog, Category, Issue, User
+
+logger = logging.getLogger(__name__)
 
 
-class AnalyticsService:
+class PublicAnalyticsService:
     @staticmethod
     def get_heatmap_data(session: Session) -> List[dict]:
         try:
             statement = select(Issue).where(Issue.status != "CLOSED")
             issues = session.exec(statement).all()
             data = [{"lat": i.lat, "lng": i.lng, "intensity": 0.5} for i in issues]
-            print(f"Heatmap data generated: {len(data)} points")
+            logger.debug("Heatmap data generated with %s points", len(data))
             return data
         except Exception as e:
-            print(f"Error in get_heatmap_data: {e}")
+            logger.exception("Failed to generate heatmap data")
             return []
 
     @staticmethod
@@ -67,7 +72,7 @@ class AnalyticsService:
         else:
             compliance_str = "N/A"
 
-        trend_data = AnalyticsService._get_trend_data(session)
+        trend_data = PublicAnalyticsService._get_trend_data(session)
 
         return {
             "summary": {

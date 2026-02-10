@@ -1,241 +1,385 @@
-import { useState, useEffect, useCallback } from 'react'
-import api from '../../services/api'
-import { 
-    Settings, Shield, Globe, Activity, Database, LogOut, 
-    TrendingUp, Users, AlertTriangle, CheckCircle, 
-    ChevronRight, ArrowRight, RefreshCw
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Layer, Marker, Source } from 'react-map-gl'
+import {
+  Activity,
+  Building2,
+  Database,
+  Globe,
+  LogOut,
+  PlusCircle,
+  Settings,
+  Shield,
+  Tags,
+  Trash2,
 } from 'lucide-react'
-import { authService } from '../../services/auth'
-import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '../../utils/utils'
-import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useNavigate } from 'react-router-dom'
+import { authService } from '../../services/auth'
+import api from '../../services/api'
+import { BaseMap } from '../../components/BaseMap'
+import { MapControls } from '../../components/MapControls'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 
-const AdminStat = ({ label, value, trend, icon: Icon, color }) => (
-    <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group">
-        <div className="flex justify-between items-start mb-6">
-            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg", color)}>
-                <Icon size={24} />
-            </div>
-            {trend && (
-                <div className="flex items-center gap-1 text-green-500 font-black text-xs bg-green-50 px-2 py-1 rounded-full">
-                    <TrendingUp size={12} /> {trend}
-                </div>
-            )}
-        </div>
-        <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{label}</p>
-        <p className="text-4xl font-black text-slate-900">{value}</p>
-        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-slate-50 rounded-full group-hover:scale-150 transition-transform duration-500 opacity-50"></div>
-    </motion.div>
-)
+const tabButton = (active) =>
+  `w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${
+    active
+      ? 'bg-white text-slate-950 shadow-lg'
+      : 'text-slate-500 hover:text-white hover:bg-white/5'
+  }`
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('overview')
-  const [data, setData] = useState(null)
-  const [audits, setAudits] = useState([])
-  const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('overview')
+  const [stats, setStats] = useState(null)
+  const [audits, setAudits] = useState([])
+  const [authorities, setAuthorities] = useState([])
+  const [issueTypes, setIssueTypes] = useState([])
+  const [lastRefresh, setLastRefresh] = useState(new Date())
 
-  const fetchAdminData = useCallback(async () => {
-    const promises = [
-      api.get('/admin/issues'),
-      api.get('/admin/workers'),
-      api.get('/analytics/stats')
-    ]
-    
-    if (activeTab === 'logs') {
-        promises.push(api.get('/analytics/audit-all').catch(() => ({data: []})))
-    } else {
-        promises.push(Promise.resolve({data: []}))
-    }
+  const [authorityName, setAuthorityName] = useState('')
+  const [authorityAdminEmail, setAuthorityAdminEmail] = useState('')
+  const [authorityZoneName, setAuthorityZoneName] = useState('')
+  const [polygonPoints, setPolygonPoints] = useState([])
 
-    try {
-      const [, , statsRes, auditRes] = await Promise.all(promises)
-      setData(statsRes.data)
-      setAudits(auditRes.data)
-      setLastRefresh(new Date())
-    } catch (err) {
-      console.error('Failed to fetch admin data', err)
-    }
-  }, [activeTab])
+  const [issueTypeName, setIssueTypeName] = useState('')
+  const [issueTypePriority, setIssueTypePriority] = useState('P3')
+  const [issueTypeSla, setIssueTypeSla] = useState(7)
+
+  const [manualCategoryId, setManualCategoryId] = useState('')
+  const [manualLat, setManualLat] = useState('')
+  const [manualLng, setManualLng] = useState('')
+  const [manualAddress, setManualAddress] = useState('')
+
+  const refreshAll = useCallback(async () => {
+    const [statsRes, authoritiesRes, issueTypesRes] = await Promise.all([
+      api.get('/analytics/stats'),
+      api.get('/admin/authorities').catch(() => ({ data: [] })),
+      api.get('/admin/issue-types').catch(() => ({ data: [] })),
+    ])
+    setStats(statsRes.data)
+    setAuthorities(authoritiesRes.data)
+    setIssueTypes(issueTypesRes.data)
+    setLastRefresh(new Date())
+  }, [])
+
+  const refreshAudits = useCallback(async () => {
+    const auditRes = await api.get('/analytics/audit-all').catch(() => ({ data: [] }))
+    setAudits(auditRes.data)
+    setLastRefresh(new Date())
+  }, [])
 
   useEffect(() => {
-    fetchAdminData()
-  }, [fetchAdminData])
+    refreshAll().catch(() => undefined)
+  }, [refreshAll])
 
-  useAutoRefresh(fetchAdminData, { intervalMs: 30000, runOnMount: false })
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      refreshAudits().catch(() => undefined)
+    }
+  }, [activeTab, refreshAudits])
 
-  const stats = [
-    { name: 'Total Issues', value: data?.summary.reported || 0, color: 'bg-rose-500', icon: AlertTriangle },
-    { name: 'Active Workers', value: data?.summary.workers || 0, color: 'bg-blue-500', icon: Users },
-    { name: 'Resolved', value: data?.summary.resolved || 0, color: 'bg-emerald-500', icon: CheckCircle },
-    { name: 'Compliance', value: data?.summary.compliance || '0%', color: 'bg-purple-500', icon: Shield },
-  ]
+  useAutoRefresh(
+    () => {
+      if (activeTab === 'logs') {
+        Promise.all([refreshAll(), refreshAudits()]).catch(() => undefined)
+        return
+      }
+      refreshAll().catch(() => undefined)
+    },
+    { intervalMs: 30000, runOnMount: false }
+  )
+
+  const polygonGeoJson = useMemo(() => {
+    if (polygonPoints.length < 3) return null
+    const closed = [...polygonPoints, polygonPoints[0]]
+    return {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [closed],
+          },
+        },
+      ],
+    }
+  }, [polygonPoints])
+
+  const createAuthority = async () => {
+    if (!authorityName || !authorityAdminEmail || polygonPoints.length < 3) {
+      alert('Name, admin email and polygon points are required')
+      return
+    }
+    await api.post('/admin/authorities', {
+      name: authorityName,
+      admin_email: authorityAdminEmail,
+      zone_name: authorityZoneName || undefined,
+      jurisdiction_points: polygonPoints,
+    })
+    setAuthorityName('')
+    setAuthorityAdminEmail('')
+    setAuthorityZoneName('')
+    setPolygonPoints([])
+    refreshAll()
+  }
+
+  const createIssueType = async () => {
+    if (!issueTypeName) return
+    await api.post('/admin/issue-types', {
+      name: issueTypeName,
+      default_priority: issueTypePriority,
+      expected_sla_days: Number(issueTypeSla),
+    })
+    setIssueTypeName('')
+    refreshAll()
+  }
+
+  const deactivateIssueType = async (categoryId) => {
+    await api.delete(`/admin/issue-types/${categoryId}`)
+    refreshAll()
+  }
+
+  const updateIssueType = async (category) => {
+    const nextName = window.prompt('Updated issue type name', category.name)
+    if (!nextName || nextName === category.name) return
+    await api.put(`/admin/issue-types/${category.id}`, { name: nextName })
+    refreshAll()
+  }
+
+  const createManualIssue = async () => {
+    if (!manualCategoryId || !manualLat || !manualLng) {
+      alert('Category and coordinates are required')
+      return
+    }
+    await api.post('/admin/manual-issues', {
+      category_id: manualCategoryId,
+      lat: Number(manualLat),
+      lng: Number(manualLng),
+      address: manualAddress || null,
+    })
+    setManualAddress('')
+    alert('Manual issue created')
+  }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC]">
       <aside className="w-80 bg-slate-950 text-white flex flex-col p-8">
-        <div className="flex items-center gap-4 mb-16">
-           <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-950 shadow-xl shadow-white/10">
-             <Shield size={28} />
-           </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight leading-none">MARG</h1>
-            </div>
+        <div className="flex items-center gap-4 mb-10">
+          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-950">
+            <Shield size={26} />
+          </div>
+          <h1 className="text-xl font-black">MARG IT Admin</h1>
         </div>
 
         <nav className="flex-1 space-y-3">
-           <button onClick={() => setActiveTab('overview')} className={cn("w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold transition-all", activeTab === 'overview' ? "bg-white text-slate-950 shadow-xl" : "text-slate-500 hover:text-white hover:bg-white/5")}>
-             <Activity size={20} /> <span className="text-sm">Summary</span>
-           </button>
-           <button onClick={() => navigate('/analytics')} className="w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold text-slate-500 hover:text-white hover:bg-white/5 transition-all">
-             <Globe size={20} /> <span className="text-sm">Full Analytics</span>
-           </button>
-           <button onClick={() => setActiveTab('config')} className={cn("w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold transition-all", activeTab === 'config' ? "bg-white text-slate-950 shadow-xl" : "text-slate-500 hover:text-white hover:bg-white/5")}>
-             <Settings size={20} /> <span className="text-sm">System Config</span>
-           </button>
-           <button onClick={() => setActiveTab('logs')} className={cn("w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold transition-all", activeTab === 'logs' ? "bg-white text-slate-950 shadow-xl" : "text-slate-500 hover:text-white hover:bg-white/5")}>
-             <Database size={20} /> <span className="text-sm">Audit Trails</span>
-           </button>
+          <button onClick={() => setActiveTab('overview')} className={tabButton(activeTab === 'overview')}>
+            <Activity size={18} /> Overview
+          </button>
+          <button onClick={() => navigate('/analytics')} className={tabButton(false)}>
+            <Globe size={18} /> Full Analytics
+          </button>
+          <button onClick={() => setActiveTab('authorities')} className={tabButton(activeTab === 'authorities')}>
+            <Building2 size={18} /> Authorities
+          </button>
+          <button onClick={() => setActiveTab('issueTypes')} className={tabButton(activeTab === 'issueTypes')}>
+            <Tags size={18} /> Issue Types
+          </button>
+          <button onClick={() => setActiveTab('manualIssues')} className={tabButton(activeTab === 'manualIssues')}>
+            <PlusCircle size={18} /> Manual Issue
+          </button>
+          <button onClick={() => setActiveTab('logs')} className={tabButton(activeTab === 'logs')}>
+            <Database size={18} /> Audit Logs
+          </button>
         </nav>
 
-        <div className="mt-auto pt-8 border-t border-white/5">
-          <button onClick={() => authService.logout()} className="w-full flex items-center gap-4 p-5 text-red-400 font-bold hover:bg-red-500/10 rounded-[1.5rem] transition-all">
-            <LogOut size={20} /> <span className="text-sm">Exit System</span>
-          </button>
-        </div>
+        <button
+          onClick={() => authService.logout()}
+          className="w-full flex items-center gap-3 p-4 mt-8 text-rose-400 font-bold hover:bg-rose-500/10 rounded-2xl"
+        >
+          <LogOut size={18} /> Exit
+        </button>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-28 px-12 flex items-center justify-between bg-white/50 backdrop-blur-md">
-            <div>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight capitalize">{activeTab.replace('-', ' ')}</h2>
+      <main className="flex-1 p-10 overflow-auto space-y-6">
+        <div className="text-xs font-bold text-slate-400">Synced {lastRefresh.toLocaleTimeString()}</div>
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <StatCard label="Reported" value={stats?.summary?.reported || 0} />
+            <StatCard label="Workers" value={stats?.summary?.workers || 0} />
+            <StatCard label="Resolved" value={stats?.summary?.resolved || 0} />
+            <StatCard label="Authorities" value={authorities.length} />
+          </div>
+        )}
+
+        {activeTab === 'authorities' && (
+          <div className="space-y-6">
+            <section className="bg-white rounded-3xl border border-slate-100 p-6 space-y-4 shadow-xl">
+              <h3 className="text-lg font-black">Register Government Authority</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input className="p-3 border rounded-xl" placeholder="Authority Name" value={authorityName} onChange={(e) => setAuthorityName(e.target.value)} />
+                <input className="p-3 border rounded-xl" placeholder="Admin Email" value={authorityAdminEmail} onChange={(e) => setAuthorityAdminEmail(e.target.value)} />
+                <input className="p-3 border rounded-xl" placeholder="Zone Name (optional)" value={authorityZoneName} onChange={(e) => setAuthorityZoneName(e.target.value)} />
+              </div>
+              <p className="text-xs text-slate-500">Click on map to add polygon points for jurisdiction. Minimum 3 points required.</p>
+              <div className="h-[360px] rounded-2xl overflow-hidden border">
+                <BaseMap
+                  initialViewState={{ longitude: 78.4867, latitude: 17.385, zoom: 10 }}
+                  onClick={(e) => {
+                    const { lng, lat } = e.lngLat
+                    setPolygonPoints((prev) => [...prev, [lng, lat]])
+                  }}
+                >
+                  {polygonPoints.map((point, idx) => (
+                    <Marker key={`${point[0]}-${point[1]}-${idx}`} longitude={point[0]} latitude={point[1]} color="#2563eb" />
+                  ))}
+                  {polygonGeoJson && (
+                    <Source id="authority-polygon" type="geojson" data={polygonGeoJson}>
+                      <Layer id="authority-fill" type="fill" paint={{ 'fill-color': '#2563eb', 'fill-opacity': 0.2 }} />
+                      <Layer id="authority-line" type="line" paint={{ 'line-color': '#1d4ed8', 'line-width': 2 }} />
+                    </Source>
+                  )}
+                  <MapControls />
+                </BaseMap>
+              </div>
+              <div className="flex gap-3">
+                <button className="px-4 py-2 rounded-xl bg-slate-100 font-bold" onClick={() => setPolygonPoints([])}>
+                  Clear Polygon
+                </button>
+                <button className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold" onClick={createAuthority}>
+                  Create Authority
+                </button>
+              </div>
+            </section>
+
+            <section className="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl">
+              <h3 className="text-lg font-black mb-4">Government Authorities</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-slate-400 uppercase text-xs">
+                    <tr>
+                      <th className="py-2">Name</th>
+                      <th className="py-2">Zone</th>
+                      <th className="py-2">Admins</th>
+                      <th className="py-2">Workers</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {authorities.map((authority) => (
+                      <tr key={authority.org_id} className="border-t">
+                        <td className="py-2 font-bold">{authority.name}</td>
+                        <td className="py-2">{authority.zone_name}</td>
+                        <td className="py-2">{authority.admin_count}</td>
+                        <td className="py-2">{authority.worker_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {activeTab === 'issueTypes' && (
+          <div className="space-y-6">
+            <section className="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl space-y-3">
+              <h3 className="text-lg font-black">Create Issue Type</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input className="p-3 border rounded-xl" placeholder="Name" value={issueTypeName} onChange={(e) => setIssueTypeName(e.target.value)} />
+                <select className="p-3 border rounded-xl" value={issueTypePriority} onChange={(e) => setIssueTypePriority(e.target.value)}>
+                  {['P1', 'P2', 'P3', 'P4'].map((p) => <option key={p}>{p}</option>)}
+                </select>
+                <input className="p-3 border rounded-xl" type="number" min="1" value={issueTypeSla} onChange={(e) => setIssueTypeSla(e.target.value)} />
+              </div>
+              <button className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold" onClick={createIssueType}>Create</button>
+            </section>
+
+            <section className="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl">
+              <h3 className="text-lg font-black mb-4">Issue Types</h3>
+              <div className="space-y-2">
+                {issueTypes.map((category) => (
+                  <div key={category.id} className="flex items-center justify-between border rounded-xl p-3">
+                    <div>
+                      <p className="font-bold text-slate-900">{category.name}</p>
+                      <p className="text-xs text-slate-500">Priority {category.default_priority} • SLA {category.expected_sla_days} days</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateIssueType(category)}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-lg bg-slate-100 text-slate-700 font-bold"
+                      >
+                        <Settings size={14} /> Update
+                      </button>
+                      <button
+                        onClick={() => deactivateIssueType(category.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-lg bg-rose-50 text-rose-600 font-bold"
+                      >
+                        <Trash2 size={14} /> Deactivate
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {activeTab === 'manualIssues' && (
+          <section className="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl space-y-4 max-w-3xl">
+            <h3 className="text-lg font-black">Manual Issue Creation</h3>
+            <select className="w-full p-3 border rounded-xl" value={manualCategoryId} onChange={(e) => setManualCategoryId(e.target.value)}>
+              <option value="">Select issue type</option>
+              {issueTypes.filter((type) => type.is_active).map((type) => (
+                <option key={type.id} value={type.id}>{type.name}</option>
+              ))}
+            </select>
+            <div className="grid grid-cols-2 gap-3">
+              <input className="p-3 border rounded-xl" placeholder="Latitude" value={manualLat} onChange={(e) => setManualLat(e.target.value)} />
+              <input className="p-3 border rounded-xl" placeholder="Longitude" value={manualLng} onChange={(e) => setManualLng(e.target.value)} />
             </div>
-            <div className="flex items-center gap-4 pl-6 border-l border-slate-200">
-                <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl text-xs font-bold text-slate-500 border border-slate-100">
-                    <RefreshCw size={12} />
-                    <span>Synced {lastRefresh.toLocaleTimeString()}</span>
-                </div>
-                <div className="text-right">
-                    <p className="text-sm font-black text-slate-900">Chief Officer</p>
-                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Verified Node</p>
-                </div>
-                <div className="w-14 h-14 bg-slate-900 rounded-[1.5rem] flex items-center justify-center text-white font-black shadow-lg">CO</div>
+            <input className="w-full p-3 border rounded-xl" placeholder="Address" value={manualAddress} onChange={(e) => setManualAddress(e.target.value)} />
+            <button className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold" onClick={createManualIssue}>Create Manual Issue</button>
+          </section>
+        )}
+
+        {activeTab === 'logs' && (
+          <section className="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl">
+            <h3 className="text-lg font-black mb-4">Entire Audit Trail</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-slate-400 uppercase text-xs">
+                  <tr>
+                    <th className="py-2">Time</th>
+                    <th className="py-2">Action</th>
+                    <th className="py-2">Entity</th>
+                    <th className="py-2">Actor</th>
+                    <th className="py-2">Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {audits.map((log) => (
+                    <tr key={log.id} className="border-t">
+                      <td className="py-2">{new Date(log.created_at).toLocaleString()}</td>
+                      <td className="py-2 font-bold">{log.action}</td>
+                      <td className="py-2">{log.entity_type}</td>
+                      <td className="py-2">{String(log.actor_id).slice(0, 8)}</td>
+                      <td className="py-2 text-xs text-slate-500">{log.old_value || 'NA'} {' -> '} {log.new_value || 'NA'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-        </header>
+          </section>
+        )}
+      </main>
+    </div>
+  )
+}
 
-        <main className="flex-1 overflow-auto p-12 pt-4">
-            <AnimatePresence mode="wait">
-            {activeTab === 'overview' && (
-                <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-                        {stats.map((s) => (
-                            <AdminStat key={s.name} label={s.name} value={s.value} trend={s.trend} icon={s.icon} color={s.color} />
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
-                        <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/40">
-                            <h3 className="text-xl font-black text-slate-900 mb-2">Category Split</h3>
-                            <div className="h-[280px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie 
-                                            data={data?.category_split || []} 
-                                            innerRadius={80} 
-                                            outerRadius={110} 
-                                            paddingAngle={8} 
-                                            dataKey="value"
-                                            stroke="none"
-                                        >
-                                            {(data?.category_split || []).map((entry, index) => (
-                                                <Cell key={entry.name ?? `cell-${index}`} fill={['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][index % 4]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="space-y-4 mt-8">
-                                {(data?.category_split || []).map((d, i) => (
-                                    <div key={d.name} className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: ['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][i % 4]}}></div>
-                                            <span className="text-sm font-bold text-slate-600 uppercase tracking-tighter">{d.name}</span>
-                                        </div>
-                                        <span className="text-sm font-black text-slate-900">{d.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <motion.div 
-                            whileHover={{ scale: 1.01 }}
-                            onClick={() => navigate('/analytics')}
-                            className="bg-primary rounded-[3rem] p-12 text-white flex flex-col justify-center relative overflow-hidden cursor-pointer group shadow-2xl shadow-primary/20"
-                        >
-                            <div className="relative z-10 space-y-6">
-                                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10 group-hover:scale-110 transition-transform">
-                                    <Globe size={32} />
-                                </div>
-                                <div className="space-y-2">
-                                    <h3 className="text-4xl font-black tracking-tight">Intelligence Center</h3>
-                                    <p className="text-blue-100 font-medium text-lg leading-relaxed">
-                                        Enter the full geospatial analytics engine to view city-wide hotspots, heatmaps, and temporal growth analysis.
-                                    </p>
-                                </div>
-                                <div className="pt-6 flex items-center gap-3 font-black uppercase tracking-widest text-xs">
-                                    <span>Enter Control Plane</span>
-                                    <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
-                                </div>
-                            </div>
-                            <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-white/10 rounded-full blur-[100px]"></div>
-                        </motion.div>
-                    </div>
-                </motion.div>
-            )}
-
-            {activeTab === 'logs' && (
-                <motion.div key="logs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden">
-                    <div className="p-8 border-b bg-slate-50/50">
-                        <h3 className="text-xl font-black text-slate-900">System Audit Trail</h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400 tracking-[0.2em]">
-                                <tr>
-                                    <th className="px-8 py-6">Timestamp</th>
-                                    <th className="px-8 py-6">Action</th>
-                                    <th className="px-8 py-6">Entity</th>
-                                    <th className="px-8 py-6">Actor</th>
-                                    <th className="px-8 py-6">Changes</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {audits.map(log => (
-                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-8 py-6 text-xs font-bold text-slate-500">{new Date(log.created_at).toLocaleDateString()}</td>
-                                        <td className="px-8 py-6"><span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-[10px] font-black">{log.action}</span></td>
-                                        <td className="px-8 py-6 text-xs font-medium text-slate-600">#{log.entity_id.slice(0,8)}</td>
-                                        <td className="px-8 py-6 text-xs font-black text-primary uppercase tracking-tight">#{log.actor_id.slice(0,8)}</td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-2 text-[10px] font-bold">
-                                                <span className="text-slate-400">{log.old_value || 'None'}</span>
-                                                <ChevronRight size={10} className="text-slate-300" />
-                                                <span className="text-emerald-600">{log.new_value}</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </motion.div>
-            )}
-            </AnimatePresence>
-        </main>
-      </div>
+function StatCard({ label, value }) {
+  return (
+    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-lg">
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className="text-3xl font-black text-slate-900 mt-2">{value}</p>
     </div>
   )
 }

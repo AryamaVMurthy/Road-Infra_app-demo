@@ -1,14 +1,19 @@
-from fastapi import HTTPException, Request
+from fastapi import HTTPException
 from datetime import datetime, timedelta
 from typing import Dict, Tuple
+
+from app.core.config import settings
+from app.core.time import utc_now
 
 # In-memory storage for rate limiting (email -> (count, reset_time))
 otp_rate_limit: Dict[str, Tuple[int, datetime]] = {}
 
 
 def check_otp_rate_limit(email: str):
-    return  # Disable rate limit for dev/test
-    now = datetime.utcnow()
+    if settings.DEV_MODE:
+        return
+
+    now = utc_now()
     if email in otp_rate_limit:
         count, reset_time = otp_rate_limit[email]
         if now < reset_time:

@@ -8,12 +8,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import Map, { Marker } from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import { Marker } from 'react-map-gl'
+import { BaseMap } from '../../components/BaseMap'
 import { EvidenceGallery } from '../../components/EvidenceGallery'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -61,18 +59,15 @@ const TimelineItem = ({ log, isLast }) => (
 function ReportMap({ report }) {
     if (!report.lat || !report.lng) return null;
     return (
-        <Map
+        <BaseMap
             initialViewState={{
                 longitude: report.lng,
                 latitude: report.lat,
                 zoom: 16
             }}
-            style={{ width: '100%', height: '100%' }}
-            mapStyle="mapbox://styles/mapbox/streets-v12"
-            mapboxAccessToken={MAPBOX_TOKEN}
         >
             <Marker longitude={report.lng} latitude={report.lat} />
-        </Map>
+        </BaseMap>
     );
 }
 
@@ -85,12 +80,6 @@ export default function MyReports() {
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
   const { user } = useAuth()
-
-  useEffect(() => {
-    if (user) {
-      fetchReports({ showLoader: true })
-    }
-  }, [user, fetchReports])
 
   const fetchReports = useCallback(async ({ showLoader = false } = {}) => {
     if (showLoader) {
@@ -109,6 +98,12 @@ export default function MyReports() {
         }
       })
   }, [])
+
+  useEffect(() => {
+    if (user) {
+      fetchReports({ showLoader: true })
+    }
+  }, [user, fetchReports])
 
   useAutoRefresh(
     () => fetchReports({ showLoader: false }),

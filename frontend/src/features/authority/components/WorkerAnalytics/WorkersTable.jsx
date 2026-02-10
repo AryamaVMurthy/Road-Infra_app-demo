@@ -14,7 +14,7 @@ import { cn } from '../../../../utils/utils'
  * @param {Array} workers - List of worker objects
  * @param {Object} analytics - Analytics data for workers
  */
-export const WorkersTable = ({ workers, analytics }) => {
+export const WorkersTable = ({ workers, analytics, onActivate, onDeactivate }) => {
   if (!workers || workers.length === 0) {
     return (
       <div className="bg-white rounded-[3rem] p-12 text-center border border-slate-100 shadow-xl">
@@ -48,6 +48,7 @@ export const WorkersTable = ({ workers, analytics }) => {
               <th className="px-4 sm:px-8 py-4 sm:py-6">Resolved</th>
               <th className="px-4 sm:px-8 py-4 sm:py-6">This Week</th>
               <th className="px-4 sm:px-8 py-4 sm:py-6">Performance</th>
+              <th className="px-4 sm:px-8 py-4 sm:py-6">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -56,6 +57,8 @@ export const WorkersTable = ({ workers, analytics }) => {
                 key={worker.id} 
                 worker={worker}
                 workerAnalytics={analytics?.workers?.find(w => w.worker_id === worker.id)}
+                onActivate={onActivate}
+                onDeactivate={onDeactivate}
               />
             ))}
           </tbody>
@@ -68,7 +71,7 @@ export const WorkersTable = ({ workers, analytics }) => {
 /**
  * WorkerRow - Individual worker row
  */
-const WorkerRow = ({ worker, workerAnalytics }) => {
+const WorkerRow = ({ worker, workerAnalytics, onActivate, onDeactivate }) => {
   const statusColors = {
     ACTIVE: "bg-emerald-50 text-emerald-600",
     INACTIVE: "bg-slate-100 text-slate-500"
@@ -147,6 +150,24 @@ const WorkerRow = ({ worker, workerAnalytics }) => {
           </div>
         ) : (
           <span className="text-xs text-slate-400">No data</span>
+        )}
+      </td>
+
+      <td className="px-4 sm:px-8 py-4 sm:py-6">
+        {worker.status === 'ACTIVE' ? (
+          <button
+            onClick={() => onDeactivate?.(worker.id)}
+            className="px-3 py-1 text-xs font-black rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100"
+          >
+            Deactivate
+          </button>
+        ) : (
+          <button
+            onClick={() => onActivate?.(worker.id)}
+            className="px-3 py-1 text-xs font-black rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+          >
+            Activate
+          </button>
         )}
       </td>
     </tr>

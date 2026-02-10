@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { resetDatabase, runSql } from './helpers/db';
 import { ensureTestImage, loginAs } from './helpers/e2e';

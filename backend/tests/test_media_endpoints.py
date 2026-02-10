@@ -14,6 +14,7 @@ Covers:
 import pytest
 import io
 from datetime import datetime, timedelta
+from app.core.time import utc_now
 from uuid import uuid4
 from PIL import Image
 from sqlmodel import Session, select, desc
@@ -90,7 +91,7 @@ class TestExifServiceUnit:
         assert meta["lat"] is None
         assert meta["lng"] is None
         # timestamp should be approximately now
-        assert abs((datetime.utcnow() - meta["timestamp"]).total_seconds()) < 5
+        assert abs((utc_now() - meta["timestamp"]).total_seconds()) < 5
 
     def test_validate_proximity_same_point(self, client, session):
         result = ExifService.validate_proximity(17.44, 78.35, 17.44, 78.35)
@@ -106,11 +107,11 @@ class TestExifServiceUnit:
         assert result is False
 
     def test_validate_timestamp_recent(self, client, session):
-        recent = datetime.utcnow() - timedelta(hours=1)
+        recent = utc_now() - timedelta(hours=1)
         assert ExifService.validate_timestamp(recent) is True
 
     def test_validate_timestamp_old(self, client, session):
-        old = datetime.utcnow() - timedelta(days=30)
+        old = utc_now() - timedelta(days=30)
         assert ExifService.validate_timestamp(old) is False
 
 
@@ -155,7 +156,7 @@ class TestEvidenceCreation:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker)
 
         _login(client, session, worker.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
@@ -214,7 +215,7 @@ class TestMediaEndpoint:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker)
 
         _login(client, session, worker.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
 
@@ -298,7 +299,7 @@ class TestEvidenceIntegrity:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker)
 
         _login(client, session, worker.email)
-        eta = (datetime.utcnow() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
 

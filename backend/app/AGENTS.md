@@ -21,7 +21,7 @@ backend/app/
 | Add role checks | `api/deps.py` + `core/security.py` | Keep auth and role guards centralized |
 | Change lifecycle logic | `services/workflow_service.py` + `services/issue_service.py` | Preserve transition invariants |
 | Add audit behavior | `services/audit.py` | Domain audit trail writes |
-| Add analytics behavior | `services/analytics.py` + `services/analytics_service.py` | Public vs admin analytics split |
+| Add analytics behavior | `services/public_analytics_service.py` + `services/admin_analytics_service.py` | Public vs admin analytics split |
 
 ## CONVENTIONS
 - Keep serializers in `schemas/`; avoid returning raw ORM entities.

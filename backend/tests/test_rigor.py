@@ -3,6 +3,7 @@ from app.models.domain import Category, User, Issue, AuditLog
 from sqlmodel import Session, select, col, desc
 from uuid import uuid4
 from datetime import datetime, timedelta
+from app.core.time import utc_now
 from app.models.domain import Otp
 
 
@@ -28,7 +29,7 @@ def test_sla_breach_detection_logic(session):
     session.commit()
 
     # Create an issue from 5 days ago (should be breached)
-    five_days_ago = datetime.utcnow() - timedelta(days=5)
+    five_days_ago = utc_now() - timedelta(days=5)
     issue = Issue(
         category_id=cat.id,
         status="REPORTED",
@@ -41,7 +42,7 @@ def test_sla_breach_detection_logic(session):
     session.refresh(issue)
 
     # Logic check: (Current - Created) > SLA
-    age = datetime.utcnow() - issue.created_at
+    age = utc_now() - issue.created_at
     is_breached = age.days > cat.expected_sla_days
     assert is_breached is True
 

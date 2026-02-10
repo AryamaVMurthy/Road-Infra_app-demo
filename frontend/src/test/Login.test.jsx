@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import Login from '../pages/Login'
 import { BrowserRouter } from 'react-router-dom'
 
@@ -8,33 +8,47 @@ vi.mock('../services/auth', () => ({
   authService: {
     requestOtp: vi.fn().mockResolvedValue({}),
     login: vi.fn().mockResolvedValue({ access_token: 'fake-token' }),
-    getCurrentUser: vi.fn().mockReturnValue({ role: 'CITIZEN', sub: 'test@example.com' })
+    getCurrentUser: vi.fn().mockResolvedValue(null)
   }
 }))
 
 import { AuthProvider } from '../hooks/useAuth'
+import { authService } from '../services/auth'
 
-describe('Login Component', () => {
-  it('renders email input initially', () => {
+const ROUTER_FUTURE_FLAGS = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+}
+
+const renderLogin = async () => {
+  await act(async () => {
     render(
-      <BrowserRouter>
+      <BrowserRouter future={ROUTER_FUTURE_FLAGS}>
         <AuthProvider>
           <Login />
         </AuthProvider>
       </BrowserRouter>
     )
+  })
+  await waitFor(() => {
+    expect(authService.getCurrentUser).toHaveBeenCalled()
+  })
+}
+
+describe('Login Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    authService.getCurrentUser.mockResolvedValue(null)
+  })
+
+  it('renders email input initially', async () => {
+    await renderLogin()
     expect(screen.getByPlaceholderText(/authority.gov.in/i)).toBeDefined()
     expect(screen.getByText(/Request Access/i)).toBeDefined()
   })
 
   it('switches to OTP step after email submission', async () => {
-    render(
-      <BrowserRouter>
-        <AuthProvider>
-          <Login />
-        </AuthProvider>
-      </BrowserRouter>
-    )
+    await renderLogin()
     
     const emailInput = screen.getByPlaceholderText(/authority.gov.in/i)
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } })

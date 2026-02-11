@@ -17,7 +17,7 @@ from app.schemas.admin import (
 from app.services.admin_analytics_service import AdminAnalyticsService
 from app.services.worker_service import WorkerService
 from app.services.audit import AuditService
-from datetime import datetime, timedelta
+from datetime import timedelta
 from uuid import uuid4
 from app.core.time import utc_now
 
@@ -125,7 +125,7 @@ def bulk_invite_workers(
             email=email,
             org_id=current_user.org_id,
             status="INVITED",
-            expires_at=datetime.utcnow() + timedelta(days=7),
+            expires_at=utc_now() + timedelta(days=7),
         )
         invites.append(invite)
         session.add(invite)

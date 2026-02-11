@@ -167,7 +167,7 @@ export default function MyReports() {
             </div>
         ) : (
             <div className="space-y-10">
-                {reports.map((report, idx) => (
+                {reports.map((report) => (
                     <div 
                         key={report.id} 
                         onClick={() => handleViewDetails(report)}

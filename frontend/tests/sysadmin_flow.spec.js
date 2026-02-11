@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { resetDatabase, getLatestOtp, runSql } from './helpers/db'
+import { resetDatabase, runSql } from './helpers/db'
 import { loginAs } from './helpers/e2e'
 
 test.describe('Sysadmin and Worker Onboarding Flows', () => {

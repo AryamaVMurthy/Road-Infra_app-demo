@@ -1,7 +1,10 @@
+import logging
 import random
 from datetime import datetime
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
@@ -20,7 +23,7 @@ class EmailService:
     @staticmethod
     async def send_otp(email: str, otp: str):
         if settings.DEV_MODE:
-            print(f"[DEV MODE] Skipping email send. OTP for {email}: {otp}")
+            logger.info("[DEV MODE] Skipping email send. OTP for %s: %s", email, otp)
             return True
 
         html_content = f"""
@@ -56,8 +59,8 @@ class EmailService:
             await fm.send_message(message)
             return True
         except Exception as e:
-            print(f"Email failed to send: {e}")
-            print(f"FALLBACK OTP for {email}: {otp}")
+            logger.error("Email failed to send: %s", e)
+            logger.warning("FALLBACK OTP for %s: %s", email, otp)
             return False
 
     @staticmethod

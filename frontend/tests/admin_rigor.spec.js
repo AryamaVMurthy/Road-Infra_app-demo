@@ -11,7 +11,7 @@ test.describe('Admin Rigorous Flow', () => {
     ).trim()
 
     const createdIssueId = runSql(
-      `INSERT INTO issue (id, category_id, status, location, reporter_id, org_id, report_count, priority, created_at, updated_at) VALUES (gen_random_uuid(), (SELECT id FROM category LIMIT 1), 'REPORTED', ST_GeomFromText('POINT(78 17)', 4326), (SELECT id FROM \"user\" WHERE email='citizen@example.com' LIMIT 1), '${orgId}', 1, 'P3', now(), now()) RETURNING id;`
+      `INSERT INTO issue (id, category_id, status, location, reporter_id, org_id, report_count, priority, created_at, updated_at) VALUES (gen_random_uuid(), (SELECT id FROM category LIMIT 1), 'REPORTED', ST_GeomFromText('POINT(78 17)', 4326), (SELECT id FROM "user" WHERE email='citizen@example.com' LIMIT 1), '${orgId}', 1, 'P3', now(), now()) RETURNING id;`
     ).trim()
     expect(createdIssueId).toBeTruthy()
 

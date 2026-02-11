@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../services/api'
 import { 
-    Settings, Shield, Globe, Activity, Database, LogOut, 
+    Shield, Globe, Activity, Database, LogOut, 
     TrendingUp, Users, AlertTriangle, CheckCircle, 
-    ChevronRight, ArrowRight, Map as MapIcon, Plus, Trash2, Edit2, UserPlus, MapPin, XCircle, RefreshCw,
+    ChevronRight, Map as MapIcon, Plus, Trash2, Edit2, MapPin, XCircle, RefreshCw,
     Building2, PlusCircle, Tags, Menu, X
 } from 'lucide-react'
 import { authService } from '../../services/auth'
@@ -11,11 +11,10 @@ import adminService from '../../services/admin'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import MapboxDrawControl from '../../components/MapboxDrawControl'
 import { InteractiveMap, Marker } from '../../components/InteractiveMap'
-import { MAPBOX_TOKEN } from '../../config/map'
+
 
 const AdminStat = ({ label, value, trend, icon: Icon, color }) => (
     <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group">

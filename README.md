@@ -1,67 +1,165 @@
 # MARG (Monitoring Application for Road Governance)
 
-MARG is a full-stack platform for reporting and managing city infrastructure issues (potholes, drainage, street lights, and garbage).
+MARG is a full-stack civic infrastructure management platform for reporting and resolving city issues (potholes, drainage, street lights, garbage). It supports role-based operations for **CITIZEN**, **ADMIN**, **WORKER**, and **SYSADMIN** with a complete issue lifecycle:
 
-It supports role-based operations for CITIZEN, ADMIN, WORKER, and SYSADMIN with a full issue lifecycle:
-
-`REPORTED -> ASSIGNED -> ACCEPTED -> IN_PROGRESS -> RESOLVED -> CLOSED`
+```
+REPORTED → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED
+```
 
 ## Tech Stack
 
-- Backend: FastAPI, SQLModel, PostgreSQL + PostGIS, MinIO
-- Frontend: React 18, Vite, Tailwind CSS, Leaflet, Recharts
-- Auth: OTP login + JWT access/refresh tokens in HttpOnly cookies
-- Testing: pytest, Vitest, Playwright
+| Layer | Technology |
+|-------|-----------|
+| Backend | FastAPI, SQLModel, PostgreSQL + PostGIS, MinIO |
+| Frontend | React 18, Vite, Tailwind CSS, Mapbox GL, Recharts |
+| Auth | OTP login + JWT access/refresh tokens in HttpOnly cookies |
+| Infra | Docker Compose, Nginx reverse proxy |
+| Testing | pytest (154 tests), Vitest (17 tests), Playwright E2E (38 tests) |
 
-## Quick Start (Docker)
+---
+
+## Quick Start (Development)
 
 ### Prerequisites
 
-- Docker
-- Docker Compose v2+
+- Docker & Docker Compose v2+
+- Node.js 20+
+- Python 3.12+
 
-### Run
+### 1. Clone and configure
 
 ```bash
 git clone https://github.com/AryamaVMurthy/Road-Infra_app-demo.git
 cd Road-Infra_app-demo
+
+# Copy env templates
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+Edit `backend/.env` and `frontend/.env` with your values. For development, the defaults work out of the box.
+
+### 2. Start with Docker Compose
+
+```bash
 docker compose up --build
 ```
 
-### Service URLs
+### 3. Access the application
 
-- Frontend: `http://localhost:3011`
-- API (via frontend proxy): `http://localhost:3011/api/v1`
-- MinIO API: `http://localhost:9010`
-- MinIO Console: `http://localhost:9011`
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3011 |
+| API (via frontend proxy) | http://localhost:3011/api/v1 |
+| API Docs (dev only) | http://localhost:3011/api/v1/docs |
+| MinIO Console | http://localhost:9011 |
 
-## Authentication and OTP
+---
 
-### Current Auth Model
+## Production Deployment
 
-- OTP request: `POST /api/v1/auth/otp-request`
-- OTP login: `POST /api/v1/auth/login`
-- Refresh: `POST /api/v1/auth/refresh`
-- Logout: `POST /api/v1/auth/logout`
-- Session introspection: `GET /api/v1/auth/me`
+### 1. Configure environment
 
-Access and refresh tokens are issued as HttpOnly cookies. Frontend no longer reads JWT from localStorage.
-
-### OTP Delivery Behavior
-
-- `DEV_MODE=true` (default in docker-compose): OTP email send is skipped and OTP is printed in backend logs.
-- `DEV_MODE=false`: backend attempts real SMTP delivery using `MAIL_*` settings.
-
-### Read OTP in DEV_MODE
+Create a `.env` file in the project root:
 
 ```bash
+# Required — generate with: openssl rand -hex 32
+SECRET_KEY=your-64-char-random-string
+
+# Database
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=strong-password-here
+POSTGRES_DB=app
+
+# MinIO (Object Storage)
+MINIO_ACCESS_KEY=your-minio-access-key
+MINIO_SECRET_KEY=your-minio-secret-key
+
+# CORS — set to your production domain
+BACKEND_CORS_ORIGINS=["https://yourdomain.com"]
+DOMAIN=yourdomain.com
+
+# SMTP for OTP emails
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_FROM=info@yourdomain.com
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+
+# Frontend
+FRONTEND_PORT=3011
+VITE_MAPBOX_TOKEN=your-mapbox-public-token
+```
+
+### 2. Deploy
+
+```bash
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+### 3. Production vs Development differences
+
+| Feature | Development | Production |
+|---------|------------|------------|
+| `DEV_MODE` | `true` (OTP printed to logs) | `false` (OTP sent via SMTP) |
+| API Docs | Enabled at `/api/v1/docs` | Disabled |
+| Cookies | `Secure=false` | `Secure=true` |
+| Console logs | Visible | Stripped by Vite build |
+| Source maps | Generated | Disabled |
+| DB volumes | Local `docker_data/` | Named Docker volumes |
+| Ports | Exposed to all interfaces | Bound to `127.0.0.1` |
+| Backend process | Single worker | 2 workers, non-root user |
+| Nginx | Basic proxy | Gzip, static caching, security headers |
+
+### 4. HTTPS (recommended)
+
+Place a reverse proxy (e.g., Caddy, Traefik, or Nginx with certbot) in front of the frontend container:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name yourdomain.com;
+
+    ssl_certificate /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3011;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+---
+
+## Authentication
+
+### Auth Endpoints
+
+All tokens are HttpOnly cookies. The frontend never reads JWT from localStorage.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/auth/otp-request` | POST | Request OTP for email |
+| `/api/v1/auth/login` | POST | Login with email + OTP |
+| `/api/v1/auth/refresh` | POST | Rotate refresh token |
+| `/api/v1/auth/logout` | POST | Revoke refresh token + clear cookies |
+| `/api/v1/auth/me` | GET | Current user session |
+
+### OTP in Development
+
+```bash
+# OTP is printed in backend logs when DEV_MODE=true
 docker compose logs backend --tail=200 | grep -i otp
 ```
 
-## Seeded User Accounts
+### Seeded User Accounts
 
 | Email | Role | Dashboard |
-|---|---|---|
+|-------|------|-----------|
 | `citizen@example.com` | CITIZEN | `/citizen` |
 | `admin@authority.gov.in` | ADMIN | `/authority` |
 | `worker@authority.gov.in` | WORKER | `/worker` |
@@ -69,142 +167,160 @@ docker compose logs backend --tail=200 | grep -i otp
 | `worker3@authority.gov.in` | WORKER | `/worker` |
 | `sysadmin@marg.gov.in` | SYSADMIN | `/admin` |
 
+---
+
 ## Core User Flows
 
 ### Citizen
-
-1. Request OTP and login.
-2. Report issue with location and photo.
-3. Track reports in My Reports.
+1. Request OTP and login
+2. Report issue with photo, category, and map location
+3. Track reports in My Reports with audit trail
 
 ### Admin / Authority
-
-1. Review issues on Operations Map and Kanban Triage.
-2. Assign/reassign/unassign workers.
-3. Approve or reject resolved issues.
+1. Review issues on Operations Map and Kanban Triage
+2. Assign/reassign/unassign workers
+3. Approve or reject resolved issues
+4. View worker analytics and heatmap
 
 ### Worker
+1. View assigned tasks
+2. Accept task with ETA date
+3. Resolve task with photo evidence
 
-1. View assigned tasks.
-2. Accept task with ETA date.
-3. Resolve task with photo evidence.
+### SysAdmin
+1. Register new authorities with jurisdiction
+2. Manage issue types (CRUD)
+3. Onboard workers via invite or bulk CSV
+4. View system-wide audit logs
 
-Note: Backend has `start` transition endpoint (`/worker/tasks/{id}/start`). UI may present resolve action directly depending on status.
+---
 
-## API Reference (High Value Endpoints)
+## API Reference
 
 ### Auth
-
-- `POST /api/v1/auth/otp-request`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/otp-request` — Request OTP
+- `POST /api/v1/auth/login` — Login with OTP
+- `POST /api/v1/auth/refresh` — Rotate tokens
+- `POST /api/v1/auth/logout` — Revoke and clear
+- `GET /api/v1/auth/me` — Session info
 
 ### Issues (Citizen)
-
-- `POST /api/v1/issues/report`
-- `GET /api/v1/issues/my-reports`
+- `POST /api/v1/issues/report` — Report new issue (multipart)
+- `GET /api/v1/issues/my-reports` — List citizen's reports
 
 ### Admin
-
-- `GET /api/v1/admin/issues`
-- `GET /api/v1/admin/workers`
-- `GET /api/v1/admin/workers-with-stats`
-- `GET /api/v1/admin/worker-analytics`
-- `POST /api/v1/admin/assign?issue_id=<uuid>&worker_id=<uuid>`
-- `POST /api/v1/admin/bulk-assign`
-- `POST /api/v1/admin/approve?issue_id=<uuid>`
-- `POST /api/v1/admin/reject?issue_id=<uuid>&reason=<text>`
-- `POST /api/v1/admin/update-status?issue_id=<uuid>&status=<state>`
+- `GET /api/v1/admin/issues` — All issues
+- `GET /api/v1/admin/workers` — All workers
+- `GET /api/v1/admin/workers-with-stats` — Workers with task counts
+- `GET /api/v1/admin/worker-analytics` — Worker performance data
+- `POST /api/v1/admin/assign?issue_id=<uuid>&worker_id=<uuid>` — Assign worker
+- `POST /api/v1/admin/bulk-assign` — Bulk assign
+- `POST /api/v1/admin/approve?issue_id=<uuid>` — Approve resolution
+- `POST /api/v1/admin/reject?issue_id=<uuid>&reason=<text>` — Reject resolution
+- `POST /api/v1/admin/update-status?issue_id=<uuid>&status=<state>` — Update status
 
 ### Worker
+- `GET /api/v1/worker/tasks` — Assigned tasks
+- `POST /api/v1/worker/tasks/{id}/accept?eta_date=<ISO-8601>` — Accept task
+- `POST /api/v1/worker/tasks/{id}/start` — Start task
+- `POST /api/v1/worker/tasks/{id}/resolve` — Resolve with photo (multipart)
 
-- `GET /api/v1/worker/tasks`
-- `POST /api/v1/worker/tasks/{issue_id}/accept?eta_date=<ISO-8601>`
-- `POST /api/v1/worker/tasks/{issue_id}/start`
-- `POST /api/v1/worker/tasks/{issue_id}/resolve` (multipart `photo`)
+### Analytics & Media
+- `GET /api/v1/analytics/stats` — City-wide statistics
+- `GET /api/v1/analytics/heatmap` — Issue heatmap data
+- `GET /api/v1/analytics/issues-public` — Public issue feed
+- `GET /api/v1/analytics/audit/{entity_id}` — Entity audit trail
+- `GET /api/v1/analytics/audit-all` — Full audit log (admin only)
+- `GET /api/v1/media/{issue_id}/before` — Before photo
+- `GET /api/v1/media/{issue_id}/after` — After photo
 
-### Analytics + Media
-
-- `GET /api/v1/analytics/stats`
-- `GET /api/v1/analytics/heatmap`
-- `GET /api/v1/analytics/issues-public`
-- `GET /api/v1/analytics/audit/{entity_id}`
-- `GET /api/v1/analytics/audit-all` (admin only)
-- `GET /api/v1/media/{issue_id}/before`
-- `GET /api/v1/media/{issue_id}/after`
+---
 
 ## Testing
 
-### Frontend Unit/Integration (Vitest)
+### Run all tests
 
 ```bash
+# Backend (154 tests)
+cd backend
+source ../.venv/bin/activate
+PYTHONPATH=. pytest tests/ -q --tb=short
+
+# Frontend lint (0 errors)
+cd frontend
+npm run lint
+
+# Frontend unit/integration (17 tests)
 cd frontend
 npm test
-```
 
-### Frontend E2E (Playwright)
-
-```bash
+# Frontend E2E (38 tests)
 cd frontend
-npx playwright install
 npx playwright test --reporter=list
 ```
 
-### Backend (pytest)
+### Verified Test Status
 
-If running against dockerized DB/backend network setup used in this repo:
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| Backend pytest | 154 passed | Auth, RBAC, workflow lifecycle, audit, analytics, media, bulk ops |
+| Frontend ESLint | 0 errors | All source files |
+| Frontend Vitest | 17 passed | Auth interceptor, context, login, modals |
+| Playwright E2E | 38 passed | Full lifecycle, RBAC security, mobile responsiveness, maps, analytics |
 
-```bash
-cd backend
-source venv/bin/activate
-POSTGRES_HOST=172.21.0.2 POSTGRES_SERVER=172.21.0.2 MINIO_ENDPOINT=localhost:9010 python -m pytest tests/ -v --tb=short
-```
-
-## Current Verified Test Status
-
-- Backend: `148 passed`
-- Frontend Vitest: `16 passed`
-- Playwright E2E: `19 passed`
-
-## Additional Documentation
-
-- Auth details: `docs/AUTHENTICATION.md`
-- Test execution and triage: `docs/TESTING.md`
-- Handoff runbook: `HANDOFF.md`
-- Architecture overview: `DESIGN.md`
-
-## Development Notes
-
-- E2E tests use deterministic API-request OTP login helpers (`otp-request` -> DB OTP lookup -> `login`).
-- `frontend/tests/helpers/db.js` uses strict psql flags (`-qAt -v ON_ERROR_STOP=1`) to avoid false positives in SQL assertions.
+---
 
 ## Project Structure
 
-```text
+```
 .
 ├── backend/
 │   ├── app/
-│   │   ├── api/v1/
-│   │   ├── core/
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   └── services/
-│   └── tests/
+│   │   ├── api/v1/          # Versioned route handlers
+│   │   │   ├── admin/       # Admin-specific endpoints
+│   │   │   ├── auth.py      # OTP + JWT auth
+│   │   │   ├── issues.py    # Citizen issue reporting
+│   │   │   ├── worker.py    # Worker task management
+│   │   │   └── api.py       # Router composition
+│   │   ├── core/            # Config, middleware, security
+│   │   ├── db/              # SQLModel session providers
+│   │   ├── models/          # Database models
+│   │   ├── schemas/         # Request/response contracts
+│   │   └── services/        # Business logic layer
+│   ├── tests/               # pytest integration suite
+│   ├── Dockerfile
+│   ├── .env.example
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   └── tests/
-├── docker-compose.yml
-├── DESIGN.md
-├── HANDOFF.md
+│   │   ├── components/      # Shared UI (ErrorBoundary, maps, modals)
+│   │   ├── features/        # Domain UI (authority, worker)
+│   │   ├── hooks/           # Auth context, geolocation
+│   │   ├── pages/           # Route pages by role
+│   │   ├── services/        # API client with refresh queue
+│   │   └── config/          # Centralized Mapbox config
+│   ├── tests/               # Playwright E2E suite
+│   ├── Dockerfile
+│   ├── nginx.conf           # Production reverse proxy
+│   ├── .env.example
+│   └── vite.config.js
+├── docker-compose.yml        # Development stack
+├── docker-compose.prod.yml   # Production stack
+├── docs/                     # Auth and test runbooks
 └── README.md
 ```
 
-## Production Checklist
+---
 
-- Set `DEV_MODE=false`.
-- Configure valid SMTP (`MAIL_SERVER`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`).
-- Set strong `SECRET_KEY`.
-- Configure HTTPS.
-- Restrict CORS to production domains.
+## Security
+
+- **HttpOnly cookies** — Tokens never exposed to JavaScript (XSS protection)
+- **Refresh token rotation** — Old tokens revoked on use; replay triggers full revocation
+- **Bcrypt hashing** — Refresh tokens stored as bcrypt hashes with SHA-256 lookup index
+- **Rate limiting** — OTP requests limited to 3 per 10-minute window (production mode)
+- **RBAC enforcement** — Role checks on every protected endpoint; cross-role access returns 403
+- **Security headers** — HSTS, X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy
+- **Non-root containers** — Backend runs as unprivileged user in Docker
+- **CORS** — Configurable via `BACKEND_CORS_ORIGINS` environment variable
+- **No source maps** — Production builds exclude source maps
+- **Error boundary** — Global React ErrorBoundary catches and handles UI crashes gracefully

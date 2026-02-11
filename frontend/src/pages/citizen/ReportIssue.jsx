@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import api from '../../services/api'
 import { 
-    Camera, MapPin, Send, ArrowLeft, Loader2,
-    ShieldCheck, AlertCircle, Plus, X, CheckCircle2
+    Camera, Send, ArrowLeft, Loader2,
+    ShieldCheck, X, CheckCircle2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
 import { useGeolocation } from '../../hooks/useGeolocation'
 import { InteractiveMap, Marker } from '../../components/InteractiveMap'
-import { MAPBOX_TOKEN } from '../../config/map'
+
 
 export default function ReportIssue() {
   const [categories, setCategories] = useState([])
@@ -22,7 +22,7 @@ export default function ReportIssue() {
   const [step, setStep] = useState(1)
   const navigate = useNavigate()
 
-  const { loading: geoLoading, error: geoError, position: geoPosition } = useGeolocation()
+  const { loading: geoLoading, position: geoPosition } = useGeolocation()
 
   useEffect(() => {
     api.get('/categories').then(res => {

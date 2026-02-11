@@ -57,7 +57,7 @@ export const OnboardWorkersModal = ({
           setError("No valid email addresses found in the CSV.")
         }
       },
-      error: (err) => {
+      error: () => {
         setError("Error parsing CSV file.")
       }
     })

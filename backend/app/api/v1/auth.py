@@ -4,7 +4,7 @@ from app.schemas.auth import Login, OTPRequest
 from app.models.domain import User, Otp, Invite
 from sqlmodel import Session, select, desc
 from app.db.session import get_session
-from datetime import datetime, timedelta
+from datetime import timedelta
 from app.services.email import EmailService
 from app.services.auth_service import AuthService
 from app.api.deps import get_current_user
@@ -56,7 +56,7 @@ def login(response: Response, data: Login, session: Session = Depends(get_sessio
         invite_stmt = select(Invite).where(
             Invite.email == data.email,
             Invite.status == "INVITED",
-            Invite.expires_at > datetime.utcnow(),
+            Invite.expires_at > utc_now(),
         )
         invite = session.exec(invite_stmt).first()
 

@@ -3,7 +3,7 @@ import api, { API_URL } from '../../services/api'
 import { 
     LayoutDashboard, Map as MapIcon, Users, LogOut, 
     CheckCircle2, AlertCircle, Clock,
-    CheckSquare, Globe, RefreshCw, XCircle, UserPlus, MailPlus, Menu, X
+    CheckSquare, Globe, RefreshCw, XCircle, UserPlus, Menu, X
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import adminService from '../../services/admin'

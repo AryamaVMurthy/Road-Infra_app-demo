@@ -49,7 +49,7 @@ class LocateControl {
           try {
               if (this._map.getLayer('location-circle')) this._map.removeLayer('location-circle');
               if (this._map.getSource('location-circle')) this._map.removeSource('location-circle');
-          } catch (e) {}
+          } catch (_e) { /* layer/source may not exist */ }
 
           this._marker = new mapboxgl.Marker()
             .setLngLat(lngLat)

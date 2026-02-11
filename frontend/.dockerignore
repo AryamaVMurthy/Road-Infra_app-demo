@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+tests/
+*.spec.js
+playwright-report
+test-results
+.git
+.gitignore
+*.md

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Tuple, Optional
 import math
@@ -6,6 +7,8 @@ from PIL.ExifTags import TAGS, GPSTAGS
 import io
 
 from app.core.time import utc_now
+
+logger = logging.getLogger(__name__)
 
 
 class ExifService:
@@ -44,7 +47,7 @@ class ExifService:
                         if gps_data["GPSLongitudeRef"] != "E":
                             metadata["lng"] = -metadata["lng"]
         except Exception as e:
-            print(f"EXIF extraction failed: {e}")
+            logger.warning("EXIF extraction failed: %s", e)
 
         return metadata
 

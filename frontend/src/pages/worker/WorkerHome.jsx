@@ -8,8 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
 import { MapboxHeatmap } from '../../components/MapboxHeatmap'
-import { MapboxLocateControl } from '../../components/MapboxLocateControl'
-import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
 import { InteractiveMap } from '../../components/InteractiveMap'
 import { useGeolocation, DEFAULT_CENTER } from '../../hooks/useGeolocation'
 import { useWorkerTasks } from '../../hooks/useWorkerTasks'
@@ -19,7 +17,7 @@ import { TaskCard } from '../../features/worker/components/TaskList/TaskCard'
 import { AcceptTaskModal } from '../../features/worker/components/Modals/AcceptTaskModal'
 import { ResolveTaskModal } from '../../features/worker/components/Modals/ResolveTaskModal'
 import { Toast } from '../../features/common/components/Toast'
-import { MAPBOX_TOKEN } from '../../config/map'
+
 
 export default function WorkerHome() {
   const [activeTab, setActiveTab] = useState('tasks') 
@@ -31,7 +29,7 @@ export default function WorkerHome() {
   const [resolvePhoto, setResolvePhoto] = useState(null)
   const [isResolving, setIsResolving] = useState(false)
   const [toast, setToast] = useState(null)
-  const [lastRefresh, setLastRefresh] = useState(new Date())
+  const [, setLastRefresh] = useState(new Date())
   const navigate = useNavigate()
 
   const { position: geoPosition } = useGeolocation()

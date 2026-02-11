@@ -204,20 +204,47 @@ docker compose logs backend --tail=200 | grep -i otp
 - `POST /api/v1/auth/logout` — Revoke and clear
 - `GET /api/v1/auth/me` — Session info
 
+### Categories (Public)
+- `GET /api/v1/categories` — List active issue categories
+
 ### Issues (Citizen)
 - `POST /api/v1/issues/report` — Report new issue (multipart)
 - `GET /api/v1/issues/my-reports` — List citizen's reports
 
 ### Admin
 - `GET /api/v1/admin/issues` — All issues
+- `POST /api/v1/admin/update-status` — Update issue status
+- `POST /api/v1/admin/approve` — Approve resolved issue
+- `POST /api/v1/admin/reject` — Reject resolution
+- `POST /api/v1/admin/update-priority` — Update issue priority
+- `POST /api/v1/admin/assign` — Assign worker to issue
+- `POST /api/v1/admin/bulk-assign` — Bulk assign issues
+- `POST /api/v1/admin/reassign` — Reassign to different worker
+- `POST /api/v1/admin/unassign` — Remove assignment
+
+### Admin - Workers
 - `GET /api/v1/admin/workers` — All workers
 - `GET /api/v1/admin/workers-with-stats` — Workers with task counts
+- `POST /api/v1/admin/deactivate-worker` — Deactivate worker
+- `POST /api/v1/admin/activate-worker` — Activate worker
+- `POST /api/v1/admin/bulk-register` — Bulk register workers
+- `POST /api/v1/admin/invite` — Invite single worker
+- `POST /api/v1/admin/bulk-invite` — Bulk invite workers
+
+### Admin - Analytics
 - `GET /api/v1/admin/worker-analytics` — Worker performance data
-- `POST /api/v1/admin/assign?issue_id=<uuid>&worker_id=<uuid>` — Assign worker
-- `POST /api/v1/admin/bulk-assign` — Bulk assign
-- `POST /api/v1/admin/approve?issue_id=<uuid>` — Approve resolution
-- `POST /api/v1/admin/reject?issue_id=<uuid>&reason=<text>` — Reject resolution
-- `POST /api/v1/admin/update-status?issue_id=<uuid>&status=<state>` — Update status
+- `GET /api/v1/admin/dashboard-stats` — Dashboard statistics
+
+### Admin - System (SYSADMIN only)
+- `GET /api/v1/admin/authorities` — List authorities
+- `POST /api/v1/admin/authorities` — Create authority
+- `PUT /api/v1/admin/authorities/{org_id}` — Update authority
+- `DELETE /api/v1/admin/authorities/{org_id}` — Delete authority
+- `GET /api/v1/admin/issue-types` — List issue types
+- `POST /api/v1/admin/issue-types` — Create issue type
+- `PUT /api/v1/admin/issue-types/{category_id}` — Update issue type
+- `DELETE /api/v1/admin/issue-types/{category_id}` — Deactivate issue type
+- `POST /api/v1/admin/manual-issues` — Create manual issue
 
 ### Worker
 - `GET /api/v1/worker/tasks` — Assigned tasks

@@ -30,8 +30,7 @@ All authenticated endpoints require a valid session cookie. The API uses cookie-
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/auth/request-otp` | Request OTP for login |
-| POST | `/auth/lookup` | Validate if email/phone exists |
+| POST | `/auth/otp-request` | Request OTP for login |
 | POST | `/auth/login` | Login with OTP |
 
 ### Authenticated Endpoints
@@ -42,26 +41,26 @@ All authenticated endpoints require a valid session cookie. The API uses cookie-
 | POST | `/auth/logout` | Logout and revoke tokens | Any authenticated |
 | GET | `/auth/me` | Get current user profile | Any authenticated |
 
-### POST /auth/request-otp
+### POST /auth/otp-request
 
-Request an OTP to be sent to the user's email/phone.
+Request an OTP to be sent to the user's email.
 
 **Request Body:**
 ```json
 {
-  "identifier": "user@example.com"
+  "email": "user@example.com"
 }
 ```
 
 **Response (200):**
 ```json
 {
-  "message": "OTP sent successfully"
+  "message": "OTP sent to your email"
 }
 ```
 
 **Error Responses:**
-- `400` - Invalid identifier format
+- `400` - Invalid email format
 - `429` - Rate limit exceeded
 
 ### POST /auth/lookup
@@ -98,7 +97,7 @@ Login with OTP and establish session.
 **Request Body:**
 ```json
 {
-  "identifier": "user@example.com",
+  "email": "user@example.com",
   "otp": "123456"
 }
 ```
@@ -106,15 +105,14 @@ Login with OTP and establish session.
 **Response (200):**
 ```json
 {
-  "access_token": "eyJhbG...",
-  "token_type": "bearer",
-  "user": {
-    "id": 123,
-    "email": "user@example.com",
-    "role": "CITIZEN",
-    "full_name": "John Doe"
-  }
+  "message": "Login successful"
 }
+```
+
+**Response Headers:**
+```
+Set-Cookie: access_token=<jwt>; HttpOnly; Secure; SameSite=lax; Max-Age=1800
+Set-Cookie: refresh_token=<token>; HttpOnly; Secure; SameSite=lax; Path=/api/v1/auth; Max-Age=604800
 ```
 
 **Response Headers:**
@@ -164,15 +162,10 @@ Get the current authenticated user's profile.
 **Response (200):**
 ```json
 {
-  "id": 123,
+  "id": "uuid-string",
   "email": "user@example.com",
-  "full_name": "John Doe",
   "role": "CITIZEN",
-  "phone": "+91-1234567890",
-  "organization_id": null,
-  "zone_id": null,
-  "created_at": "2024-01-15T08:30:00Z",
-  "last_login": "2024-02-11T10:00:00Z"
+  "full_name": "John Doe"
 }
 ```
 
@@ -188,22 +181,15 @@ Get all available issue categories.
 
 **Response (200):**
 ```json
-{
-  "categories": [
-    {
-      "id": 1,
-      "code": "POTHOLE",
-      "display_name": "Pothole",
-      "description": "Road surface damage with potholes",
-      "icon_url": "/icons/pothole.svg",
-      "requires_photo": true,
-      "auto_assign": true,
-      "estimated_days": 3,
-      "priority": "HIGH",
-      "sla_hours": 72
-    }
-  ]
-}
+[
+  {
+    "id": "uuid-string",
+    "name": "Pothole",
+    "default_priority": "P3",
+    "expected_sla_days": 7,
+    "is_active": true
+  }
+]
 ```
 
 ---
@@ -212,73 +198,30 @@ Get all available issue categories.
 
 Citizen-facing issue reporting and management.
 
-### GET /issues
+### GET /issues/my-reports
 
 Get all issues reported by the current user (citizens only).
 
-**Query Parameters:**
-| Param | Type | Description |
+**Response (200):** Array of Issue objects with category and worker relationships
+
+### POST /issues/report
+
+Report a new issue (citizens only).
+
+**Request Body (multipart/form-data):**
+| Field | Type | Description |
 |-------|------|-------------|
-| status | string | Filter by status (OPEN, IN_PROGRESS, RESOLVED, CLOSED) |
-| limit | int | Number of results (default: 20, max: 100) |
-| offset | int | Pagination offset |
+| category_id | UUID | Category ID |
+| lat | float | Latitude |
+| lng | float | Longitude |
+| address | string | Human-readable address (optional) |
+| photo | file | Issue photo (required) |
 
 **Response (200):**
 ```json
 {
-  "issues": [
-    {
-      "id": 456,
-      "title": "Large pothole on Main Road",
-      "description": "Dangerous pothole causing accidents",
-      "category_code": "POTHOLE",
-      "status": "OPEN",
-      "priority": "HIGH",
-      "location": {
-        "lat": 28.6139,
-        "lng": 77.2090,
-        "address": "Main Road, New Delhi"
-      },
-      "created_at": "2024-02-10T08:00:00Z",
-      "updated_at": "2024-02-10T08:00:00Z",
-      "reported_by": 123,
-      "assignee_id": null,
-      "evidence_count": 2
-    }
-  ],
-  "total": 15,
-  "limit": 20,
-  "offset": 0
-}
-```
-
-### POST /issues
-
-Report a new issue (citizens only).
-
-**Request Body:**
-```json
-{
-  "title": "Large pothole on Main Road",
-  "description": "Dangerous pothole causing accidents near the market",
-  "category_code": "POTHOLE",
-  "location": {
-    "lat": 28.6139,
-    "lng": 77.2090,
-    "address": "Main Road, New Delhi"
-  },
-  "evidence_ids": ["uuid1", "uuid2"]
-}
-```
-
-**Response (201):**
-```json
-{
-  "id": 456,
-  "title": "Large pothole on Main Road",
-  "status": "OPEN",
-  "created_at": "2024-02-11T10:30:00Z",
-  "tracking_number": "MARG-2024-000456"
+  "message": "Report submitted successfully",
+  "issue_id": "uuid-string"
 }
 ```
 
@@ -350,91 +293,72 @@ Get dashboard statistics for admin view.
 
 ### Admin Assignments
 
-#### POST /admin/assignments/assign
+#### POST /admin/assign
 
 Assign an issue to a worker.
 
-**Request Body:**
-```json
-{
-  "issue_id": 456,
-  "worker_id": 789,
-  "notes": "Priority fix needed before monsoon"
-}
-```
-
-**Response (200):**
-```json
-{
-  "assignment_id": 101,
-  "issue_id": 456,
-  "worker_id": 789,
-  "assigned_at": "2024-02-11T11:00:00Z",
-  "assigned_by": 321
-}
-```
-
-#### POST /admin/assignments/bulk-assign
-
-Bulk assign multiple issues to workers.
-
-**Request Body:**
-```json
-{
-  "assignments": [
-    {
-      "issue_id": 456,
-      "worker_id": 789
-    },
-    {
-      "issue_id": 457,
-      "worker_id": 790
-    }
-  ]
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": [
-    {"issue_id": 456, "assignment_id": 101},
-    {"issue_id": 457, "assignment_id": 102}
-  ],
-  "failed": []
-}
-```
-
-#### POST /admin/assignments/{assignment_id}/reassign
-
-Reassign an existing assignment to a different worker.
-
-**Path Parameters:**
+**Query Parameters:**
 | Param | Type | Description |
 |-------|------|-------------|
-| assignment_id | int | Assignment ID |
-
-**Request Body:**
-```json
-{
-  "new_worker_id": 791,
-  "reason": "Original worker on leave"
-}
-```
-
-#### DELETE /admin/assignments/{assignment_id}
-
-Unassign a worker from an issue.
-
-**Path Parameters:**
-| Param | Type | Description |
-|-------|------|-------------|
-| assignment_id | int | Assignment ID |
+| issue_id | UUID | Issue ID to assign |
+| worker_id | UUID | Worker ID to assign to |
 
 **Response (200):**
 ```json
 {
-  "message": "Assignment removed successfully"
+  "message": "Issue assigned successfully"
+}
+```
+
+#### POST /admin/bulk-assign
+
+Bulk assign multiple issues to a worker.
+
+**Request Body:**
+```json
+{
+  "issue_ids": ["uuid-1", "uuid-2", "uuid-3"],
+  "worker_id": "worker-uuid"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Assigned 3 issues"
+}
+```
+
+#### POST /admin/reassign
+
+Reassign an issue to a different worker.
+
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| issue_id | UUID | Issue ID to reassign |
+| worker_id | UUID | New worker ID |
+
+**Response (200):**
+```json
+{
+  "message": "Issue reassigned to Worker Name"
+}
+```
+
+#### POST /admin/unassign
+
+Remove worker assignment and reset issue to REPORTED.
+
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| issue_id | UUID | Issue ID to unassign |
+
+**Response (200):**
+```json
+{
+  "message": "Issue unassigned and returned to REPORTED"
 }
 ```
 
@@ -484,106 +408,99 @@ Get all issues with filtering and pagination (Admin/SysAdmin).
 }
 ```
 
-#### PATCH /admin/issues/{issue_id}/status
+#### POST /admin/update-status
 
 Update issue status (state machine enforced).
 
-**Path Parameters:**
+**Query Parameters:**
 | Param | Type | Description |
 |-------|------|-------------|
-| issue_id | int | Issue ID |
+| issue_id | UUID | Issue ID |
+| status | string | New status (REPORTED, ASSIGNED, ACCEPTED, IN_PROGRESS, RESOLVED, CLOSED) |
 
-**Request Body:**
-```json
-{
-  "status": "IN_PROGRESS",
-  "notes": "Worker has started repair work",
-  "notify_reporter": true
-}
-```
-
-**Valid Status Transitions:**
-- `OPEN` → `IN_PROGRESS`
-- `IN_PROGRESS` → `RESOLVED`
-- `RESOLVED` → `CLOSED`
-- `IN_PROGRESS` → `OPEN` (revert)
+**Valid Status Values:**
+- `REPORTED` → `ASSIGNED` → `ACCEPTED` → `IN_PROGRESS` → `RESOLVED` → `CLOSED`
 
 **Response (200):**
 ```json
 {
-  "id": 456,
-  "previous_status": "OPEN",
-  "status": "IN_PROGRESS",
-  "updated_at": "2024-02-11T12:00:00Z",
-  "updated_by": 321
+  "message": "Issue status updated to IN_PROGRESS"
 }
 ```
 
-#### POST /admin/issues/{issue_id}/approve
+#### POST /admin/approve
 
-Approve a resolved issue for closure.
+Approve a resolved issue and close it.
+
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| issue_id | UUID | Issue ID to approve |
 
 **Response (200):**
 ```json
 {
-  "message": "Issue approved for closure",
-  "issue_id": 456
+  "message": "Issue approved and closed"
 }
 ```
 
-#### POST /admin/issues/{issue_id}/reject
+#### POST /admin/reject
 
-Reject an issue resolution and return to worker.
+Reject a resolved issue and return it to worker.
 
-**Request Body:**
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| issue_id | UUID | Issue ID to reject |
+| reason | string | Rejection reason |
+
+**Response (200):**
 ```json
 {
-  "reason": "Work incomplete - pothole still visible",
-  "reopen": true
+  "message": "Issue rejected and returned to worker"
 }
 ```
 
-#### PATCH /admin/issues/{issue_id}/priority
+#### POST /admin/update-priority
 
 Update issue priority.
 
-**Request Body:**
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| issue_id | UUID | Issue ID |
+| priority | string | Priority level (P1, P2, P3, P4) |
+
+**Response (200):**
 ```json
 {
-  "priority": "URGENT",
-  "reason": "Safety hazard"
+  "message": "Issue priority updated to P1"
 }
 ```
 
-### Admin System
+### Admin System (SYSADMIN only)
 
-System administration endpoints (SysAdmin only).
+System administration endpoints for platform configuration.
 
-#### GET /admin/system/authorities
+#### GET /admin/authorities
 
 List all authorities.
 
 **Response (200):**
 ```json
-{
-  "authorities": [
-    {
-      "id": 1,
-      "name": "Delhi Municipal Corporation",
-      "code": "DMC",
-      "zones": [
-        {
-          "id": 1,
-          "name": "Zone A",
-          "code": "ZONE-A"
-        }
-      ]
-    }
-  ]
-}
+[
+  {
+    "org_id": "uuid",
+    "org_name": "Delhi Municipal Corporation",
+    "zone_id": "uuid",
+    "zone_name": "Zone A",
+    "admin_email": "admin@dmc.gov.in",
+    "jurisdiction": "polygon-geojson"
+  }
+]
 ```
 
-#### POST /admin/system/authorities
+#### POST /admin/authorities
 
 Create a new authority.
 
@@ -591,65 +508,102 @@ Create a new authority.
 ```json
 {
   "name": "New Municipal Authority",
-  "code": "NMA",
-  "contact_email": "admin@nma.gov.in",
-  "contact_phone": "+91-11-12345678"
+  "admin_email": "admin@nma.gov.in",
+  "jurisdiction_points": [[lat, lng], [lat, lng], ...],
+  "zone_name": "Zone B"
 }
 ```
 
-#### PATCH /admin/system/authorities/{authority_id}
+#### PUT /admin/authorities/{org_id}
 
 Update authority details.
 
-#### DELETE /admin/system/authorities/{authority_id}
+**Request Body:**
+```json
+{
+  "name": "Updated Authority Name",
+  "jurisdiction_points": [[lat, lng], ...],
+  "zone_name": "Zone C"
+}
+```
 
-Deactivate an authority.
+#### DELETE /admin/authorities/{org_id}
 
-#### GET /admin/system/issue-types
+Delete an authority.
+
+**Response (200):**
+```json
+{
+  "message": "Authority deleted"
+}
+```
+
+#### GET /admin/issue-types
 
 Get all issue types/categories.
 
-#### POST /admin/system/issue-types
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| include_inactive | bool | Include inactive categories (default: true) |
+
+**Response (200):** Array of Category objects
+
+#### POST /admin/issue-types
 
 Create a new issue type.
 
 **Request Body:**
 ```json
 {
-  "code": "STREETLIGHT",
-  "display_name": "Street Light",
-  "description": "Street light not working",
-  "priority": "MEDIUM",
-  "sla_hours": 48,
-  "requires_photo": true
+  "name": "Street Light",
+  "default_priority": "P3",
+  "expected_sla_days": 7
 }
 ```
 
-#### PATCH /admin/system/issue-types/{type_id}
+#### PUT /admin/issue-types/{category_id}
 
 Update an issue type.
-
-#### DELETE /admin/system/issue-types/{type_id}
-
-Deactivate an issue type.
-
-#### POST /admin/system/manual-issues
-
-Create manual/issue on behalf of a citizen.
 
 **Request Body:**
 ```json
 {
-  "title": "Road damage reported via phone",
-  "description": "Citizen called to report...",
-  "category_code": "POTHOLE",
-  "location": {
-    "lat": 28.6139,
-    "lng": 77.2090,
-    "address": "Main Road"
-  },
-  "citizen_contact": "+91-9876543210",
-  "citizen_name": "Anonymous"
+  "name": "Street Light",
+  "default_priority": "P2",
+  "expected_sla_days": 5,
+  "is_active": true
+}
+```
+
+#### DELETE /admin/issue-types/{category_id}
+
+Deactivate an issue type.
+
+**Response (200):** Updated Category object
+
+#### POST /admin/manual-issues
+
+Create manual issue on behalf of a citizen (SYSADMIN only).
+
+**Request Body:**
+```json
+{
+  "category_id": "uuid",
+  "lat": 28.6139,
+  "lng": 77.2090,
+  "address": "Main Road, New Delhi",
+  "priority": "P2",
+  "org_id": "uuid"
+}
+```
+
+**Response (200):**
+```json
+{
+  "issue_id": "uuid",
+  "message": "Manual issue created",
+  "created_at": "2024-02-11T10:00:00Z"
 }
 ```
 
@@ -691,74 +645,89 @@ List all workers in the organization.
 
 Get workers with detailed statistics.
 
-#### POST /admin/workers/{worker_id}/deactivate
+#### POST /admin/deactivate-worker
 
-Deactivate a worker.
+Deactivate a worker and unassign their active tasks.
 
-**Request Body:**
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| worker_id | UUID | Worker ID to deactivate |
+
+**Response (200):**
 ```json
 {
-  "reason": "Resigned",
-  "reassign_tasks": true
+  "message": "Worker deactivated and tasks reset"
 }
 ```
 
-#### POST /admin/workers/{worker_id}/activate
+#### POST /admin/activate-worker
 
-Reactivate a deactivated worker.
+Activate an existing worker account.
 
-#### POST /admin/workers/bulk-register
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| worker_id | UUID | Worker ID to activate |
 
-Bulk register workers.
-
-**Request Body:**
+**Response (200):**
 ```json
 {
-  "workers": [
-    {
-      "full_name": "New Worker 1",
-      "email": "worker1@authority.gov.in",
-      "phone": "+91-1111111111",
-      "zone_id": 1
-    }
-  ],
-  "send_invite": true
+  "message": "Worker activated"
 }
 ```
 
-#### POST /admin/workers/invite
+#### POST /admin/bulk-register
 
-Invite a single worker.
+Bulk register workers from comma-separated emails.
 
 **Request Body:**
 ```json
 {
-  "email": "newworker@authority.gov.in",
-  "full_name": "New Worker",
-  "zone_id": 1,
-  "role": "WORKER"
+  "emails_csv": "worker1@authority.gov.in, worker2@authority.gov.in, worker3@authority.gov.in"
 }
 ```
 
-#### POST /admin/workers/bulk-invite
+**Response (200):**
+```json
+{
+  "created": 3,
+  "emails": ["worker1@authority.gov.in", "worker2@authority.gov.in", "worker3@authority.gov.in"]
+}
+```
 
-Bulk invite workers via email.
+#### POST /admin/invite
+
+Invite a single worker to an organization.
+
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| email | string | Worker's email address |
+| org_id | UUID | Organization ID |
+
+**Response (200):**
+```json
+{
+  "message": "Invite sent to worker@example.com"
+}
+```
+
+#### POST /admin/bulk-invite
+
+Bulk invite workers to the admin's organization.
 
 **Request Body:**
 ```json
 {
-  "invites": [
-    {
-      "email": "worker1@authority.gov.in",
-      "full_name": "Worker One",
-      "zone_id": 1
-    },
-    {
-      "email": "worker2@authority.gov.in",
-      "full_name": "Worker Two",
-      "zone_id": 2
-    }
-  ]
+  "emails": ["worker1@authority.gov.in", "worker2@authority.gov.in"]
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Invites sent to 2 workers"
 }
 ```
 
@@ -772,87 +741,63 @@ Worker endpoints for managing assigned tasks.
 
 Get all tasks assigned to the current worker.
 
-**Query Parameters:**
-| Param | Type | Description |
-|-------|------|-------------|
-| status | string | Filter by status (assigned, in_progress, completed) |
-| limit | int | Results per page |
+**Response (200):** Array of Issue objects with category and worker loaded
 
-**Response (200):**
-```json
-{
-  "tasks": [
-    {
-      "id": 456,
-      "issue_id": 789,
-      "title": "Fix pothole on Main Road",
-      "status": "assigned",
-      "priority": "HIGH",
-      "category": "POTHOLE",
-      "location": {
-        "lat": 28.6139,
-        "lng": 77.2090,
-        "address": "Main Road, New Delhi"
-      },
-      "assigned_at": "2024-02-11T10:00:00Z",
-      "due_by": "2024-02-14T10:00:00Z",
-      "evidence_required": true
-    }
-  ],
-  "total": 5
-}
-```
+### POST /worker/tasks/{issue_id}/accept
 
-### POST /worker/tasks/{task_id}/accept
-
-Accept a task assignment.
+Accept a task assignment with ETA date.
 
 **Path Parameters:**
 | Param | Type | Description |
 |-------|------|-------------|
-| task_id | int | Task ID |
+| issue_id | UUID | Issue ID |
+
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| eta_date | string | ETA date (ISO 8601 format) |
 
 **Response (200):**
 ```json
 {
-  "message": "Task accepted",
-  "status": "in_progress",
-  "accepted_at": "2024-02-11T11:00:00Z"
+  "message": "Task accepted"
 }
 ```
 
-### POST /worker/tasks/{task_id}/start
+### POST /worker/tasks/{issue_id}/start
 
-Mark task as started.
+Start working on a task.
+
+**Path Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| issue_id | UUID | Issue ID |
 
 **Response (200):**
 ```json
 {
-  "message": "Task started",
-  "status": "in_progress",
-  "started_at": "2024-02-11T12:00:00Z"
+  "message": "Work started"
 }
 ```
 
-### POST /worker/tasks/{task_id}/resolve
+### POST /worker/tasks/{issue_id}/resolve
 
-Submit task resolution with evidence.
+Resolve a task with photo evidence.
+
+**Path Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| issue_id | UUID | Issue ID |
 
 **Request Body (multipart/form-data):**
 | Field | Type | Description |
 |-------|------|-------------|
-| notes | string | Resolution notes |
-| evidence[] | file | Resolution photos (optional) |
-| before_photos[] | file | Before work photos |
-| after_photos[] | file | After work photos |
+| photo | file | Resolution photo (required) |
 
 **Response (200):**
 ```json
 {
-  "message": "Task resolved successfully",
-  "resolution_id": 202,
-  "status": "resolved",
-  "resolved_at": "2024-02-11T14:00:00Z"
+  "message": "Task resolved successfully"
 }
 ```
 
@@ -860,39 +805,23 @@ Submit task resolution with evidence.
 
 ## Media
 
-File upload and management endpoints.
+File serving endpoints for issue evidence photos.
 
-### POST /media/upload
+### GET /media/{issue_id}/{type}
 
-Upload media files (photos, documents).
+Retrieve evidence photo for an issue.
 
-**Request Body (multipart/form-data):**
-| Field | Type | Description |
+**Path Parameters:**
+| Param | Type | Description |
 |-------|------|-------------|
-| file | file | The file to upload |
-| type | string | File type hint (image, document) |
-| issue_id | int | Optional: Associate with issue |
+| issue_id | UUID | Issue ID |
+| type | string | Photo type: `before` (REPORT) or `after` (RESOLVE) |
 
-**Response (201):**
-```json
-{
-  "id": "uuid-string",
-  "url": "https://minio.example.com/bucket/filename.jpg",
-  "thumbnail_url": "https://minio.example.com/bucket/thumb_filename.jpg",
-  "filename": "filename.jpg",
-  "mime_type": "image/jpeg",
-  "size": 2048576,
-  "uploaded_at": "2024-02-11T10:30:00Z"
-}
-```
-
-**Supported Types:**
-- Images: `image/jpeg`, `image/png`, `image/webp` (max 10MB)
-- Documents: `application/pdf` (max 5MB)
+**Response (200):** JPEG image binary
 
 **Error Responses:**
-- `413` - File too large
-- `415` - Unsupported media type
+- `404` - Media not found
+- `500` - Failed to retrieve from storage
 
 ---
 

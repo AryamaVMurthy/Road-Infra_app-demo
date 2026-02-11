@@ -996,19 +996,20 @@ Get full system audit log (Admin/SysAdmin only).
 ### Issue Status Values
 | Status | Description |
 |--------|-------------|
-| `OPEN` | Newly reported issue |
-| `IN_PROGRESS` | Assigned and being worked on |
+| `REPORTED` | Newly reported issue |
+| `ASSIGNED` | Assigned to a worker |
+| `ACCEPTED` | Worker has accepted the task |
+| `IN_PROGRESS` | Worker has started working |
 | `RESOLVED` | Work completed, pending verification |
 | `CLOSED` | Verified and closed |
-| `REJECTED` | Rejected/invalid report |
 
 ### Priority Levels
-| Priority | SLA Hours | Description |
-|----------|-----------|-------------|
-| `URGENT` | 24 | Safety hazard |
-| `HIGH` | 72 | Significant impact |
-| `MEDIUM` | 168 | Moderate impact |
-| `LOW` | 336 | Minor issue |
+| Priority | SLA Days | Description |
+|----------|----------|-------------|
+| `P1` | 1-3 | Critical - Safety hazard |
+| `P2` | 3-5 | High - Significant impact |
+| `P3` | 5-7 | Medium - Moderate impact (default) |
+| `P4` | 7+ | Low - Minor issue |
 
 ### User Roles
 | Role | Description |
@@ -1024,6 +1025,184 @@ Get full system audit log (Admin/SysAdmin only).
   "lat": 28.6139,
   "lng": 77.2090,
   "address": "Human-readable address"
+}
+```
+
+### Request/Response Schemas
+
+#### OTPRequest
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+#### Login
+```json
+{
+  "email": "user@example.com",
+  "otp": "123456"
+}
+```
+
+#### Category
+```json
+{
+  "id": "uuid",
+  "name": "Pothole",
+  "default_priority": "P3",
+  "expected_sla_days": 7,
+  "is_active": true
+}
+```
+
+#### IssueRead
+```json
+{
+  "id": "uuid",
+  "category_id": "uuid",
+  "category_name": "Pothole",
+  "worker_id": "uuid",
+  "worker_name": "John Doe",
+  "status": "REPORTED",
+  "location_wkt": "POINT(77.209 28.6139)",
+  "lat": 28.6139,
+  "lng": 77.209,
+  "address": "Main Road",
+  "reporter_id": "uuid",
+  "org_id": "uuid",
+  "priority": "P3",
+  "report_count": 1,
+  "created_at": "2024-02-11T10:00:00Z",
+  "updated_at": "2024-02-11T10:00:00Z",
+  "rejection_reason": null,
+  "eta_date": null,
+  "accepted_at": null,
+  "resolved_at": null
+}
+```
+
+#### User
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "role": "CITIZEN",
+  "org_id": "uuid",
+  "status": "ACTIVE",
+  "last_login_at": "2024-02-11T10:00:00Z"
+}
+```
+
+#### WorkerWithStats
+```json
+{
+  "id": "uuid",
+  "email": "worker@example.com",
+  "full_name": "Worker Name",
+  "status": "ACTIVE",
+  "active_task_count": 3,
+  "total_assigned": 15,
+  "resolved_count": 12
+}
+```
+
+#### AuditLog
+```json
+{
+  "id": "uuid",
+  "action": "STATUS_CHANGE",
+  "entity_type": "ISSUE",
+  "entity_id": "uuid",
+  "actor_id": "uuid",
+  "old_value": "REPORTED",
+  "new_value": "ASSIGNED",
+  "created_at": "2024-02-11T10:00:00Z"
+}
+```
+
+#### BulkAssignRequest
+```json
+{
+  "issue_ids": ["uuid-1", "uuid-2"],
+  "worker_id": "uuid"
+}
+```
+
+#### BulkInviteRequest
+```json
+{
+  "emails": ["worker1@example.com", "worker2@example.com"]
+}
+```
+
+#### WorkerBulkRegisterRequest
+```json
+{
+  "emails_csv": "worker1@example.com, worker2@example.com"
+}
+```
+
+#### WorkerBulkRegisterResult
+```json
+{
+  "created": ["worker1@example.com"],
+  "reactivated": ["worker2@example.com"],
+  "skipped": []
+}
+```
+
+#### AuthorityCreateRequest
+```json
+{
+  "name": "Municipal Authority",
+  "admin_email": "admin@example.com",
+  "jurisdiction_points": [[28.61, 77.20], [28.62, 77.21]],
+  "zone_name": "Zone A"
+}
+```
+
+#### AuthorityRead
+```json
+{
+  "org_id": "uuid",
+  "name": "Municipal Authority",
+  "zone_id": "uuid",
+  "zone_name": "Zone A",
+  "admin_count": 2,
+  "worker_count": 10,
+  "jurisdiction_wkt": "POLYGON(...)"
+}
+```
+
+#### IssueTypeCreateRequest
+```json
+{
+  "name": "Pothole",
+  "default_priority": "P3",
+  "expected_sla_days": 7
+}
+```
+
+#### ManualIssueCreateRequest
+```json
+{
+  "category_id": "uuid",
+  "lat": 28.6139,
+  "lng": 77.209,
+  "address": "Main Road",
+  "priority": "P2",
+  "org_id": "uuid"
+}
+```
+
+#### ManualIssueCreateResponse
+```json
+{
+  "issue_id": "uuid",
+  "message": "Manual issue created",
+  "created_at": "2024-02-11T10:00:00Z"
 }
 ```
 
@@ -1109,6 +1288,12 @@ Future versions will be available at `/api/v2/`, etc. while v1 remains supported
 
 ## Changelog
 
+### v1.0.1 (2024-02-11)
+- Verified all endpoints match OpenAPI spec from running backend
+- Fixed status values (REPORTED, ASSIGNED, ACCEPTED, IN_PROGRESS, RESOLVED, CLOSED)
+- Fixed priority format (P1, P2, P3, P4)
+- Added complete schema definitions
+
 ### v1.0.0 (2024-02-11)
 - Initial API release
 - Complete issue lifecycle management
@@ -1116,9 +1301,9 @@ Future versions will be available at `/api/v2/`, etc. while v1 remains supported
 - Audit logging
 - Analytics and heatmap
 - Cookie-based authentication
-- Media upload support
+- Media serving
 
 ---
 
 **Last Updated:** 2024-02-11  
-**Documentation Version:** 1.0.0
+**Documentation Version:** 1.0.1

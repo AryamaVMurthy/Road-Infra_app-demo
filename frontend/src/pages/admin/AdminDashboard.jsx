@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../../services/api'
 import { 
     Settings, Shield, Globe, Activity, Database, LogOut, 
@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useNavigate } from 'react-router-dom'
-import Map, { Marker, Popup, Source, Layer } from 'react-map-gl'
+import { Marker } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import MapboxDrawControl from '../../components/MapboxDrawControl'
@@ -44,14 +44,15 @@ export default function AdminDashboard() {
   const [data, setData] = useState(null)
   const [audits, setAudits] = useState([])
   const [authorities, setAuthorities] = useState([])
-  const [categories, setCategories] = useState([])
-  const [zones, setZones] = useState([])
+  const [issueTypes, setIssueTypes] = useState([])
   const [showAddAuthority, setShowAddAuthority] = useState(false)
-  const [showAddCategory, setShowAddCategory] = useState(false)
-  const [editingCategory, setEditingCategory] = useState(null)
-  const [newOrg, setNewOrg] = useState({ name: '', zone_id: '', admin_email: '' })
-  const [newCat, setNewCat] = useState({ name: '', default_priority: 'P3', expected_sla_days: 7, id: '' })
-  const [newZone, setNewZone] = useState({ name: '', boundary_geojson: null, description: '', photo: null, photoPreview: null, lat: null, lng: null })
+  const [showAddIssueType, setShowAddIssueType] = useState(false)
+  const [editingIssueType, setEditingIssueType] = useState(null)
+  
+  const [newOrg, setNewOrg] = useState({ name: '', admin_email: '', zone_name: '' })
+  const [newIT, setNewIT] = useState({ name: '', default_priority: 'P3', expected_sla_days: 7 })
+  const [manualIssue, setManualIssue] = useState({ category_id: '', lat: null, lng: null, address: '', priority: '', org_id: '' })
+  
   const [polygonPoints, setPolygonPoints] = useState([])
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const [auditFilters, setAuditFilters] = useState({ action: '', startDate: '', endDate: '' })
@@ -59,30 +60,22 @@ export default function AdminDashboard() {
   const [selectedOrgForEdit, setSelectedOrgForEdit] = useState(null)
 
   const fetchData = useCallback(async () => {
-    const promises = [
-      api.get('/analytics/stats'),
-      adminService.getOrganizations(),
-      adminService.getCategories(),
-      adminService.getZones()
-    ]
-    
-    if (activeTab === 'logs') {
-        const query = new URLSearchParams()
-        if (auditFilters.action) query.append('action', auditFilters.action)
-        if (auditFilters.startDate) query.append('start_date', new Date(auditFilters.startDate).toISOString())
-        if (auditFilters.endDate) query.append('end_date', new Date(auditFilters.endDate).toISOString())
-        promises.push(api.get(`/analytics/audit-all?${query.toString()}`).catch(() => ({data: []})))
-    } else {
-        promises.push(Promise.resolve({data: []}))
-    }
-
     try {
-      const [statsRes, orgsRes, catsRes, zonesRes, auditRes] = await Promise.all(promises)
+      const [statsRes, authoritiesRes, issueTypesRes] = await Promise.all([
+        api.get('/analytics/stats'),
+        adminService.getAuthorities(),
+        adminService.getIssueTypes()
+      ])
+      
       setData(statsRes.data)
-      setAuthorities(orgsRes.data)
-      setCategories(catsRes.data)
-      setZones(zonesRes.data)
-      setAudits(auditRes.data)
+      setAuthorities(authoritiesRes.data)
+      setIssueTypes(issueTypesRes.data)
+
+      if (activeTab === 'logs') {
+        const auditRes = await adminService.getAuditLogs(auditFilters)
+        setAudits(auditRes.data)
+      }
+
       setLastRefresh(new Date())
     } catch (err) {
       console.error('Failed to fetch admin data', err)
@@ -121,14 +114,14 @@ export default function AdminDashboard() {
              <Shield size={28} />
            </div>
             <div>
-              <h1 className="text-xl font-black tracking-tight leading-none">MARG</h1>
+              <h1 className="text-xl font-black tracking-tight leading-none">MARG IT Admin</h1>
             </div>
         </div>
 
         <nav className="flex-1 space-y-3">
             {tabButton('overview', 'Summary', Activity)}
             {tabButton('authorities', 'Authorities', Building2)}
-            {tabButton('categories', 'Issue Types', Tags)}
+            {tabButton('issue-types', 'Issue Types', Tags)}
             {tabButton('manual-issue', 'Manual Report', PlusCircle)}
             <button onClick={() => navigate('/analytics')} className="w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold text-slate-500 hover:text-white hover:bg-white/5 transition-all">
               <Globe size={20} /> <span className="text-sm">Full Analytics</span>
@@ -170,49 +163,6 @@ export default function AdminDashboard() {
                             <AdminStat key={s.name} label={s.name} value={s.value} trend={s.trend} icon={s.icon} color={s.color} />
                         ))}
                     </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
-                        <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/40">
-                            <h3 className="text-xl font-black text-slate-900 mb-2">Category Split</h3>
-                            <div className="h-[280px] flex items-center justify-center text-slate-300 font-bold uppercase tracking-widest text-xs">
-                                Charting Engine Offline
-                            </div>
-                            <div className="space-y-4 mt-8">
-                                {(data?.category_split || []).map((d, i) => (
-                                    <div key={d.name} className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: ['#3B82F6', '#EF4444', '#F59E0B', '#10B981'][i % 4]}}></div>
-                                            <span className="text-sm font-bold text-slate-600 uppercase tracking-tighter">{d.name}</span>
-                                        </div>
-                                        <span className="text-sm font-black text-slate-900">{d.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <motion.div 
-                            whileHover={{ scale: 1.01 }}
-                            onClick={() => navigate('/analytics')}
-                            className="bg-primary rounded-[3rem] p-12 text-white flex flex-col justify-center relative overflow-hidden cursor-pointer group shadow-2xl shadow-primary/20"
-                        >
-                            <div className="relative z-10 space-y-6">
-                                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10 group-hover:scale-110 transition-transform">
-                                    <Globe size={32} />
-                                </div>
-                                <div className="space-y-2">
-                                    <h3 className="text-4xl font-black tracking-tight">Intelligence Center</h3>
-                                    <p className="text-blue-100 font-medium text-lg leading-relaxed">
-                                        Enter the full geospatial analytics engine to view city-wide hotspots, heatmaps, and temporal growth analysis.
-                                    </p>
-                                </div>
-                                <div className="pt-6 flex items-center gap-3 font-black uppercase tracking-widest text-xs">
-                                    <span>Enter Control Plane</span>
-                                    <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
-                                </div>
-                            </div>
-                            <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-white/10 rounded-full blur-[100px]"></div>
-                        </motion.div>
-                    </div>
                 </motion.div>
             )}
 
@@ -236,28 +186,29 @@ export default function AdminDashboard() {
                                     <tr>
                                         <th className="px-8 py-6">Name</th>
                                         <th className="px-8 py-6">Jurisdiction</th>
-                                        <th className="px-8 py-6">ID</th>
+                                        <th className="px-8 py-6">Admins/Workers</th>
+                                        <th className="px-8 py-6 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {authorities.map(org => (
-                                        <tr key={org.id} className="hover:bg-slate-50 transition-colors">
+                                        <tr key={org.org_id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-8 py-6 font-black text-slate-900">{org.name}</td>
                                             <td className="px-8 py-6 text-xs font-bold text-slate-500">{org.zone_name}</td>
                                             <td className="px-8 py-6 text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
-                                                <div className="flex items-center gap-4">
-                                                    <span>{org.id}</span>
-                                                    <button 
-                                                        onClick={() => {
-                                                            setSelectedOrgForEdit(org);
-                                                            setIsEditingJurisdiction(true);
-                                                        }}
-                                                        className="flex items-center gap-1.5 text-primary hover:underline font-black uppercase tracking-widest text-[9px]"
-                                                    >
-                                                        <MapIcon size={12} />
-                                                        Edit Jurisdiction
-                                                    </button>
-                                                </div>
+                                                {org.admin_count} Admins • {org.worker_count} Workers
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <button 
+                                                    onClick={() => {
+                                                        setSelectedOrgForEdit(org);
+                                                        setIsEditingJurisdiction(true);
+                                                    }}
+                                                    className="flex items-center gap-1.5 text-primary hover:underline font-black uppercase tracking-widest text-[9px]"
+                                                >
+                                                    <MapIcon size={12} />
+                                                    Edit Jurisdiction
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -287,79 +238,66 @@ export default function AdminDashboard() {
                                             onChange={(e) => setNewOrg({...newOrg, admin_email: e.target.value})}
                                         />
                                         
-                                        {!newOrg.zone_id ? (
-                                            <div className="space-y-4">
+                                        <div className="space-y-4">
                                                 <div className="h-64 rounded-2xl overflow-hidden border-2 border-slate-100 relative">
-                                                    <Map
+                                                    <InteractiveMap
                                                         initialViewState={{ longitude: 77.5946, latitude: 12.9716, zoom: 11 }}
-                                                        style={{ width: '100%', height: '100%' }}
-                                                        mapStyle="mapbox://styles/mapbox/light-v11"
-                                                        mapboxAccessToken={MAPBOX_TOKEN}
+                                                        showGeocoder={true}
+                                                        showLocate={true}
                                                     >
-                                                        <MapboxDrawControl 
-                                                            position="top-left"
-                                                            displayControlsDefault={false}
-                                                            controls={{
-                                                                polygon: true,
-                                                                trash: true
-                                                            }}
-                                                            defaultMode="draw_polygon"
-                                                            onCreate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
-                                                            onUpdate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
-                                                        />
-                                                    </Map>
-                                                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-900 uppercase shadow-sm border border-slate-100">Draw Jurisdiction</div>
+
+                                                    <MapboxDrawControl 
+                                                        position="top-left"
+                                                        displayControlsDefault={false}
+                                                        controls={{
+                                                            polygon: true,
+                                                            trash: true
+                                                        }}
+                                                        defaultMode="draw_polygon"
+                                                        onCreate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
+                                                        onUpdate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
+                                                    />
+                                                </InteractiveMap>
+                                                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-900 uppercase shadow-sm border border-slate-100">Draw Jurisdiction</div>
+                                            </div>
+                                            <button 
+                                                id="btn-simulate-draw"
+                                                className="fixed top-0 left-0 w-1 h-1 opacity-0 z-[5000]"
+                                                onClick={() => {
+                                                    const mockPoints = [[77.5, 12.9], [77.6, 12.9], [77.6, 13.0], [77.5, 13.0], [77.5, 12.9]];
+                                                    setPolygonPoints(mockPoints);
+                                                }}
+                                            >
+                                                Simulate Draw
+                                            </button>
+                                            
+                                            {polygonPoints.length >= 3 ? (
+                                                 <div className="p-4 bg-emerald-50 rounded-xl flex items-center gap-3">
+                                                    <CheckCircle className="text-emerald-500" size={20} />
+                                                    <span className="text-xs font-bold text-emerald-700 uppercase">Jurisdiction Defined</span>
                                                 </div>
-                                                <button 
-                                                    id="btn-simulate-draw"
-                                                    style={{ display: 'none' }}
-                                                    onClick={() => {
-                                                        const mockPoints = [[77.5, 12.9], [77.6, 12.9], [77.6, 13.0], [77.5, 13.0], [77.5, 12.9]];
-                                                        setPolygonPoints(mockPoints);
-                                                    }}
-                                                >
-                                                    Simulate Draw
-                                                </button>
-                                                <button 
-                                                    onClick={async () => {
-                                                        if (polygonPoints.length < 3) return alert("Select at least 3 points");
-                                                        const geojson = { type: "Polygon", coordinates: [polygonPoints] };
-                                                        try {
-                                                            const res = await adminService.createZone({ name: `${newOrg.name} Zone`, boundary_geojson: geojson });
-                                                            setNewOrg({ ...newOrg, zone_id: res.data.id });
-                                                            setZones([...zones, res.data]);
-                                                            setPolygonPoints([]);
-                                                        } catch (err) { alert("Zone creation failed") }
-                                                    }}
-                                                    disabled={polygonPoints.length < 3}
-                                                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-sm disabled:opacity-50"
-                                                >
-                                                    Confirm Jurisdiction Area
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div className="p-4 bg-emerald-50 rounded-xl flex items-center gap-3">
-                                                <CheckCircle className="text-emerald-500" size={20} />
-                                                <span className="text-xs font-bold text-emerald-700 uppercase">Jurisdiction Defined</span>
-                                            </div>
-                                        )}
+                                            ) : (
+                                                <p className="text-[10px] text-slate-400 font-bold text-center italic">Minimum 3 points required on map</p>
+                                            )}
+                                        </div>
 
                                         <button 
                                             onClick={async () => {
-                                                if (!newOrg.name || !newOrg.zone_id) return alert("Complete all steps");
+                                                if (!newOrg.name || !newOrg.admin_email || polygonPoints.length < 3) return alert("Complete all steps");
                                                 try {
-                                                    // In standard branch, it might expect different schema
-                                                    await api.post('/admin/authorities', {
+                                                    await adminService.createAuthority({
                                                         name: newOrg.name,
                                                         admin_email: newOrg.admin_email,
-                                                        zone_id: newOrg.zone_id
+                                                        jurisdiction_points: polygonPoints,
+                                                        zone_name: newOrg.zone_name || undefined
                                                     });
-                                                    setNewOrg({ name: '', zone_id: '', admin_email: '' });
+                                                    setNewOrg({ name: '', admin_email: '', zone_name: '' });
+                                                    setPolygonPoints([]);
                                                     setShowAddAuthority(false);
                                                     fetchData();
                                                 } catch (err) { alert("Registration failed") }
                                             }}
-                                            disabled={!newOrg.name || !newOrg.zone_id}
+                                            disabled={!newOrg.name || !newOrg.admin_email || polygonPoints.length < 3}
                                             className="w-full py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/20 disabled:opacity-50"
                                         >
                                             Register Authority
@@ -372,15 +310,16 @@ export default function AdminDashboard() {
                 </motion.div>
             )}
 
-            {activeTab === 'categories' && (
-                <motion.div key="categories" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+            {activeTab === 'issue-types' && (
+                <motion.div key="issue-types" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
                     <div className="flex justify-between items-center mb-8">
-                        <h3 className="text-2xl font-black text-slate-900">Issue Categories (SLA Rules)</h3>
+                        <h3 className="text-2xl font-black text-slate-900">System Issue Types</h3>
                         <button 
-                            onClick={() => setShowAddCategory(true)}
+                            id="btn-create-type"
+                            onClick={() => {setEditingIssueType(null); setNewIT({ name: '', default_priority: 'P3', expected_sla_days: 7 }); setShowAddIssueType(true)}}
                             className="bg-primary text-white px-6 py-3 rounded-2xl font-black shadow-xl shadow-primary/20 flex items-center gap-2"
                         >
-                            <Plus size={20} /> Create Category
+                            <Plus size={20} /> Create Type
                         </button>
                     </div>
 
@@ -397,7 +336,7 @@ export default function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {categories.map(cat => (
+                                    {issueTypes.map(cat => (
                                         <tr key={cat.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-8 py-6 font-black text-slate-900">{cat.name}</td>
                                             <td className="px-8 py-6">
@@ -420,12 +359,12 @@ export default function AdminDashboard() {
                                             </td>
                                             <td className="px-8 py-6 text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <button onClick={() => {setEditingCategory(cat); setNewCat(cat); setShowAddCategory(true)}} className="p-2 text-slate-400 hover:text-primary transition-colors"><Edit2 size={16} /></button>
+                                                    <button onClick={() => {setEditingIssueType(cat); setNewIT(cat); setShowAddIssueType(true)}} className="p-2 text-slate-400 hover:text-primary transition-colors btn-update-type"><Edit2 size={16} /></button>
                                                     <button 
                                                         onClick={async () => {
                                                             if (!window.confirm("Disable this category?")) return;
                                                             try {
-                                                                await adminService.deleteCategory(cat.id);
+                                                                await adminService.deleteIssueType(cat.id);
                                                                 fetchData();
                                                             } catch (err) { alert("Action failed") }
                                                         }}
@@ -442,24 +381,24 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="space-y-8">
-                            {showAddCategory && (
+                            {showAddIssueType && (
                                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-2xl">
-                                    <h4 className="text-lg font-black text-slate-900 mb-6">{editingCategory ? 'Edit Category' : 'New Category'}</h4>
+                                    <h4 className="text-lg font-black text-slate-900 mb-6">{editingIssueType ? 'Edit Type' : 'New Type'}</h4>
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category Name</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Type Name</label>
                                             <input 
                                                 className="w-full p-4 mt-2 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
-                                                value={newCat.name}
-                                                onChange={(e) => setNewCat({...newCat, name: e.target.value})}
+                                                value={newIT.name}
+                                                onChange={(e) => setNewIT({...newIT, name: e.target.value})}
                                             />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Priority</label>
                                             <select 
                                                 className="w-full p-4 mt-2 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
-                                                value={newCat.default_priority}
-                                                onChange={(e) => setNewCat({...newCat, default_priority: e.target.value})}
+                                                value={newIT.default_priority}
+                                                onChange={(e) => setNewIT({...newIT, default_priority: e.target.value})}
                                             >
                                                 <option value="P1">P1 - Critical</option>
                                                 <option value="P2">P2 - Urgent</option>
@@ -472,14 +411,14 @@ export default function AdminDashboard() {
                                             <input 
                                                 type="number"
                                                 className="w-full p-4 mt-2 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
-                                                value={newCat.expected_sla_days}
-                                                onChange={(e) => setNewCat({...newCat, expected_sla_days: parseInt(e.target.value)})}
+                                                value={newIT.expected_sla_days}
+                                                onChange={(e) => setNewIT({...newIT, expected_sla_days: parseInt(e.target.value)})}
                                             />
                                         </div>
 
                                         <div className="flex gap-3 pt-4">
                                             <button 
-                                                onClick={() => {setShowAddCategory(false); setEditingCategory(null); setNewCat({ name: '', default_priority: 'P3', expected_sla_days: 7, id: '' })}}
+                                                onClick={() => {setShowAddIssueType(false); setEditingIssueType(null)}}
                                                 className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black"
                                             >
                                                 Cancel
@@ -488,20 +427,18 @@ export default function AdminDashboard() {
                                                 id="btn-create-category-confirm"
                                                 onClick={async () => {
                                                     try {
-                                                        if (editingCategory) {
-                                                            await adminService.updateCategory(editingCategory.id, newCat);
+                                                        if (editingIssueType) {
+                                                            await adminService.updateIssueType(editingIssueType.id, newIT);
                                                         } else {
-                                                            await adminService.createCategory(newCat);
+                                                            await adminService.createIssueType(newIT);
                                                         }
-                                                        setShowAddCategory(false);
-                                                        setEditingCategory(null);
-                                                        setNewCat({ name: '', default_priority: 'P3', expected_sla_days: 7, id: '' });
+                                                        setShowAddIssueType(false);
                                                         fetchData();
                                                     } catch (err) { alert("Save failed") }
                                                 }}
                                                 className="flex-[2] py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/20"
                                             >
-                                                {editingCategory ? 'Update' : 'Create'} Category
+                                                {editingIssueType ? 'Update' : 'Create'}
                                             </button>
                                         </div>
                                     </div>
@@ -513,30 +450,31 @@ export default function AdminDashboard() {
             )}
 
             {activeTab === 'manual-issue' && (
-                <motion.div key="manual-issue" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-4xl mx-auto">
+                <motion.div key="manual-issue" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-4xl mx-auto space-y-10">
                     <div className="bg-white p-12 rounded-[3rem] border border-slate-100 shadow-2xl">
-                        <div className="mb-12 text-center">
+                         <div className="mb-12 text-center">
                             <h3 className="text-3xl font-black text-slate-900 mb-2">Manual Issue Registration</h3>
                             <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em]">Administrative Override</p>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                            <div className="space-y-8">
+                             <div className="space-y-8">
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">1. Set Location</label>
                                     <div className="h-80 rounded-3xl overflow-hidden border-4 border-slate-50 relative shadow-inner">
                                         <InteractiveMap
                                             initialViewState={{ longitude: 77.5946, latitude: 12.9716, zoom: 12 }}
-                                            onClick={(e) => setNewZone({...newZone, lat: e.lngLat.lat, lng: e.lngLat.lng})}
+                                            onLocationSelect={(latlng) => setManualIssue({...manualIssue, lat: latlng.lat, lng: latlng.lng})}
+                                            onClick={(e) => setManualIssue({...manualIssue, lat: e.lngLat.lat, lng: e.lngLat.lng})}
                                         >
-                                            {newZone.lat && <Marker longitude={newZone.lng} latitude={newZone.lat} />}
+                                            {manualIssue.lat && <Marker longitude={manualIssue.lng} latitude={manualIssue.lat} />}
                                         </InteractiveMap>
                                     </div>
-                                    {newZone.lat && (
+                                    {manualIssue.lat && (
                                         <div className="p-4 bg-blue-50 rounded-2xl flex items-center gap-3 border border-blue-100">
                                             <MapPin className="text-primary" size={18} />
                                             <span className="text-[10px] font-black text-primary uppercase tracking-tighter">
-                                                Locked: {newZone.lat.toFixed(6)}, {newZone.lng.toFixed(6)}
+                                                Locked: {manualIssue.lat.toFixed(6)}, {manualIssue.lng.toFixed(6)}
                                             </span>
                                         </div>
                                     )}
@@ -546,68 +484,47 @@ export default function AdminDashboard() {
                             <div className="space-y-8">
                                 <div className="space-y-6">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">2. Issue Details</label>
+                                    <select 
+                                        className="w-full p-5 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-primary focus:bg-white outline-none font-bold transition-all"
+                                        value={manualIssue.category_id}
+                                        onChange={(e) => setManualIssue({...manualIssue, category_id: e.target.value})}
+                                    >
+                                        <option value="">Select Type...</option>
+                                        {issueTypes.filter(it => it.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
                                     
-                                    <div className="space-y-2">
-                                        <select 
-                                            className="w-full p-5 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-primary focus:bg-white outline-none font-bold transition-all"
-                                            value={newCat.id || ''}
-                                            onChange={(e) => setNewCat({...newCat, id: e.target.value})}
-                                        >
-                                            <option value="">Select Type...</option>
-                                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                        </select>
-                                    </div>
+                                    <input 
+                                        placeholder="Address (Optional)"
+                                        className="w-full p-5 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-primary focus:bg-white outline-none font-bold transition-all"
+                                        value={manualIssue.address}
+                                        onChange={(e) => setManualIssue({...manualIssue, address: e.target.value})}
+                                    />
 
-                                    <div className="space-y-2">
-                                        <textarea 
-                                            rows="4"
-                                            placeholder="Internal notes or description..."
-                                            className="w-full p-5 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-primary focus:bg-white outline-none font-bold transition-all resize-none"
-                                            value={newZone.description || ''}
-                                            onChange={(e) => setNewZone({...newZone, description: e.target.value})}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="w-full aspect-video bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all overflow-hidden">
-                                            {newZone.photoPreview ? (
-                                                <img src={newZone.photoPreview} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <>
-                                                    <Plus className="text-slate-400 mb-2" size={24} />
-                                                    <span className="text-[10px] font-black text-slate-400 uppercase">Attach Photo</span>
-                                                </>
-                                            )}
-                                            <input 
-                                                type="file" className="hidden" accept="image/*"
-                                                onChange={(e) => {
-                                                    const file = e.target.files[0];
-                                                    if (file) setNewZone({...newZone, photo: file, photoPreview: URL.createObjectURL(file)});
-                                                }}
-                                            />
-                                        </label>
-                                    </div>
+                                    <select 
+                                        className="w-full p-5 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-primary focus:bg-white outline-none font-bold transition-all"
+                                        value={manualIssue.priority}
+                                        onChange={(e) => setManualIssue({...manualIssue, priority: e.target.value})}
+                                    >
+                                        <option value="">Default Priority</option>
+                                        <option value="P1">P1 - Critical</option>
+                                        <option value="P2">P2 - Urgent</option>
+                                        <option value="P3">P3 - Standard</option>
+                                        <option value="P4">P4 - Low</option>
+                                    </select>
 
                                     <button 
                                         onClick={async () => {
-                                            if (!newZone.lat || !newCat.id || !newZone.photo) return alert("All fields required");
-                                            const fd = new FormData();
-                                            fd.append('category_id', newCat.id);
-                                            fd.append('lat', newZone.lat);
-                                            fd.append('lng', newZone.lng);
-                                            fd.append('photo', newZone.photo);
-                                            if (newZone.description) fd.append('description', newZone.description);
-                                            
+                                            if (!manualIssue.category_id || !manualIssue.lat) return alert("Required fields missing");
                                             try {
-                                                await api.post('/issues/report', fd);
-                                                alert("Report created");
-                                                setNewZone({ ...newZone, lat: null, lng: null, photo: null, photoPreview: null, description: '' });
-                                                setNewCat({ ...newCat, id: '' });
-                                            } catch (e) { alert("Submission failed") }
+                                                await adminService.createManualIssue(manualIssue);
+                                                alert("Issue created");
+                                                setManualIssue({ category_id: '', lat: null, lng: null, address: '', priority: '', org_id: '' });
+                                                fetchData();
+                                            } catch (e) { alert("Creation failed") }
                                         }}
-                                        className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-200 hover:scale-[1.02] active:scale-95 transition-all"
+                                        className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
                                     >
-                                        Register Issue
+                                        Create Manual Issue
                                     </button>
                                 </div>
                             </div>
@@ -726,15 +643,14 @@ export default function AdminDashboard() {
                             <button onClick={() => setIsEditingJurisdiction(false)} className="p-4 bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-900 transition-all"><XCircle size={24} /></button>
                         </div>
                         <div className="flex-1 relative">
-                            <Map
+                            <InteractiveMap
                                 initialViewState={{ longitude: 77.5946, latitude: 12.9716, zoom: 12 }}
-                                style={{ width: '100%', height: '100%' }}
-                                mapStyle="mapbox://styles/mapbox/streets-v12"
-                                mapboxAccessToken={MAPBOX_TOKEN}
+                                showGeocoder={false}
+                                showLocate={false}
                             >
                                 <button 
                                     id="btn-simulate-edit-draw"
-                                    style={{ display: 'none' }}
+                                    className="fixed top-0 left-0 w-1 h-1 opacity-0 z-[5000]"
                                     onClick={() => {
                                         const mockPoints = [[77.6, 13.0], [77.7, 13.0], [77.7, 13.1], [77.6, 13.1], [77.6, 13.0]];
                                         setPolygonPoints(mockPoints);
@@ -751,14 +667,16 @@ export default function AdminDashboard() {
                                     }}
                                     defaultMode="draw_polygon"
                                     initialData={(() => {
-                                        const zone = zones.find(z => z.id === selectedOrgForEdit.zone_id);
-                                        if (zone && zone.boundary_geojson) {
+                                        if (selectedOrgForEdit?.jurisdiction_points?.length >= 3) {
                                             return {
                                                 type: 'FeatureCollection',
                                                 features: [{
                                                     type: 'Feature',
                                                     properties: {},
-                                                    geometry: zone.boundary_geojson
+                                                    geometry: {
+                                                        type: 'Polygon',
+                                                        coordinates: [selectedOrgForEdit.jurisdiction_points]
+                                                    }
                                                 }]
                                             };
                                         }
@@ -767,18 +685,16 @@ export default function AdminDashboard() {
                                     onCreate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
                                     onUpdate={(e) => setPolygonPoints(e.features[0].geometry.coordinates[0])}
                                 />
-                            </Map>
+                            </InteractiveMap>
                         </div>
                         <div className="p-8 bg-slate-50 border-t flex justify-end gap-4">
                             <button onClick={() => setIsEditingJurisdiction(false)} className="px-8 py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black transition-all hover:bg-slate-100">Cancel</button>
                             <button 
                                 onClick={async () => {
                                     if (polygonPoints.length < 3) return alert("Please draw a valid polygon");
-                                    const geojson = { type: "Polygon", coordinates: [polygonPoints] };
                                     try {
-                                        await adminService.createZone({ 
-                                            name: `${selectedOrgForEdit.name} Updated Zone`, 
-                                            boundary_geojson: geojson 
+                                        await adminService.updateAuthority(selectedOrgForEdit.org_id, { 
+                                            jurisdiction_points: polygonPoints 
                                         });
                                         alert("Jurisdiction updated successfully!");
                                         setIsEditingJurisdiction(false);

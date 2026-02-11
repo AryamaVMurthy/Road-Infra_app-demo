@@ -15,15 +15,19 @@ test('Citizen flow: login and report issue successfully', async ({ page, context
   await page.click('text=Report New Issue')
   await page.waitForURL('**/citizen/report')
 
-  await page.click('button:has-text("Confirm & Proceed")')
+  // Step 1: Capture Evidence
   await page.locator('input[type="file"]').setInputFiles(testImage)
-  await page.click('button:has-text("Next Step")')
-  await page.locator('select').selectOption({ index: 1 })
-  await page.click('button:has-text("Submit Report")')
+  // Wait for categories to load and select one
+  await page.locator('button:has-text("Pothole")').click()
+  await page.click('button:has-text("Continue to Location")')
 
+  // Step 2: Pin Location
+  await page.click('button:has-text("Broadcast Report")')
+
+  // Step 3: Success
   await Promise.race([
     page.waitForURL('**/citizen/my-reports', { timeout: 15000 }),
-    page.waitForSelector('text=/Successfully reported/i', { timeout: 15000 }),
+    page.waitForSelector('text=/Successfully Logged/i', { timeout: 15000 }),
   ])
 
   const issueState = runSql(

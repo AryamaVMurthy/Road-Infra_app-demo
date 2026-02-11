@@ -7,6 +7,7 @@ const adminService = {
   getWorkerAnalytics: () => api.get('/admin/worker-analytics'),
   bulkInviteWorkers: (emails) => api.post('/admin/bulk-invite', { emails }),
   deactivateWorker: (workerId) => api.post(`/admin/deactivate-worker?worker_id=${workerId}`),
+  activateWorker: (workerId) => api.post(`/admin/activate-worker?worker_id=${workerId}`),
 
   // Issue management
   getIssues: () => api.get('/admin/issues'),
@@ -20,18 +21,27 @@ const adminService = {
   // Dashboard
   getDashboardStats: () => api.get('/admin/dashboard-stats'),
 
-  // Sysadmin (IT Admin) features
-  getZones: () => api.get('/admin/sysadmin/zones'),
-  createZone: (data) => api.post('/admin/sysadmin/zones', data),
-  getOrganizations: () => api.get('/admin/sysadmin/organizations'),
-  createOrganization: (data) => api.post('/admin/sysadmin/organizations', data),
-  getCategories: () => api.get('/admin/sysadmin/categories'),
-  createCategory: (data) => api.post('/admin/sysadmin/categories', data),
-  updateCategory: (id, data) => api.put(`/admin/sysadmin/categories/${id}`, data),
-  deleteCategory: (id) => api.delete(`/admin/sysadmin/categories/${id}`),
+  // System (IT Admin) features
+  getAuthorities: () => api.get('/admin/authorities'),
+  createAuthority: (data) => api.post('/admin/authorities', data),
+  updateAuthority: (id, data) => api.put(`/admin/authorities/${id}`, data),
+  deleteAuthority: (id) => api.delete(`/admin/authorities/${id}`),
+  
+  getIssueTypes: () => api.get('/admin/issue-types'),
+  createIssueType: (data) => api.post('/admin/issue-types', data),
+  updateIssueType: (id, data) => api.put(`/admin/issue-types/${id}`, data),
+  deleteIssueType: (id) => api.delete(`/admin/issue-types/${id}`),
+  
+  createManualIssue: (data) => api.post('/admin/manual-issues', data),
   
   // Audit Logs
-  getAuditLogs: (limit = 200, offset = 0) => api.get(`/analytics/audit-all?limit=${limit}&offset=${offset}`),
+  getAuditLogs: (filters = {}) => {
+      const query = new URLSearchParams()
+      if (filters.action) query.append('action', filters.action)
+      if (filters.startDate) query.append('start_date', filters.startDate)
+      if (filters.endDate) query.append('end_date', filters.endDate)
+      return api.get(`/analytics/audit-all?${query.toString()}`)
+  },
 };
 
 export default adminService;

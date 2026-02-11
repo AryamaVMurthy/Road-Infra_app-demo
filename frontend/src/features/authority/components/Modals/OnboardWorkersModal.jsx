@@ -9,14 +9,26 @@ export const OnboardWorkersModal = ({
   onCancel,
   isSubmitting
 }) => {
+  const [mode, setMode] = useState('single')
+  const [singleEmail, setSingleEmail] = useState('')
   const [emails, setEmails] = useState('')
   const [error, setError] = useState(null)
   const fileInputRef = useRef(null)
 
   const handleSubmit = () => {
-    const emailList = emails.split(/[,;\n\s]+/).map(e => e.trim()).filter(e => {
-        return e !== '' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
-    })
+    let emailList = []
+    if (mode === 'single') {
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(singleEmail.trim())) {
+            emailList = [singleEmail.trim()]
+        } else {
+            setError("Please enter a valid email address.")
+            return
+        }
+    } else {
+        emailList = emails.split(/[,;\n\s]+/).map(e => e.trim()).filter(e => {
+            return e !== '' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+        })
+    }
     
     if (emailList.length > 0) {
       onOnboard(emailList)
@@ -88,36 +100,72 @@ export const OnboardWorkersModal = ({
           </div>
 
           <div className="space-y-6">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center ml-1">
-                <label className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em]">
-                  Emails (Comma/Newline separated)
-                </label>
+            <div className="flex bg-slate-100 p-1.5 rounded-2xl border shadow-inner">
                 <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 text-[10px] font-black text-primary uppercase tracking-wider hover:underline"
+                    onClick={() => {setMode('single'); setError(null)}}
+                    className={cn("flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all", mode === 'single' ? "bg-white text-slate-950 shadow-md" : "text-slate-500 hover:text-slate-900")}
                 >
-                  <FileUp size={12} />
-                  Import CSV
+                    Single Worker
                 </button>
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileUpload} 
-                    accept=".csv,.txt" 
-                    className="hidden" 
-                />
-              </div>
-              <textarea
-                value={emails}
-                onChange={(e) => {
-                    setEmails(e.target.value);
-                    if (error) setError(null);
-                }}
-                placeholder="worker1@ex.com, worker2@ex.com..."
-                rows={5}
-                className="w-full p-6 rounded-2xl border-2 border-slate-100 text-slate-900 font-bold focus:outline-none focus:border-primary transition-all resize-none"
-              />
+                <button 
+                    onClick={() => {setMode('bulk'); setError(null)}}
+                    className={cn("flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all", mode === 'bulk' ? "bg-white text-slate-950 shadow-md" : "text-slate-500 hover:text-slate-900")}
+                >
+                    Bulk Onboard
+                </button>
+            </div>
+
+            <div className="space-y-3">
+              {mode === 'single' ? (
+                <div className="space-y-3">
+                  <label className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+                    Worker Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={singleEmail}
+                    onChange={(e) => {
+                        setSingleEmail(e.target.value);
+                        if (error) setError(null);
+                    }}
+                    placeholder="worker@authority.gov.in"
+                    className="w-full p-5 rounded-2xl border-2 border-slate-100 text-slate-900 font-bold focus:outline-none focus:border-primary transition-all"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center ml-1">
+                    <label className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em]">
+                      Emails (Comma/Newline separated)
+                    </label>
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 text-[10px] font-black text-primary uppercase tracking-wider hover:underline"
+                    >
+                      <FileUp size={12} />
+                      Import CSV
+                    </button>
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileUpload} 
+                        accept=".csv,.txt" 
+                        className="hidden" 
+                    />
+                  </div>
+                  <textarea
+                    value={emails}
+                    onChange={(e) => {
+                        setEmails(e.target.value);
+                        if (error) setError(null);
+                    }}
+                    placeholder="worker1@ex.com, worker2@ex.com..."
+                    rows={5}
+                    className="w-full p-6 rounded-2xl border-2 border-slate-100 text-slate-900 font-bold focus:outline-none focus:border-primary transition-all resize-none"
+                  />
+                </div>
+              )}
+              
               {error ? (
                 <div className="flex items-center gap-2 text-rose-500 font-bold text-[10px] ml-1">
                     <AlertCircle size={14} />
@@ -125,17 +173,17 @@ export const OnboardWorkersModal = ({
                 </div>
               ) : (
                 <p className="text-xs text-slate-400 font-medium ml-1">
-                  You can paste a list of emails or upload a CSV file.
+                  {mode === 'single' ? 'Enter the email address of the worker you want to register.' : 'You can paste a list of emails or upload a CSV file.'}
                 </p>
               )}
             </div>
 
             <button 
               onClick={handleSubmit}
-              disabled={!emails.trim() || isSubmitting}
+              disabled={isSubmitting || (mode === 'single' ? !singleEmail.trim() : !emails.trim())}
               className={cn(
                 "w-full py-4 sm:py-5 rounded-[1.5rem] font-black shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95",
-                emails.trim() && !isSubmitting
+                (mode === 'single' ? singleEmail.trim() : emails.trim()) && !isSubmitting
                   ? "bg-primary text-white shadow-primary/20 hover:bg-primary/90"
                   : "bg-slate-100 text-slate-300 cursor-not-allowed shadow-none"
               )}

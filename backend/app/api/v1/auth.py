@@ -4,7 +4,7 @@ from app.schemas.auth import Login, OTPRequest
 from app.models.domain import User, Otp, Invite
 from sqlmodel import Session, select, desc
 from app.db.session import get_session
-from datetime import timedelta
+from datetime import datetime, timedelta
 from app.services.email import EmailService
 from app.services.auth_service import AuthService
 from app.api.deps import get_current_user

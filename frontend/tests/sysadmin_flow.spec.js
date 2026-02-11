@@ -8,6 +8,7 @@ test.describe('Sysadmin and Worker Onboarding Flows', () => {
   })
 
   test('Sysadmin can register a new authority with jurisdiction and onboard a worker', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
     // 1. Login as Sysadmin
     await loginAs(page, 'sysadmin@marg.gov.in', '/admin')
     
@@ -19,13 +20,11 @@ test.describe('Sysadmin and Worker Onboarding Flows', () => {
     const nameInput = page.getByTestId('input-authority-name')
     await nameInput.waitFor({ state: 'visible' })
     await nameInput.fill('Test Authority')
+    await page.getByPlaceholder('Admin Email').fill('newadmin@test.gov.in')
     
-    await page.evaluate(() => {
-        document.getElementById('btn-simulate-draw')?.click();
-    });
+    await page.locator('#btn-simulate-draw').click({ force: true })
     
-    await page.getByRole('button', { name: 'Confirm Jurisdiction Area' }).click()
-    await expect(page.getByText('Jurisdiction Defined')).toBeVisible()
+    await expect(page.getByText('Jurisdiction Defined')).toBeVisible({ timeout: 10000 })
     
     await page.getByRole('button', { name: 'Register Authority' }).click()
     await expect(page.getByRole('cell', { name: 'Test Authority', exact: true })).toBeVisible()
@@ -38,9 +37,8 @@ test.describe('Sysadmin and Worker Onboarding Flows', () => {
     await loginAs(page, 'admin@authority.gov.in', '/authority')
     await page.getByRole('button', { name: 'Field Force' }).click()
     
-    // Onboard a worker
     await page.getByRole('button', { name: 'Onboard Workers' }).click()
-    await page.getByPlaceholder('worker1@ex.com, worker2@ex.com...').fill('newworker@test.com')
+    await page.getByPlaceholder('worker@authority.gov.in').fill('newworker@test.com')
     await page.getByRole('button', { name: 'Send Invites' }).click()
     
     await expect(page.getByRole('heading', { name: 'Onboard Workers' })).not.toBeVisible()
@@ -62,15 +60,16 @@ test.describe('Sysadmin and Worker Onboarding Flows', () => {
     await page.getByRole('button', { name: 'Issue Types' }).click()
     
     // Create
-    await page.getByRole('button', { name: 'Create Category' }).first().click()
+    await page.locator('#btn-issue-types').click()
+    await page.locator('#btn-create-type').click()
     await page.locator('input').filter({ hasText: '' }).nth(0).fill('Pothole V2')
     await page.locator('#btn-create-category-confirm').click()
     await expect(page.getByRole('cell', { name: 'Pothole V2' })).toBeVisible({ timeout: 10000 })
     
     // Edit
-    await page.locator('tr').filter({ hasText: 'Pothole V2' }).getByRole('button').first().click()
+    await page.locator('tr').filter({ hasText: 'Pothole V2' }).locator('.btn-update-type').click()
     await page.locator('input[type="number"]').fill('10')
-    await page.getByRole('button', { name: 'Update Category' }).click()
+    await page.locator('#btn-create-category-confirm').click()
     await expect(page.getByText('10 Days')).toBeVisible()
   })
 })

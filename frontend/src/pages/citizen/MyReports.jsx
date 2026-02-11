@@ -67,7 +67,7 @@ function ReportMap({ report }) {
                 zoom: 16
             }}
             showGeocoder={false}
-            showLocate={false}
+            showLocate={true}
         >
             <Marker longitude={report.lng} latitude={report.lat} />
         </InteractiveMap>

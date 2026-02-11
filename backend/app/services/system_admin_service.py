@@ -51,6 +51,17 @@ class SystemAdminService:
                     col(User.role) == "WORKER",
                 )
             ).one()
+            jurisdiction_wkt = (
+                to_shape(zone.boundary).wkt
+                if zone and zone.boundary is not None
+                else None
+            )
+            jurisdiction_points = []
+            if zone and zone.boundary is not None:
+                shape = to_shape(zone.boundary)
+                if isinstance(shape, Polygon):
+                    jurisdiction_points = list(shape.exterior.coords)
+
             result.append(
                 {
                     "org_id": authority.id,
@@ -59,9 +70,8 @@ class SystemAdminService:
                     "zone_name": zone.name if zone else "Unknown",
                     "admin_count": admin_count,
                     "worker_count": worker_count,
-                    "jurisdiction_wkt": to_shape(zone.boundary).wkt
-                    if zone and zone.boundary is not None
-                    else None,
+                    "jurisdiction_wkt": jurisdiction_wkt,
+                    "jurisdiction_points": jurisdiction_points,
                 }
             )
         return result

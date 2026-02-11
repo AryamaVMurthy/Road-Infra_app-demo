@@ -3,7 +3,7 @@ import api, { API_URL } from '../../services/api'
 import { 
     LayoutDashboard, Map as MapIcon, Users, LogOut, 
     CheckCircle2, AlertCircle, Clock,
-    CheckSquare, Globe, RefreshCw, XCircle, UserPlus, MailPlus
+    CheckSquare, Globe, RefreshCw, XCircle, UserPlus, MailPlus, Menu, X
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import adminService from '../../services/admin'
@@ -28,7 +28,15 @@ import { OnboardWorkersModal } from '../../features/authority/components/Modals/
 
 export default function AuthorityDashboard() {
   const [activeTab, setActiveTab] = useState('map') 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024)
   const [issues, setIssues] = useState([])
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   const [workers, setWorkers] = useState([])
   const [workerAnalytics, setWorkerAnalytics] = useState(null)
   
@@ -134,39 +142,72 @@ export default function AuthorityDashboard() {
   const resolvedCount = issues.filter(i => i.status === 'RESOLVED' || i.status === 'CLOSED').length
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC]">
-      <aside className="w-72 bg-white border-r border-slate-100 flex flex-col p-6">
-        <div className="flex items-center gap-4 px-2 mb-12">
-          <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg">
-             <LayoutDashboard size={24} />
-          </div>
-          <div>
-             <h1 className="text-lg font-black tracking-tight text-slate-900 leading-none">MARG</h1>
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-2">
-          <SidebarItem active={activeTab === 'map'} icon={MapIcon} label="Operations Map" onClick={() => setActiveTab('map')} />
-          <SidebarItem active={activeTab === 'kanban'} icon={CheckSquare} label="Kanban Triage" onClick={() => setActiveTab('kanban')} />
-          <SidebarItem active={activeTab === 'workers'} icon={Users} label="Field Force" onClick={() => setActiveTab('workers')} />
-          <SidebarItem active={false} icon={Globe} label="City Analytics" onClick={() => navigate('/analytics')} />
-        </nav>
-
-        <div className="mt-auto space-y-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl text-xs text-slate-500">
-                <RefreshCw size={12} className="animate-spin-slow" />
-                <span>Auto-refresh: {lastRefresh.toLocaleTimeString()}</span>
+    <div className="flex h-screen bg-[#F8FAFC] relative overflow-hidden">
+      <AnimatePresence>
+        {(isSidebarOpen || isDesktop) && (
+          <motion.aside 
+            initial={isDesktop ? false : { x: -288 }}
+            animate={{ x: 0 }}
+            exit={{ x: -288 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className={cn(
+              "w-72 bg-white border-r border-slate-100 flex flex-col p-6 fixed lg:relative z-[100] h-full shadow-2xl lg:shadow-none",
+              !isSidebarOpen && !isDesktop && "hidden"
+            )}
+          >
+            <div className="flex items-center justify-between mb-12">
+                <div className="flex items-center gap-4 px-2">
+                    <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg">
+                        <LayoutDashboard size={24} />
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-black tracking-tight text-slate-900 leading-none">MARG</h1>
+                    </div>
+                </div>
+                <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-900">
+                    <X size={24} />
+                </button>
             </div>
-            <button onClick={() => authService.logout()} className="w-full flex items-center gap-4 p-4 text-red-500 font-bold hover:bg-red-50 rounded-2xl transition-colors">
-                <LogOut size={20} /> <span className="text-sm">Log Out</span>
-            </button>
-        </div>
-      </aside>
+
+            <nav className="flex-1 space-y-2">
+              <SidebarItem active={activeTab === 'map'} icon={MapIcon} label="Operations Map" onClick={() => setActiveTab('map')} />
+              <SidebarItem active={activeTab === 'kanban'} icon={CheckSquare} label="Kanban Triage" onClick={() => setActiveTab('kanban')} />
+              <SidebarItem active={activeTab === 'workers'} icon={Users} label="Field Force" onClick={() => setActiveTab('workers')} />
+              <SidebarItem active={false} icon={Globe} label="City Analytics" onClick={() => navigate('/analytics')} />
+            </nav>
+
+            <div className="mt-auto space-y-4">
+                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl text-xs text-slate-500">
+                    <RefreshCw size={12} className="animate-spin-slow" />
+                    <span>Auto-refresh: {lastRefresh.toLocaleTimeString()}</span>
+                </div>
+                <button onClick={() => authService.logout()} className="w-full flex items-center gap-4 p-4 text-red-500 font-bold hover:bg-red-50 rounded-2xl transition-colors">
+                    <LogOut size={20} /> <span className="text-sm">Log Out</span>
+                </button>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-24 px-10 flex items-center justify-between border-b border-slate-100 bg-white/50 backdrop-blur-md">
-            <div className="flex items-center gap-6">
-                <h2 className="text-2xl font-black text-slate-900 capitalize">{activeTab}</h2>
+        <header className="h-20 lg:h-24 px-6 lg:px-10 flex items-center justify-between border-b border-slate-100 bg-white/50 backdrop-blur-md">
+            <div className="flex items-center gap-4 lg:gap-6">
+                <button 
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="lg:hidden w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-600 shadow-sm"
+                >
+                    <Menu size={20} />
+                </button>
+                <h2 className="text-xl lg:text-2xl font-black text-slate-900 capitalize truncate">{activeTab}</h2>
+                {activeTab === 'workers' && (
+                    <button 
+                        onClick={() => setShowOnboardModal(true)}
+                        className="bg-primary text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-primary/20 flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95"
+                    >
+                        <UserPlus size={14} />
+                        Onboard
+                    </button>
+                )}
             </div>
             <div className="flex items-center gap-4">
                 <button onClick={fetchData} className="p-2 bg-slate-100 rounded-xl text-slate-500 hover:text-primary hover:bg-primary/10 transition-all">

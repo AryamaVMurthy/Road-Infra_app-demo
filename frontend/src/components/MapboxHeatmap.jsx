@@ -1,4 +1,4 @@
-import { Source, Layer } from 'react-map-gl';
+import { Source, Layer } from './InteractiveMap';
 
 export function MapboxHeatmap({ points }) {
   if (!points || !Array.isArray(points) || points.length === 0) return null;

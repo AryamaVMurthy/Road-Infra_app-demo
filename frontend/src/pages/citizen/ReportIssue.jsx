@@ -7,14 +7,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import { Marker } from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
-import { MapboxGeocoderControl } from '../../components/MapboxGeocoder'
-import { MapboxLocateControl } from '../../components/MapboxLocateControl'
-import { InteractiveMap } from '../../components/InteractiveMap'
 import { useGeolocation } from '../../hooks/useGeolocation'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
+import { InteractiveMap, Marker } from '../../components/InteractiveMap'
+import { MAPBOX_TOKEN } from '../../config/map'
 
 export default function ReportIssue() {
   const [categories, setCategories] = useState([])
@@ -36,10 +31,10 @@ export default function ReportIssue() {
   }, [])
 
   useEffect(() => {
-    if (geoPosition && !position) {
+    if (!geoLoading && geoPosition && !position) {
       setPosition(geoPosition)
     }
-  }, [geoPosition, position])
+  }, [geoLoading, geoPosition, position])
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0]
@@ -183,30 +178,24 @@ export default function ReportIssue() {
                 </div>
 
                 <div className="h-[400px] w-full rounded-[2rem] overflow-hidden border-4 border-slate-100 mb-8 shadow-inner relative">
-                  {geoLoading ? (
+                  {geoLoading && !position ? (
                     <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50">
                       <Loader2 className="animate-spin text-primary mb-4" size={40} />
                       <p className="text-slate-500 font-medium">Getting your location...</p>
                       <p className="text-slate-400 text-sm mt-1">Please allow location access when prompted</p>
                     </div>
-                  ) : position ? (
+                  ) : (
                     <InteractiveMap
                       initialViewState={{
-                        longitude: position.lng,
-                        latitude: position.lat,
+                        longitude: position?.lng || 77.5946,
+                        latitude: position?.lat || 12.9716,
                         zoom: 17
                       }}
                       onLocationSelect={(latlng) => setPosition(latlng)}
                       onClick={(e) => setPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
                     >
-                      <Marker longitude={position.lng} latitude={position.lat} />
+                      {position && <Marker longitude={position.lng} latitude={position.lat} />}
                     </InteractiveMap>
-                  ) : (
-                    <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50 gap-4">
-                        <AlertCircle className="text-slate-300" size={40} />
-                        <p className="text-slate-400 font-bold text-sm">Location unavailable</p>
-                        <button onClick={() => window.location.reload()} className="text-primary font-black text-xs uppercase underline">Retry Geolocation</button>
-                    </div>
                   )}
                 </div>
 

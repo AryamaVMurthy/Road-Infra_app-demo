@@ -92,17 +92,17 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
-      <header className="px-10 py-8 bg-white/80 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-6">
-            <button onClick={() => navigate(-1)} className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-primary hover:bg-white hover:shadow-md transition-all border border-slate-100">
-                <ArrowLeft size={20} />
+      <header className="px-6 md:px-10 py-6 md:py-8 bg-white/80 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+        <div className="flex items-center gap-4 md:gap-6">
+            <button onClick={() => navigate(-1)} className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-primary hover:bg-white hover:shadow-md transition-all border border-slate-100">
+                <ArrowLeft size={18} />
             </button>
             <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-900">City Health Intelligence</h1>
+                <h1 className="text-lg md:text-2xl font-black tracking-tight text-slate-900">City Health Intelligence</h1>
             </div>
         </div>
-        <div className="flex items-center gap-4">
-            <div className="px-5 py-2.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-4">
+            <div className="hidden sm:flex px-5 py-2.5 bg-slate-50 rounded-2xl border border-slate-100 items-center gap-3">
                 <Clock size={16} className="text-slate-400" />
                 <span className="text-sm font-bold text-slate-600">Last Sync: {lastRefresh.toLocaleTimeString()}</span>
             </div>
@@ -112,7 +112,7 @@ export default function AnalyticsDashboard() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full p-10 space-y-12">
+      <main className="flex-1 max-w-7xl mx-auto w-full p-6 md:p-10 space-y-8 md:space-y-12">
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <StatBox label="Total Reports" value={data?.summary.reported || 0} icon={AlertTriangle} colorClass="bg-rose-500" />
             <StatBox label="Resolved Tickets" value={data?.summary.resolved || 0} icon={CheckCircle2} colorClass="bg-emerald-500" />

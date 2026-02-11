@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Marker, Popup } from 'react-map-gl'
+import { Marker, Popup } from './InteractiveMap'
 
 export function IssueMarkersLayer({
   issues,

@@ -1,3 +1,5 @@
+import { cn } from '../../../../utils/utils'
+
 /**
  * KanbanColumn - Column container for kanban board
  * 
@@ -36,5 +38,4 @@ export const KanbanColumn = ({ title, color, count, children }) => {
   )
 }
 
-import { cn } from '../../../../utils/utils'
 export default KanbanColumn

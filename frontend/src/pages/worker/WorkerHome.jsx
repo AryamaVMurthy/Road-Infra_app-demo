@@ -19,8 +19,7 @@ import { TaskCard } from '../../features/worker/components/TaskList/TaskCard'
 import { AcceptTaskModal } from '../../features/worker/components/Modals/AcceptTaskModal'
 import { ResolveTaskModal } from '../../features/worker/components/Modals/ResolveTaskModal'
 import { Toast } from '../../features/common/components/Toast'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
+import { MAPBOX_TOKEN } from '../../config/map'
 
 export default function WorkerHome() {
   const [activeTab, setActiveTab] = useState('tasks') 
@@ -107,27 +106,13 @@ export default function WorkerHome() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <header className="px-8 py-10 bg-white/80 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-5">
-           <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-primary/30">
-              <Briefcase size={28} />
+      <header className="px-6 md:px-8 py-6 md:py-10 bg-white/80 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+        <div className="flex items-center gap-3 md:gap-5">
+           <div className="w-10 h-10 md:w-14 md:h-14 bg-primary rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl shadow-primary/30">
+              <Briefcase size={24} />
            </div>
-           <div>
-              <h1 className="text-xl font-black text-slate-900 leading-none tracking-tight">MARG</h1>
-              <div className="flex items-center gap-2 mt-1.5">
-                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                <p className="text-[10px] font-black text-slate-400 tracking-widest uppercase">
-                  Agent: Online
-                </p>
-              </div>
-           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl text-xs font-bold text-slate-500 border border-slate-100">
-            <Activity size={12} />
-            <span>Synced {lastRefresh.toLocaleTimeString()}</span>
-          </div>
-          <button onClick={() => authService.logout()} className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border border-slate-100 shadow-sm">
+...
+          <button onClick={() => authService.logout()} className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-xl md:rounded-2xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border border-slate-100 shadow-sm">
             <LogOut size={20} />
           </button>
         </div>
@@ -258,25 +243,25 @@ export default function WorkerHome() {
         </AnimatePresence>
       </main>
 
-      <nav className="h-28 bg-white/80 backdrop-blur-2xl border-t border-slate-100 fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-10 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
-        <button onClick={() => setActiveTab('tasks')} className={cn("flex flex-col items-center gap-1.5 transition-all", activeTab === 'tasks' ? "text-primary scale-110" : "text-slate-300 hover:text-slate-500")}>
-          <Briefcase size={28} />
-          <span className="text-[10px] font-black uppercase tracking-tighter">Tasks</span>
+      <nav className="h-20 md:h-28 bg-white/80 backdrop-blur-2xl border-t border-slate-100 fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-4 md:px-10 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+        <button onClick={() => setActiveTab('tasks')} className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'tasks' ? "text-primary scale-110" : "text-slate-300 hover:text-slate-500")}>
+          <Briefcase size={24} />
+          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-tighter">Tasks</span>
         </button>
 
-        <button onClick={() => setActiveTab('map')} className={cn("flex flex-col items-center gap-1.5 transition-all", activeTab === 'map' ? "text-primary scale-110" : "text-slate-300 hover:text-slate-500")}>
-          <MapIcon size={28} />
-          <span className="text-[10px] font-black uppercase tracking-tighter">Area Map</span>
+        <button onClick={() => setActiveTab('map')} className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'map' ? "text-primary scale-110" : "text-slate-300 hover:text-slate-500")}>
+          <MapIcon size={24} />
+          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-tighter">Area Map</span>
         </button>
 
-        <button onClick={() => navigate('/analytics')} className="flex flex-col items-center gap-1.5 text-slate-300 hover:text-primary transition-all">
-          <Globe size={28} />
-          <span className="text-[10px] font-black uppercase tracking-tighter">City Health</span>
+        <button onClick={() => navigate('/analytics')} className="flex flex-col items-center gap-1 text-slate-300 hover:text-primary transition-all">
+          <Globe size={24} />
+          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-tighter">City Health</span>
         </button>
         
-        <button onClick={() => setActiveTab('history')} className={cn("flex flex-col items-center gap-1.5 transition-all", activeTab === 'history' ? "text-primary scale-110" : "text-slate-300 hover:text-slate-500")}>
-          <Clock size={28} />
-          <span className="text-[10px] font-black uppercase tracking-tighter">History</span>
+        <button onClick={() => setActiveTab('history')} className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'history' ? "text-primary scale-110" : "text-slate-300 hover:text-slate-500")}>
+          <Clock size={24} />
+          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-tighter">History</span>
         </button>
       </nav>
 

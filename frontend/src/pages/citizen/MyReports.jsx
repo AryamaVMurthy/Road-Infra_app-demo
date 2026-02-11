@@ -5,14 +5,10 @@ import {
     Clock, ChevronRight, MapPin, ArrowLeft, Loader2, Info, X, 
     Camera, History, User, Map as MapIcon, ArrowRight, Activity 
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
 import { useNavigate } from 'react-router-dom'
-import { Marker } from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import InteractiveMap, { Marker } from '../../components/InteractiveMap'
 import { EvidenceGallery } from '../../components/EvidenceGallery'
-import { useAutoRefresh } from '../../hooks/useAutoRefresh'
-import { InteractiveMap } from '../../components/InteractiveMap'
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -57,23 +53,6 @@ const TimelineItem = ({ log, isLast }) => (
     </div>
 )
 
-function ReportMap({ report }) {
-    if (!report.lat || !report.lng) return null;
-    return (
-        <InteractiveMap
-            initialViewState={{
-                longitude: report.lng,
-                latitude: report.lat,
-                zoom: 16
-            }}
-            showGeocoder={false}
-            showLocate={true}
-        >
-            <Marker longitude={report.lng} latitude={report.lat} />
-        </InteractiveMap>
-    );
-}
-
 export default function MyReports() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
@@ -102,16 +81,28 @@ export default function MyReports() {
       })
   }, [])
 
+  function ReportMap({ report }) {
+      if (!report.lat || !report.lng) return null;
+      return (
+          <InteractiveMap
+              initialViewState={{
+                  longitude: report.lng,
+                  latitude: report.lat,
+                  zoom: 16
+              }}
+              showGeocoder={false}
+              showLocate={true}
+          >
+              <Marker longitude={report.lng} latitude={report.lat} />
+          </InteractiveMap>
+      );
+  }
+
   useEffect(() => {
     if (user) {
       fetchReports({ showLoader: true })
     }
   }, [user, fetchReports])
-
-  useAutoRefresh(
-    () => fetchReports({ showLoader: false }),
-    { intervalMs: 45000, enabled: Boolean(user), runOnMount: false }
-  )
 
   const handleViewDetails = async (report) => {
     setSelectedReport(report)
@@ -145,13 +136,13 @@ export default function MyReports() {
       </header>
 
       <main className="flex-1 max-w-4xl mx-auto w-full p-8 pb-32">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
+        <div className="mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
                 <Activity size={12} /> Live Network Status
             </div>
             <h2 className="text-5xl font-black text-slate-900 mb-3 tracking-tight">Track Progress</h2>
             <p className="text-lg text-slate-500 font-medium">Monitoring the lifecycle of your infrastructure reports.</p>
-        </motion.div>
+        </div>
 
         {loading ? (
             <div className="flex flex-col items-center justify-center py-32 gap-6">
@@ -164,7 +155,7 @@ export default function MyReports() {
                 <p className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Synchronizing Records...</p>
             </div>
         ) : reports.length === 0 ? (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-20 rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 text-center">
+            <div className="bg-white p-20 rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 text-center">
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8 text-slate-200 shadow-inner">
                     <Info size={44} />
                 </div>
@@ -173,14 +164,11 @@ export default function MyReports() {
                 <button onClick={() => navigate('/citizen/report')} className="px-12 py-6 bg-primary text-white font-black text-lg rounded-[2rem] shadow-2xl shadow-primary/30 hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-3 mx-auto">
                    Report Your First Issue <ArrowRight size={22} />
                 </button>
-            </motion.div>
+            </div>
         ) : (
             <div className="space-y-10">
                 {reports.map((report, idx) => (
-                    <motion.div 
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
+                    <div 
                         key={report.id} 
                         onClick={() => handleViewDetails(report)}
                         className="bg-white p-10 rounded-[3.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)] border border-white flex flex-col md:flex-row items-start md:items-center gap-10 group hover:border-primary/20 hover:shadow-primary/5 transition-all cursor-pointer relative overflow-hidden"
@@ -226,19 +214,14 @@ export default function MyReports() {
                         <button className="w-16 h-16 rounded-[2rem] bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-primary group-hover:text-white group-hover:shadow-xl group-hover:shadow-primary/30 transition-all shadow-inner flex-shrink-0 self-end md:self-center active:scale-90">
                             <ChevronRight size={32} className="group-hover:translate-x-1 transition-transform" />
                         </button>
-                    </motion.div>
+                    </div>
                 ))}
             </div>
         )}
 
-        <AnimatePresence>
             {selectedReport && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[2000] flex items-center justify-center p-6 sm:p-12">
-                    <motion.div 
-                        initial={{ scale: 0.9, y: 40, opacity: 0 }} 
-                        animate={{ scale: 1, y: 0, opacity: 1 }} 
-                        exit={{ scale: 0.9, y: 40, opacity: 0 }} 
-                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[2000] flex items-center justify-center p-6 sm:p-12">
+                    <div 
                         className="bg-white rounded-[4rem] w-full max-w-6xl flex flex-col h-[90vh] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.25)] overflow-hidden border border-white"
                     >
                         <div className="p-10 border-b border-slate-100 flex justify-between items-center bg-white/50 sticky top-0 z-20 backdrop-blur-xl">
@@ -330,10 +313,9 @@ export default function MyReports() {
                                 </button>
                             </div>
                         </div>
-                    </motion.div>
-                </motion.div>
+                    </div>
+                </div>
             )}
-        </AnimatePresence>
         
         <div className="mt-16 p-10 bg-primary/5 rounded-[3.5rem] border border-primary/10 relative overflow-hidden">
             <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8">

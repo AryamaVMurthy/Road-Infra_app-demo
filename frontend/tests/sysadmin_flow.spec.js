@@ -8,17 +8,19 @@ test.describe('Sysadmin and Worker Onboarding Flows', () => {
   })
 
   test('Sysadmin can register a new authority with jurisdiction and onboard a worker', async ({ page }) => {
+    page.on('console', msg => console.log('BROWSER:', msg.text()))
+    page.on('pageerror', err => console.log('PAGE ERROR:', err.message))
     await page.setViewportSize({ width: 1920, height: 1080 });
     // 1. Login as Sysadmin
     await loginAs(page, 'sysadmin@marg.gov.in', '/admin')
     
     // 2. Register New Authority
-    await page.getByRole('button', { name: 'Authorities' }).click()
+    await page.locator('#btn-authorities').click()
     
-    await page.getByRole('button', { name: 'Register New Authority' }).click()
+    await page.locator('#btn-register-authority').click({ timeout: 10000 })
     
     const nameInput = page.getByTestId('input-authority-name')
-    await nameInput.waitFor({ state: 'visible' })
+    await nameInput.waitFor({ state: 'visible', timeout: 15000 })
     await nameInput.fill('Test Authority')
     await page.getByPlaceholder('Admin Email').fill('newadmin@test.gov.in')
     

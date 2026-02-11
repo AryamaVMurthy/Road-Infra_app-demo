@@ -11,13 +11,14 @@ class LocateControl {
   onAdd(map) {
     this._map = map;
     this._container = document.createElement('div');
-    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group custom-locate-control';
     this._container.style.margin = '10px';
 
     const button = document.createElement('button');
-    button.className = 'mapboxgl-ctrl-icon';
+    button.className = 'mapboxgl-ctrl-icon mapboxgl-ctrl-geolocate';
     button.type = 'button';
     button.title = 'Get Current Location';
+    button.setAttribute('aria-label', 'Geolocate');
     button.style.backgroundImage = 'none';
     button.style.width = '29px';
     button.style.height = '29px';

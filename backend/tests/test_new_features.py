@@ -64,23 +64,19 @@ def test_sysadmin_zone_and_org_creation(client: TestClient, session: Session):
 
     login_via_otp(client, session, sysadmin_email)
 
-    # Create Zone
-    zone_data = {
-        "name": "New City Zone",
-        "boundary_geojson": {
-            "type": "Polygon",
-            "coordinates": [
-                [[77.5, 12.9], [77.6, 12.9], [77.6, 13.0], [77.5, 13.0], [77.5, 12.9]]
-            ],
-        },
+    auth_data = {
+        "name": "New Authority",
+        "admin_email": "admin@newauthority.gov.in",
+        "jurisdiction_points": [
+            [77.5, 12.9],
+            [77.6, 12.9],
+            [77.6, 13.0],
+            [77.5, 13.0],
+            [77.5, 12.9],
+        ],
+        "zone_name": "New City Zone",
     }
-    response = client.post("/api/v1/admin/sysadmin/zones", json=zone_data)
-    assert response.status_code == 200
-    zone_id = response.json()["id"]
-
-    # Create Organization
-    org_data = {"name": "New Authority", "zone_id": zone_id}
-    response = client.post("/api/v1/admin/sysadmin/organizations", json=org_data)
+    response = client.post("/api/v1/admin/authorities", json=auth_data)
     assert response.status_code == 200
     assert response.json()["name"] == "New Authority"
     assert response.json()["zone_name"] == "New City Zone"
@@ -100,20 +96,22 @@ def test_issue_type_crud(client: TestClient, session: Session):
         "default_priority": "P2",
         "expected_sla_days": 5,
     }
-    response = client.post("/api/v1/admin/sysadmin/categories", json=cat_data)
+    response = client.post("/api/v1/admin/issue-types", json=cat_data)
     assert response.status_code == 200
     cat_id = response.json()["id"]
 
     # Update
-    update_data = {"expected_sla_days": 3}
-    response = client.put(
-        f"/api/v1/admin/sysadmin/categories/{cat_id}", json=update_data
-    )
+    update_data = {
+        "expected_sla_days": 3,
+        "name": "New Issue Type",
+        "default_priority": "P2",
+    }
+    response = client.put(f"/api/v1/admin/issue-types/{cat_id}", json=update_data)
     assert response.status_code == 200
     assert response.json()["expected_sla_days"] == 3
 
     # Delete (Deactivate)
-    response = client.delete(f"/api/v1/admin/sysadmin/categories/{cat_id}")
+    response = client.delete(f"/api/v1/admin/issue-types/{cat_id}")
     assert response.status_code == 200
 
     cat = session.get(Category, cat_id)

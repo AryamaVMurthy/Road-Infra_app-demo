@@ -4,21 +4,18 @@ import {
     Settings, Shield, Globe, Activity, Database, LogOut, 
     TrendingUp, Users, AlertTriangle, CheckCircle, 
     ChevronRight, ArrowRight, Map as MapIcon, Plus, Trash2, Edit2, UserPlus, MapPin, XCircle, RefreshCw,
-    Building2, PlusCircle, Tags
+    Building2, PlusCircle, Tags, Menu, X
 } from 'lucide-react'
 import { authService } from '../../services/auth'
 import adminService from '../../services/admin'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
-import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useNavigate } from 'react-router-dom'
-import { Marker } from 'react-map-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import MapboxDrawControl from '../../components/MapboxDrawControl'
-import { InteractiveMap } from '../../components/InteractiveMap'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
+import { InteractiveMap, Marker } from '../../components/InteractiveMap'
+import { MAPBOX_TOKEN } from '../../config/map'
 
 const AdminStat = ({ label, value, trend, icon: Icon, color }) => (
     <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group">
@@ -41,7 +38,15 @@ const AdminStat = ({ label, value, trend, icon: Icon, color }) => (
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('overview')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024)
   const [data, setData] = useState(null)
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   const [audits, setAudits] = useState([])
   const [authorities, setAuthorities] = useState([])
   const [issueTypes, setIssueTypes] = useState([])
@@ -107,39 +112,63 @@ export default function AdminDashboard() {
   )
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC]">
-      <aside className="w-80 bg-slate-950 text-white flex flex-col p-8">
-        <div className="flex items-center gap-4 mb-16">
-           <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-950 shadow-xl shadow-white/10">
-             <Shield size={28} />
-           </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight leading-none">MARG IT Admin</h1>
+    <div className="flex h-screen bg-[#F8FAFC] relative overflow-hidden">
+      <AnimatePresence>
+        {(isSidebarOpen || isDesktop) && (
+          <motion.aside 
+            initial={isDesktop ? false : { x: -320 }}
+            animate={{ x: 0 }}
+            exit={{ x: -320 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className={cn(
+              "w-80 bg-slate-950 text-white flex flex-col p-8 fixed lg:relative z-[100] h-full shadow-2xl lg:shadow-none",
+              !isSidebarOpen && !isDesktop && "hidden"
+            )}
+          >
+            <div className="flex items-center justify-between mb-16">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-950 shadow-xl shadow-white/10">
+                        <Shield size={28} />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-black tracking-tight leading-none">MARG IT Admin</h1>
+                    </div>
+                </div>
+                <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-500 hover:text-white">
+                    <X size={24} />
+                </button>
             </div>
-        </div>
 
-        <nav className="flex-1 space-y-3">
-            {tabButton('overview', 'Summary', Activity)}
-            {tabButton('authorities', 'Authorities', Building2)}
-            {tabButton('issue-types', 'Issue Types', Tags)}
-            {tabButton('manual-issue', 'Manual Report', PlusCircle)}
-            <button onClick={() => navigate('/analytics')} className="w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold text-slate-500 hover:text-white hover:bg-white/5 transition-all">
-              <Globe size={20} /> <span className="text-sm">Full Analytics</span>
-            </button>
-            {tabButton('logs', 'Audit Trails', Database)}
-        </nav>
+            <nav className="flex-1 space-y-3">
+                {tabButton('overview', 'Summary', Activity)}
+                {tabButton('authorities', 'Authorities', Building2)}
+                {tabButton('issue-types', 'Issue Types', Tags)}
+                {tabButton('manual-issue', 'Manual Report', PlusCircle)}
+                <button onClick={() => navigate('/analytics')} className="w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold text-slate-500 hover:text-white hover:bg-white/5 transition-all">
+                  <Globe size={20} /> <span className="text-sm">Full Analytics</span>
+                </button>
+                {tabButton('logs', 'Audit Trails', Database)}
+            </nav>
 
-        <div className="mt-auto pt-8 border-t border-white/5">
-          <button onClick={() => authService.logout()} className="w-full flex items-center gap-4 p-5 text-red-400 font-bold hover:bg-red-500/10 rounded-[1.5rem] transition-all">
-            <LogOut size={20} /> <span className="text-sm">Exit System</span>
-          </button>
-        </div>
-      </aside>
+            <div className="mt-auto pt-8 border-t border-white/5">
+              <button onClick={() => authService.logout()} className="w-full flex items-center gap-4 p-5 text-red-400 font-bold hover:bg-red-500/10 rounded-[1.5rem] transition-all">
+                <LogOut size={20} /> <span className="text-sm">Exit System</span>
+              </button>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-28 px-12 flex items-center justify-between bg-white/50 backdrop-blur-md">
-            <div>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight capitalize">{activeTab.replace('-', ' ')}</h2>
+        <header className="h-24 lg:h-28 px-6 lg:px-12 flex items-center justify-between bg-white/50 backdrop-blur-md">
+            <div className="flex items-center gap-4">
+                <button 
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="lg:hidden w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg"
+                >
+                    <Menu size={20} />
+                </button>
+                <h2 className="text-xl lg:text-3xl font-black text-slate-900 tracking-tight capitalize truncate">{activeTab.replace('-', ' ')}</h2>
             </div>
             <div className="flex items-center gap-4 pl-6 border-l border-slate-200">
                 <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl text-xs font-bold text-slate-500 border border-slate-100">

@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
-import Map, { NavigationControl, FullscreenControl, ScaleControl } from 'react-map-gl'
+import Map, { NavigationControl, FullscreenControl, ScaleControl, Marker, Popup, Source, Layer } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { MapboxLocateControl } from './MapboxLocateControl'
 import { MapboxGeocoderControl } from './MapboxGeocoder'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2hyYXZubiIsImEiOiJjbWw5aG5mbTYwMndqM2RzMnd1MDl0NGE2In0.bRfMCZHSMWhaEOknfVSxSA';
+import { MAPBOX_TOKEN } from '../config/map'
+
+export { Marker, Popup, Source, Layer };
 
 export const InteractiveMap = ({ 
   children, 

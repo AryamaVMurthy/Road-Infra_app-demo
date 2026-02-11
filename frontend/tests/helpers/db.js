@@ -14,7 +14,7 @@ const DB_CONTAINER = process.env.E2E_DB_CONTAINER || getDbContainer()
 const DB_NAME = 'app'
 const DB_USER = 'postgres'
 const REPO_ROOT = process.env.E2E_REPO_ROOT || path.resolve(process.cwd(), '..')
-const PYTHON_BIN = process.env.E2E_PYTHON || path.join(REPO_ROOT, 'backend/venv/bin/python')
+const PYTHON_BIN = process.env.E2E_PYTHON || path.join(REPO_ROOT, '.venv/bin/python')
 const DOCKER_HOST = process.env.E2E_DOCKER_HOST || 'unix:///var/run/docker.sock'
 
 export const runSql = (sql) => {

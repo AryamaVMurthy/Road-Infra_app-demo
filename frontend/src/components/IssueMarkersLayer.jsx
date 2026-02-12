@@ -10,14 +10,23 @@ export function IssueMarkersLayer({
 }) {
   const [selectedIssueId, setSelectedIssueId] = useState(null)
 
+  const validIssues = useMemo(
+    () =>
+      issues.filter(
+        (issue) => Number.isFinite(issue?.lng) && Number.isFinite(issue?.lat)
+      ),
+    [issues]
+  )
+
   const selectedIssue = useMemo(
-    () => issues.find((issue) => getIssueKey(issue) === selectedIssueId) || null,
-    [issues, selectedIssueId, getIssueKey]
+    () =>
+      validIssues.find((issue) => getIssueKey(issue) === selectedIssueId) || null,
+    [validIssues, selectedIssueId, getIssueKey]
   )
 
   return (
     <>
-      {issues.map((issue) => {
+      {validIssues.map((issue) => {
         const issueKey = getIssueKey(issue)
         return (
           <Marker

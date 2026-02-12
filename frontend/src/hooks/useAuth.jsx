@@ -42,6 +42,11 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const init = async () => {
+      if (typeof window !== 'undefined' && window.location.pathname === '/login') {
+        setLoading(false);
+        return;
+      }
+
       await refreshUser();
       setLoading(false);
     };

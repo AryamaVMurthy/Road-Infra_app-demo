@@ -23,6 +23,14 @@ export const InteractiveMap = ({
     zoom: 12
   });
 
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-500 text-sm font-bold">
+        Map unavailable: missing Mapbox token configuration.
+      </div>
+    )
+  }
+
   return (
     <Map
       {...viewState}

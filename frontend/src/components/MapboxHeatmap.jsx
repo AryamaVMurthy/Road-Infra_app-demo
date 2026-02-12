@@ -21,11 +21,23 @@ export function MapboxHeatmap({ points }) {
     }
   }, [mapRef]);
 
-  if (!isReady || !points || !Array.isArray(points) || points.length === 0) return null;
+  const validPoints = Array.isArray(points)
+    ? points.filter(
+        (point) =>
+          Number.isFinite(point?.lng) &&
+          Number.isFinite(point?.lat) &&
+          point.lng >= -180 &&
+          point.lng <= 180 &&
+          point.lat >= -90 &&
+          point.lat <= 90
+      )
+    : [];
+
+  if (!isReady || validPoints.length === 0) return null;
 
   const geojson = {
     type: 'FeatureCollection',
-    features: points.map(p => ({
+    features: validPoints.map((p) => ({
       type: 'Feature',
       properties: {
         intensity: p.intensity || 0.5

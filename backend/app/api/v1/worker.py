@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.services.exif import ExifService
 from app.services.workflow_service import WorkflowService
 from uuid import UUID, uuid4
-from typing import List
+from typing import Any, List, cast
 from datetime import datetime
 import io
 
@@ -29,7 +29,10 @@ def get_worker_tasks(
     statement = (
         select(Issue)
         .where(Issue.worker_id == current_user.id)
-        .options(selectinload(Issue.category), selectinload(Issue.worker))
+        .options(
+            selectinload(cast(Any, Issue.category)),
+            selectinload(cast(Any, Issue.worker)),
+        )
     )
     return session.exec(statement).all()
 
@@ -46,7 +49,20 @@ def accept_task(
     if not issue or issue.worker_id != current_user.id:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    parsed_eta = datetime.fromisoformat(eta_date.replace("Z", "+00:00"))
+    try:
+        parsed_eta = datetime.fromisoformat(eta_date)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="ETA date must use YYYY-MM-DD format",
+        ) from exc
+
+    if parsed_eta.time() != datetime.min.time():
+        raise HTTPException(
+            status_code=400,
+            detail="ETA date must be calendar-day only (YYYY-MM-DD)",
+        )
+
     WorkflowService.accept_task(session, issue, parsed_eta, current_user.id)
     session.commit()
     return {"message": "Task accepted"}

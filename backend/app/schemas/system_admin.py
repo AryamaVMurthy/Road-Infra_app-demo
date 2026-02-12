@@ -35,14 +35,12 @@ class IssueTypeCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=2, max_length=100)
-    expected_sla_days: int = Field(default=7, ge=1, le=365)
 
 
 class IssueTypeUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: Optional[str] = Field(default=None, min_length=2, max_length=100)
-    expected_sla_days: Optional[int] = Field(default=None, ge=1, le=365)
     is_active: Optional[bool] = None
 
 

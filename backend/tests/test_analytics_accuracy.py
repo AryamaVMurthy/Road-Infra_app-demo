@@ -98,12 +98,9 @@ def _create_issue(
 
 def _login(client, session: Session, email: str):
     client.post("/api/v1/auth/otp-request", json={"email": email})
-    otp = (
-        session.exec(
-            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
-        )
-        .first()
-    )
+    otp = session.exec(
+        select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+    ).first()
     assert otp is not None
     resp = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
     assert resp.status_code == 200
@@ -309,7 +306,7 @@ class TestAuditEndpoint:
 
         # Accept
         _login(client, session, worker_a.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         resp = client.get(f"/api/v1/analytics/audit/{issue.id}")
@@ -479,13 +476,12 @@ class TestWorkerAnalytics:
         assert wa["in_progress"] == 2  # ACCEPTED + IN_PROGRESS
         assert wa["active_tasks"] == 4
 
-    def test_avg_resolution_hours_computed(self, client, session):
+    def test_avg_resolution_days_computed(self, client, session):
         cat, _, _, citizen, admin, worker_a, *_ = _seed(session)
 
-        # Issue with known accepted_at and resolved_at (6 hours apart)
         issue = _create_issue(session, cat, citizen, status="RESOLVED", worker=worker_a)
         now = utc_now()
-        issue.accepted_at = now - timedelta(hours=6)
+        issue.accepted_at = now - timedelta(days=3)
         issue.resolved_at = now
         session.add(issue)
         session.commit()
@@ -495,8 +491,8 @@ class TestWorkerAnalytics:
         data = resp.json()
 
         wa = next(w for w in data["workers"] if w["email"] == worker_a.email)
-        assert wa["avg_resolution_hours"] is not None
-        assert abs(wa["avg_resolution_hours"] - 6.0) < 0.5
+        assert wa["avg_resolution_days"] is not None
+        assert abs(wa["avg_resolution_days"] - 3.0) < 0.1
 
     def test_worker_with_no_resolved_tasks_has_null_avg(self, client, session):
         cat, _, _, citizen, admin, worker_a, *_ = _seed(session)
@@ -509,4 +505,4 @@ class TestWorkerAnalytics:
         data = resp.json()
 
         wa = next(w for w in data["workers"] if w["email"] == worker_a.email)
-        assert wa["avg_resolution_hours"] is None
+        assert wa["avg_resolution_days"] is None

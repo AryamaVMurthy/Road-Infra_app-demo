@@ -221,7 +221,6 @@ class SystemAdminService:
     def create_issue_type(
         session: Session,
         name: str,
-        expected_sla_days: int,
         actor_id: UUID,
     ) -> Category:
         existing = session.exec(
@@ -233,7 +232,6 @@ class SystemAdminService:
         category = Category(
             name=name.strip(),
             default_priority="P3",
-            expected_sla_days=expected_sla_days,
             is_active=True,
         )
         session.add(category)
@@ -256,7 +254,6 @@ class SystemAdminService:
         category_id: UUID,
         actor_id: UUID,
         name: Optional[str] = None,
-        expected_sla_days: Optional[int] = None,
         is_active: Optional[bool] = None,
     ) -> Category:
         category = session.get(Category, category_id)
@@ -266,8 +263,6 @@ class SystemAdminService:
         old_name = category.name
         if name is not None:
             category.name = name.strip()
-        if expected_sla_days is not None:
-            category.expected_sla_days = expected_sla_days
         if is_active is not None:
             category.is_active = is_active
 

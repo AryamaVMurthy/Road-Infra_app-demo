@@ -135,7 +135,7 @@ class TestWorkerRBAC:
         session.commit()
 
         login_via_otp(client, session, users[role].email)
-        eta = (utc_now() + timedelta(hours=2)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         response = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert response.status_code == 403
 
@@ -152,7 +152,7 @@ class TestWorkerRBAC:
         session.commit()
 
         login_via_otp(client, session, worker2.email)
-        eta = (utc_now() + timedelta(hours=2)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         response = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert response.status_code == 404
 

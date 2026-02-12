@@ -44,7 +44,7 @@ class WorkerPerformance(BaseModel):
     total_closed: int = 0
 
     # Performance
-    avg_resolution_hours: Optional[float] = None
+    avg_resolution_days: Optional[float] = None
     tasks_this_week: int = 0
     tasks_this_month: int = 0
 

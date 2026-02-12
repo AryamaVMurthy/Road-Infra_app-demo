@@ -58,12 +58,9 @@ def _create_issue(session: Session, cat, reporter, status="REPORTED", worker=Non
 
 def _login(client, session: Session, email: str):
     client.post("/api/v1/auth/otp-request", json={"email": email})
-    otp = (
-        session.exec(
-            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
-        )
-        .first()
-    )
+    otp = session.exec(
+        select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+    ).first()
     assert otp is not None
     resp = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
     assert resp.status_code == 200
@@ -156,7 +153,7 @@ class TestEvidenceCreation:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker)
 
         _login(client, session, worker.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
@@ -215,7 +212,7 @@ class TestMediaEndpoint:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker)
 
         _login(client, session, worker.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
 
@@ -299,7 +296,7 @@ class TestEvidenceIntegrity:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker)
 
         _login(client, session, worker.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
 

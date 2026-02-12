@@ -96,7 +96,6 @@ def test_sysadmin_authority_issue_type_and_manual_issue(client, session):
         "/api/v1/admin/issue-types",
         json={
             "name": "Street Sign Damage",
-            "expected_sla_days": 4,
         },
     )
     assert issue_type_response.status_code == 200

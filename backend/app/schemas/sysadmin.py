@@ -34,19 +34,16 @@ class OrganizationRead(BaseModel):
 
 class CategoryCreate(BaseModel):
     name: str
-    expected_sla_days: int = 7
 
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
-    expected_sla_days: Optional[int] = None
     is_active: Optional[bool] = None
 
 
 class CategoryRead(BaseModel):
     id: UUID
     name: str
-    expected_sla_days: int
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)

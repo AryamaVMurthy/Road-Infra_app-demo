@@ -111,7 +111,7 @@ class AdminAnalyticsService:
             resolved_after=month_ago,
         )
 
-        avg_hours = AdminAnalyticsService._compute_avg_resolution_time(
+        avg_days = AdminAnalyticsService._compute_avg_resolution_days(
             session, worker_id
         )
 
@@ -124,16 +124,16 @@ class AdminAnalyticsService:
             "in_progress": in_progress,
             "total_resolved": resolved,
             "total_closed": closed,
-            "avg_resolution_hours": avg_hours,
+            "avg_resolution_days": avg_days,
             "tasks_this_week": tasks_week,
             "tasks_this_month": tasks_month,
         }
 
     @staticmethod
-    def _compute_avg_resolution_time(
+    def _compute_avg_resolution_days(
         session: Session, worker_id: UUID
     ) -> Optional[float]:
-        """Calculate average resolution time in hours for a worker"""
+        """Calculate average resolution time in calendar days for a worker."""
         resolved_issues = session.exec(
             select(Issue).where(
                 col(Issue.worker_id) == worker_id,
@@ -146,13 +146,13 @@ class AdminAnalyticsService:
         if not resolved_issues:
             return None
 
-        total_hours = sum(
-            (issue.resolved_at - issue.accepted_at).total_seconds() / 3600
+        total_days = sum(
+            (issue.resolved_at.date() - issue.accepted_at.date()).days
             for issue in resolved_issues
             if issue.accepted_at and issue.resolved_at
         )
 
-        return round(total_hours / len(resolved_issues), 1)
+        return round(total_days / len(resolved_issues), 1)
 
     @staticmethod
     def get_workers_with_stats(

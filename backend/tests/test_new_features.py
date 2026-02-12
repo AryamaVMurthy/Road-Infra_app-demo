@@ -134,7 +134,6 @@ def test_issue_type_crud(client: TestClient, session: Session):
     # Create
     cat_data = {
         "name": "New Issue Type",
-        "expected_sla_days": 5,
     }
     response = client.post("/api/v1/admin/issue-types", json=cat_data)
     assert response.status_code == 200
@@ -142,12 +141,11 @@ def test_issue_type_crud(client: TestClient, session: Session):
 
     # Update
     update_data = {
-        "expected_sla_days": 3,
-        "name": "New Issue Type",
+        "name": "Road Surface",
     }
     response = client.put(f"/api/v1/admin/issue-types/{cat_id}", json=update_data)
     assert response.status_code == 200
-    assert response.json()["expected_sla_days"] == 3
+    assert response.json()["name"] == "Road Surface"
 
     # Delete (Deactivate)
     response = client.delete(f"/api/v1/admin/issue-types/{cat_id}")
@@ -171,7 +169,24 @@ def test_sysadmin_cannot_set_issue_type_priority(client: TestClient, session: Se
         json={
             "name": "Blocked Priority Type",
             "default_priority": "P1",
-            "expected_sla_days": 7,
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_sysadmin_cannot_set_issue_type_sla(client: TestClient, session: Session):
+    sysadmin_email = "sysadmin-sla-block@marg.gov.in"
+    sysadmin = User(email=sysadmin_email, role="SYSADMIN")
+    session.add(sysadmin)
+    session.commit()
+
+    login_via_otp(client, session, sysadmin_email)
+
+    response = client.post(
+        "/api/v1/admin/issue-types",
+        json={
+            "name": "Blocked SLA Type",
+            "expected_sla_days": 9,
         },
     )
     assert response.status_code == 422

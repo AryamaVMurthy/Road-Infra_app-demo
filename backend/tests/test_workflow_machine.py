@@ -65,12 +65,9 @@ def _create_issue(session: Session, cat, reporter, status="REPORTED", worker=Non
 def _login(client, session: Session, email: str):
     """Authenticate using OTP request + login flow."""
     client.post("/api/v1/auth/otp-request", json={"email": email})
-    otp = (
-        session.exec(
-            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
-        )
-        .first()
-    )
+    otp = session.exec(
+        select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+    ).first()
     assert otp is not None
     resp = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
     assert resp.status_code == 200, f"Login failed for {email}: {resp.text}"
@@ -111,7 +108,7 @@ class TestGoldenPath:
 
         # -- Step 3: Worker accepts → ACCEPTED --
         _login(client, session, worker_a.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 200
         session.refresh(issue)
@@ -313,7 +310,7 @@ class TestWorkerOperations:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
         _login(client, session, worker_a.email)
-        eta = (utc_now() + timedelta(hours=8)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 200
         session.refresh(issue)
@@ -390,7 +387,7 @@ class TestWrongWorkerGuards:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
         _login(client, session, worker_b.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 404
 

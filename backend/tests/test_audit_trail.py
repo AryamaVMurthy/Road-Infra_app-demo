@@ -17,7 +17,7 @@ import pytest
 from datetime import datetime, timedelta
 from app.core.time import utc_now
 from uuid import uuid4
-from sqlmodel import Session, select, desc
+from sqlmodel import Session, col, desc, select
 
 from app.models.domain import Category, User, Issue, AuditLog, Otp
 
@@ -58,12 +58,9 @@ def _create_issue(session: Session, cat, reporter, status="REPORTED", worker=Non
 
 def _login(client, session: Session, email: str):
     client.post("/api/v1/auth/otp-request", json={"email": email})
-    otp = (
-        session.exec(
-            select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
-        )
-        .first()
-    )
+    otp = session.exec(
+        select(Otp).where(Otp.email == email).order_by(desc(Otp.created_at))
+    ).first()
     assert otp is not None
     resp = client.post("/api/v1/auth/login", json={"email": email, "otp": otp.code})
     assert resp.status_code == 200
@@ -75,7 +72,7 @@ def _get_audits(session: Session, entity_id=None, action=None):
         stmt = stmt.where(AuditLog.entity_id == entity_id)
     if action:
         stmt = stmt.where(AuditLog.action == action)
-    stmt = stmt.order_by(AuditLog.created_at.asc())
+    stmt = stmt.order_by(col(AuditLog.created_at).asc())
     return session.exec(stmt).all()
 
 
@@ -225,7 +222,7 @@ class TestWorkerAudits:
         issue = _create_issue(session, cat, citizen, status="ASSIGNED", worker=worker_a)
 
         _login(client, session, worker_a.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         resp = client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
         assert resp.status_code == 200
 
@@ -333,7 +330,7 @@ class TestAuditEndpoint:
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
         _login(client, session, worker_a.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")
@@ -352,7 +349,7 @@ class TestAuditEndpoint:
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
         _login(client, session, worker_a.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         resp = client.get(f"/api/v1/analytics/audit/{issue.id}")
@@ -393,7 +390,7 @@ class TestGoldenPathAuditTrail:
         client.post(f"/api/v1/admin/assign?issue_id={issue.id}&worker_id={worker_a.id}")
 
         _login(client, session, worker_a.email)
-        eta = (utc_now() + timedelta(hours=4)).isoformat() + "Z"
+        eta = (utc_now() + timedelta(days=1)).date().isoformat()
         client.post(f"/api/v1/worker/tasks/{issue.id}/accept?eta_date={eta}")
 
         client.post(f"/api/v1/worker/tasks/{issue.id}/start")

@@ -110,7 +110,6 @@ def create_issue_type(
     category = SystemAdminService.create_issue_type(
         session,
         name=data.name,
-        expected_sla_days=data.expected_sla_days,
         actor_id=current_user.id,
     )
     session.commit()
@@ -130,7 +129,6 @@ def update_issue_type(
         category_id=category_id,
         actor_id=current_user.id,
         name=data.name,
-        expected_sla_days=data.expected_sla_days,
         is_active=data.is_active,
     )
     session.commit()

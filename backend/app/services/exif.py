@@ -62,8 +62,8 @@ class ExifService:
     def validate_proximity(
         issue_lat: float,
         issue_lng: float,
-        exif_lat: float,
-        exif_lng: float,
+        exif_lat: Optional[float],
+        exif_lng: Optional[float],
         threshold_m: float = 5.0,
     ) -> bool:
         if exif_lat is None or exif_lng is None:

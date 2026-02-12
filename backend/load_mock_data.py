@@ -17,7 +17,7 @@ Usage:
 import random
 from datetime import datetime, timedelta
 from uuid import uuid4
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, col, create_engine, select
 from sqlalchemy import text
 from app.models.domain import Zone, Category, User, Issue, Organization, Evidence
 from app.models.auth import RefreshToken
@@ -93,7 +93,11 @@ def random_date(days_back: int = 60) -> datetime:
 
 def load_mock_data():
     """Load comprehensive mock data into the database."""
-    engine = create_engine(settings.DATABASE_URL)
+    database_url = settings.DATABASE_URL
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is not configured")
+
+    engine = create_engine(database_url)
 
     with Session(engine) as session:
         # Get existing categories
@@ -106,7 +110,7 @@ def load_mock_data():
         print(f"✅ Found {len(categories)} categories: {list(category_map.keys())}")
 
         org = session.exec(
-            select(Organization).where(Organization.name == "BBMP Central")
+            select(Organization).where(Organization.name == "GHMC Central")
         ).first()
         if not org:
             print("❌ No organization found. Run seed.py first!")
@@ -187,9 +191,9 @@ def load_mock_data():
 
                 # Assign worker for non-REPORTED statuses
                 worker = None
-                accepted_at = None
-                resolved_at = None
-                eta_date = None
+                accepted_at: datetime | None = None
+                resolved_at: datetime | None = None
+                eta_date: datetime | None = None
 
                 if status != "REPORTED":
                     worker = random.choice(all_workers)
@@ -200,10 +204,18 @@ def load_mock_data():
                     updated_at = accepted_at
 
                 if status in ["RESOLVED", "CLOSED"]:
+                    if accepted_at is None:
+                        raise RuntimeError(
+                            "accepted_at must be set before resolved statuses"
+                        )
                     resolved_at = accepted_at + timedelta(hours=random.randint(2, 48))
                     updated_at = resolved_at
 
                 if status == "CLOSED":
+                    if resolved_at is None:
+                        raise RuntimeError(
+                            "resolved_at must be set before CLOSED status"
+                        )
                     updated_at = resolved_at + timedelta(hours=random.randint(1, 24))
 
                 issue = Issue(
@@ -236,7 +248,7 @@ def load_mock_data():
             completed = session.exec(
                 select(Issue).where(
                     Issue.worker_id == worker.id,
-                    Issue.status.in_(["RESOLVED", "CLOSED"]),
+                    col(Issue.status).in_(["RESOLVED", "CLOSED"]),
                 )
             ).all()
 
@@ -294,13 +306,13 @@ def load_mock_data():
             active = session.exec(
                 select(Issue).where(
                     Issue.worker_id == worker.id,
-                    Issue.status.in_(["ASSIGNED", "ACCEPTED", "IN_PROGRESS"]),
+                    col(Issue.status).in_(["ASSIGNED", "ACCEPTED", "IN_PROGRESS"]),
                 )
             ).all()
             resolved = session.exec(
                 select(Issue).where(
                     Issue.worker_id == worker.id,
-                    Issue.status.in_(["RESOLVED", "CLOSED"]),
+                    col(Issue.status).in_(["RESOLVED", "CLOSED"]),
                 )
             ).all()
             print(

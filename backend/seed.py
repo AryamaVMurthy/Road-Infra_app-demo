@@ -65,7 +65,7 @@ def seed_data():
         from app.models.domain import Organization
 
         orgs = [
-            Organization(name="BBMP Central", zone_id=seeded_zones[0].id),
+            Organization(name="GHMC Central", zone_id=seeded_zones[0].id),
         ]
         seeded_orgs = []
         for o in orgs:

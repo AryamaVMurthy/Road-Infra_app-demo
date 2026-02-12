@@ -18,7 +18,7 @@ Provide reliable governance and configuration of the platform's core entities an
 ### In Scope
 - Authority onboarding and jurisdiction assignment.
 - Role management and RBAC.
-- Issue and category configuration (priority defaults, SLA).
+- Issue type/category configuration (names and activation state only).
 - System monitoring and audit logs.
 - Manual issue creation.
 - Email OTP login and Google OAuth only (no SMS/phone OTP).
@@ -97,7 +97,7 @@ Manage issue categories and workflow metadata without code changes.
 ## Scope (In & Out)
 ### In Scope
 - Category CRUD.
-- Priority defaults and expected resolution time.
+- Issue type naming, activation/deactivation, and workflow state configuration.
 - Workflow state configuration.
 
 ## Features & Acceptance Criteria
@@ -107,7 +107,7 @@ Manage issue categories and workflow metadata without code changes.
 **Acceptance Criteria:**
 - [ ] Verify Admin can add, edit, or deactivate categories.
 - [ ] Verify deactivated categories are hidden from the citizen app.
-- [ ] Verify Admin can configure metadata (priority default, expected resolution time).
+- [ ] Verify Admin can add, rename, and deactivate issue types without setting per-issue execution targets.
 
 ### Feature: Workflow Configuration
 **User Story:** As a System Admin, I want to define valid ticket states.

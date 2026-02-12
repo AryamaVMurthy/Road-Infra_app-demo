@@ -262,7 +262,7 @@ Get worker performance analytics (Admin/SysAdmin only).
       "name": "Worker Name",
       "tasks_completed": 45,
       "tasks_in_progress": 3,
-      "avg_resolution_hours": 36.2,
+      "avg_resolution_days": 1.5,
       "satisfaction_score": 4.5
     }
   ]

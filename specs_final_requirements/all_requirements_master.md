@@ -448,7 +448,7 @@ Provide reliable governance and configuration of the platform's core entities an
 ### In Scope
 - Authority onboarding and jurisdiction assignment.
 - Role management and RBAC.
-- Issue and category configuration (priority defaults, SLA).
+- Issue type/category configuration (names and activation state only).
 - System monitoring and audit logs.
 - Manual issue creation.
 - Email OTP login and Google OAuth only (no SMS/phone OTP).
@@ -527,7 +527,7 @@ Manage issue categories and workflow metadata without code changes.
 ## Scope (In & Out)
 ### In Scope
 - Category CRUD.
-- Priority defaults and expected resolution time.
+- Issue type naming, activation/deactivation, and workflow state configuration.
 - Workflow state configuration.
 
 ## Features & Acceptance Criteria
@@ -537,7 +537,7 @@ Manage issue categories and workflow metadata without code changes.
 **Acceptance Criteria:**
 - [ ] Verify Admin can add, edit, or deactivate categories.
 - [ ] Verify deactivated categories are hidden from the citizen app.
-- [ ] Verify Admin can configure metadata (priority default, expected resolution time).
+- [ ] Verify Admin can add, rename, and deactivate issue types without setting per-issue execution targets.
 
 ### Feature: Workflow Configuration
 **User Story:** As a System Admin, I want to define valid ticket states.
@@ -1364,7 +1364,7 @@ Every issue must transition through these states. Skipping steps is forbidden.
 ### 3.1 Functional Requirements
 *   **Authority Management:** Add/manage government departments and municipal bodies. Assign jurisdictional scopes (City, Zone, Ward).
 *   **Role-Based Access Control (RBAC):** Create and manage roles for Govt Admins, Field Workers, and NGO Viewers.
-*   **Issue Configuration:** Manage the global category list (Add/Edit/Deactivate Potholes, Streetlights, etc.). Configure category metadata (Priority, expected resolution time).
+*   **Issue Configuration:** Manage the global category list (Add/Edit/Deactivate Potholes, Streetlights, etc.). No per-issue execution target configuration in System Admin.
 *   **Workflow Engine:** Define valid ticket states and toggle mandatory Admin approval before resolution.
 *   **System Monitoring:** View high-level stats (Total reports, active users, storage usage). Monitor duplicate detection performance.
 *   **Data Integrity:** Flag abnormal reporting patterns or system misuse.

@@ -1,7 +1,27 @@
+import { useState, useEffect } from 'react';
+import { useMap } from 'react-map-gl';
 import { Source, Layer } from './InteractiveMap';
 
 export function MapboxHeatmap({ points }) {
-  if (!points || !Array.isArray(points) || points.length === 0) return null;
+  const { current: mapRef } = useMap();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (!mapRef) return;
+
+    const map = mapRef.getMap();
+    if (!map) return;
+
+    if (map.isStyleLoaded()) {
+      setIsReady(true);
+    } else {
+      const handler = () => setIsReady(true);
+      map.once('style.load', handler);
+      return () => map.off('style.load', handler);
+    }
+  }, [mapRef]);
+
+  if (!isReady || !points || !Array.isArray(points) || points.length === 0) return null;
 
   const geojson = {
     type: 'FeatureCollection',
@@ -64,7 +84,7 @@ export function MapboxHeatmap({ points }) {
   };
 
   return (
-    <Source type="geojson" data={geojson}>
+    <Source id="heatmap-source" type="geojson" data={geojson}>
       <Layer {...heatmapLayer} />
     </Source>
   );

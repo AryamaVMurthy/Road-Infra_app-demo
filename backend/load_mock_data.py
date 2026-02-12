@@ -20,6 +20,7 @@ from uuid import uuid4
 from sqlmodel import Session, create_engine, select
 from sqlalchemy import text
 from app.models.domain import Zone, Category, User, Issue, Organization, Evidence
+from app.models.auth import RefreshToken
 from app.core.config import settings
 from app.core.time import utc_now
 
@@ -104,6 +105,14 @@ def load_mock_data():
         category_map = {c.name: c for c in categories}
         print(f"✅ Found {len(categories)} categories: {list(category_map.keys())}")
 
+        org = session.exec(
+            select(Organization).where(Organization.name == "BBMP Central")
+        ).first()
+        if not org:
+            print("❌ No organization found. Run seed.py first!")
+            return
+        print(f"✅ Found organization: {org.name} (id={org.id})")
+
         # Get existing users
         existing_workers = session.exec(select(User).where(User.role == "WORKER")).all()
         print(f"✅ Found {len(existing_workers)} existing workers")
@@ -119,6 +128,7 @@ def load_mock_data():
                     role="WORKER",
                     full_name=worker_data["name"],
                     status="ACTIVE",
+                    org_id=org.id,
                 )
                 session.add(new_worker)
                 print(
@@ -210,6 +220,7 @@ def load_mock_data():
                     resolved_at=resolved_at,
                     created_at=created_at,
                     updated_at=updated_at,
+                    org_id=org.id,
                 )
                 session.add(issue)
                 issue_count += 1
@@ -254,6 +265,7 @@ def load_mock_data():
                     resolved_at=resolved_at,
                     created_at=created_at,
                     updated_at=closed_at,
+                    org_id=org.id,
                 )
                 session.add(history_issue)
                 history_count += 1

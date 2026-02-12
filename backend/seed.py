@@ -29,12 +29,28 @@ def seed_data():
                 session.add(c)
 
         # 2. Seed Zones
+        # Hyderabad-area zone boundaries (covers mock data coordinates ~17.41-17.46°N, ~78.34-78.51°E)
         zones = [
-            Zone(name="Central Zone", boundary="POLYGON((0 0,1 0,1 1,0 1,0 0))"),
-            Zone(name="North Zone", boundary="POLYGON((1 0,2 0,2 1,1 1,1 0))"),
-            Zone(name="South Zone", boundary="POLYGON((0 -1,1 -1,1 0,0 0,0 -1))"),
-            Zone(name="East Zone", boundary="POLYGON((2 0,3 0,3 1,2 1,2 0))"),
-            Zone(name="West Zone", boundary="POLYGON((-1 0,0 0,0 1,-1 1,-1 0))"),
+            Zone(
+                name="Central Zone",
+                boundary="SRID=4326;POLYGON((78.33 17.40,78.52 17.40,78.52 17.47,78.33 17.47,78.33 17.40))",
+            ),
+            Zone(
+                name="North Zone",
+                boundary="SRID=4326;POLYGON((78.33 17.47,78.52 17.47,78.52 17.54,78.33 17.54,78.33 17.47))",
+            ),
+            Zone(
+                name="South Zone",
+                boundary="SRID=4326;POLYGON((78.33 17.33,78.52 17.33,78.52 17.40,78.33 17.40,78.33 17.33))",
+            ),
+            Zone(
+                name="East Zone",
+                boundary="SRID=4326;POLYGON((78.52 17.40,78.59 17.40,78.59 17.47,78.52 17.47,78.52 17.40))",
+            ),
+            Zone(
+                name="West Zone",
+                boundary="SRID=4326;POLYGON((78.26 17.40,78.33 17.40,78.33 17.47,78.26 17.47,78.26 17.40))",
+            ),
         ]
         seeded_zones = []
         for z in zones:

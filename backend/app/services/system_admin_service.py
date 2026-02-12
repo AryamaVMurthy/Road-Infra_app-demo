@@ -8,7 +8,7 @@ from geoalchemy2.shape import to_shape
 from shapely.geometry import Polygon
 from sqlmodel import Session, col, select, func
 
-from app.models.domain import Category, Issue, Organization, User, Zone
+from app.models.domain import Category, Invite, Issue, Organization, User, Zone
 from app.services.audit import AuditService
 
 LngLat = Tuple[float, float]
@@ -176,12 +176,24 @@ class SystemAdminService:
         if not organization:
             raise HTTPException(status_code=404, detail="Authority not found")
 
-        users = session.exec(select(User).where(User.org_id == org_id)).all()
-        if users:
+        linked_issues = session.exec(
+            select(func.count()).select_from(Issue).where(Issue.org_id == org_id)
+        ).one()
+        if linked_issues > 0:
             raise HTTPException(
                 status_code=400,
-                detail="Cannot delete authority with linked users",
+                detail="Cannot delete authority with linked issues",
             )
+
+        users = session.exec(select(User).where(User.org_id == org_id)).all()
+        non_admin_users = [user for user in users if user.role != "ADMIN"]
+        if non_admin_users:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete authority with non-admin linked users",
+            )
+
+        invites = session.exec(select(Invite).where(Invite.org_id == org_id)).all()
 
         zone = session.get(Zone, organization.zone_id)
 
@@ -195,6 +207,12 @@ class SystemAdminService:
             None,
         )
 
+        for invite in invites:
+            session.delete(invite)
+
+        for admin_user in users:
+            session.delete(admin_user)
+
         session.delete(organization)
         if zone:
             session.delete(zone)
@@ -203,7 +221,6 @@ class SystemAdminService:
     def create_issue_type(
         session: Session,
         name: str,
-        default_priority: str,
         expected_sla_days: int,
         actor_id: UUID,
     ) -> Category:
@@ -215,7 +232,7 @@ class SystemAdminService:
 
         category = Category(
             name=name.strip(),
-            default_priority=default_priority,
+            default_priority="P3",
             expected_sla_days=expected_sla_days,
             is_active=True,
         )
@@ -239,7 +256,6 @@ class SystemAdminService:
         category_id: UUID,
         actor_id: UUID,
         name: Optional[str] = None,
-        default_priority: Optional[str] = None,
         expected_sla_days: Optional[int] = None,
         is_active: Optional[bool] = None,
     ) -> Category:
@@ -250,8 +266,6 @@ class SystemAdminService:
         old_name = category.name
         if name is not None:
             category.name = name.strip()
-        if default_priority is not None:
-            category.default_priority = default_priority
         if expected_sla_days is not None:
             category.expected_sla_days = expected_sla_days
         if is_active is not None:
@@ -300,7 +314,6 @@ class SystemAdminService:
         lat: float,
         lng: float,
         address: Optional[str],
-        priority: Optional[str],
         org_id: Optional[UUID],
     ) -> Issue:
         category = session.get(Category, category_id)
@@ -314,7 +327,7 @@ class SystemAdminService:
             address=address,
             reporter_id=actor.id,
             org_id=org_id,
-            priority=priority or category.default_priority,
+            priority=None,
             report_count=1,
         )
         session.add(issue)

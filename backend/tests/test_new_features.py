@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from app.models.domain import User, Invite, Organization, Zone, Category, Issue
 from app.services.issue_service import IssueService
 from tests.conftest import login_via_otp
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 
 def test_worker_bulk_onboarding(client: TestClient, session: Session):
@@ -53,6 +53,7 @@ def test_worker_bulk_onboarding(client: TestClient, session: Session):
 
     # Verify invite status updated
     invite = session.exec(select(Invite).where(Invite.email == worker_email)).first()
+    assert invite is not None
     assert invite.status == "ACCEPTED"
 
 
@@ -82,6 +83,46 @@ def test_sysadmin_zone_and_org_creation(client: TestClient, session: Session):
     assert response.json()["zone_name"] == "New City Zone"
 
 
+def test_sysadmin_can_delete_newly_created_authority(
+    client: TestClient, session: Session
+):
+    sysadmin_email = "sysadmin-delete@marg.gov.in"
+    sysadmin = User(email=sysadmin_email, role="SYSADMIN")
+    session.add(sysadmin)
+    session.commit()
+
+    login_via_otp(client, session, sysadmin_email)
+
+    authority_response = client.post(
+        "/api/v1/admin/authorities",
+        json={
+            "name": "Delete Me Authority",
+            "admin_email": "delete-me-admin@authority.gov.in",
+            "zone_name": "Delete Zone",
+            "jurisdiction_points": [
+                [78.40, 17.40],
+                [78.55, 17.40],
+                [78.55, 17.55],
+                [78.40, 17.55],
+            ],
+        },
+    )
+    assert authority_response.status_code == 200
+    org_id = UUID(authority_response.json()["org_id"])
+    zone_id = UUID(authority_response.json()["zone_id"])
+
+    delete_response = client.delete(f"/api/v1/admin/authorities/{org_id}")
+    assert delete_response.status_code == 200
+    assert delete_response.json()["message"] == "Authority deleted"
+
+    assert session.get(Organization, org_id) is None
+    assert session.get(Zone, zone_id) is None
+    deleted_admin = session.exec(
+        select(User).where(User.email == "delete-me-admin@authority.gov.in")
+    ).first()
+    assert deleted_admin is None
+
+
 def test_issue_type_crud(client: TestClient, session: Session):
     sysadmin_email = "sysadmin@marg.gov.in"
     sysadmin = User(email=sysadmin_email, role="SYSADMIN")
@@ -93,7 +134,6 @@ def test_issue_type_crud(client: TestClient, session: Session):
     # Create
     cat_data = {
         "name": "New Issue Type",
-        "default_priority": "P2",
         "expected_sla_days": 5,
     }
     response = client.post("/api/v1/admin/issue-types", json=cat_data)
@@ -104,7 +144,6 @@ def test_issue_type_crud(client: TestClient, session: Session):
     update_data = {
         "expected_sla_days": 3,
         "name": "New Issue Type",
-        "default_priority": "P2",
     }
     response = client.put(f"/api/v1/admin/issue-types/{cat_id}", json=update_data)
     assert response.status_code == 200
@@ -115,7 +154,53 @@ def test_issue_type_crud(client: TestClient, session: Session):
     assert response.status_code == 200
 
     cat = session.get(Category, cat_id)
+    assert cat is not None
     assert cat.is_active is False
+
+
+def test_sysadmin_cannot_set_issue_type_priority(client: TestClient, session: Session):
+    sysadmin_email = "sysadmin-priority-block@marg.gov.in"
+    sysadmin = User(email=sysadmin_email, role="SYSADMIN")
+    session.add(sysadmin)
+    session.commit()
+
+    login_via_otp(client, session, sysadmin_email)
+
+    response = client.post(
+        "/api/v1/admin/issue-types",
+        json={
+            "name": "Blocked Priority Type",
+            "default_priority": "P1",
+            "expected_sla_days": 7,
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_sysadmin_cannot_set_manual_issue_priority(
+    client: TestClient, session: Session
+):
+    sysadmin_email = "sysadmin-manual-priority@marg.gov.in"
+    sysadmin = User(email=sysadmin_email, role="SYSADMIN")
+    session.add(sysadmin)
+
+    category = Category(name="Manual Priority Block Type")
+    session.add(category)
+    session.commit()
+
+    login_via_otp(client, session, sysadmin_email)
+
+    response = client.post(
+        "/api/v1/admin/manual-issues",
+        json={
+            "category_id": str(category.id),
+            "lat": 17.45,
+            "lng": 78.48,
+            "address": "Ward 3 Main Road",
+            "priority": "P1",
+        },
+    )
+    assert response.status_code == 422
 
 
 def test_intelligent_issue_routing(client: TestClient, session: Session):
@@ -164,4 +249,5 @@ def test_intelligent_issue_routing(client: TestClient, session: Session):
 
     # Verify auto-assignment to org
     issue = session.get(Issue, issue_id)
+    assert issue is not None
     assert issue.org_id == org.id

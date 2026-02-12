@@ -17,7 +17,7 @@ class IssueRead(BaseModel):
     address: Optional[str] = None
     reporter_id: UUID
     org_id: Optional[UUID] = None
-    priority: Optional[str] = "P3"
+    priority: Optional[str] = None
     report_count: int = 1
     created_at: datetime
     updated_at: datetime

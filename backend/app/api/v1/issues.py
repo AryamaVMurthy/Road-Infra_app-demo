@@ -6,7 +6,7 @@ from app.schemas.issue import IssueRead
 from app.services.issue_service import IssueService
 from app.api.deps import require_citizen_user
 from uuid import UUID
-from typing import List, Optional
+from typing import Any, List, Optional, cast
 
 router = APIRouter()
 
@@ -50,6 +50,7 @@ async def report_issue(
             address=address,
             reporter_id=reporter.id,
             org_id=org_id,
+            priority=None,
             report_count=1,
         )
         session.add(new_issue)
@@ -87,7 +88,10 @@ def get_my_reports(
             )
         )
         .distinct()
-        .options(selectinload(Issue.category), selectinload(Issue.worker))
+        .options(
+            selectinload(cast(Any, Issue.category)),
+            selectinload(cast(Any, Issue.worker)),
+        )
     )
 
     return session.exec(statement).all()

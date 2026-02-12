@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 LngLat = Tuple[float, float]
@@ -32,24 +32,27 @@ class AuthorityRead(BaseModel):
 
 
 class IssueTypeCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=2, max_length=100)
-    default_priority: str = Field(default="P3", pattern="^P[1-4]$")
     expected_sla_days: int = Field(default=7, ge=1, le=365)
 
 
 class IssueTypeUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: Optional[str] = Field(default=None, min_length=2, max_length=100)
-    default_priority: Optional[str] = Field(default=None, pattern="^P[1-4]$")
     expected_sla_days: Optional[int] = Field(default=None, ge=1, le=365)
     is_active: Optional[bool] = None
 
 
 class ManualIssueCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     category_id: UUID
     lat: float = Field(ge=-90, le=90)
     lng: float = Field(ge=-180, le=180)
     address: Optional[str] = None
-    priority: Optional[str] = Field(default=None, pattern="^P[1-4]$")
     org_id: Optional[UUID] = None
 
 

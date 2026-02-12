@@ -110,7 +110,6 @@ def create_issue_type(
     category = SystemAdminService.create_issue_type(
         session,
         name=data.name,
-        default_priority=data.default_priority,
         expected_sla_days=data.expected_sla_days,
         actor_id=current_user.id,
     )
@@ -131,7 +130,6 @@ def update_issue_type(
         category_id=category_id,
         actor_id=current_user.id,
         name=data.name,
-        default_priority=data.default_priority,
         expected_sla_days=data.expected_sla_days,
         is_active=data.is_active,
     )
@@ -169,7 +167,6 @@ def create_manual_issue(
         lat=data.lat,
         lng=data.lng,
         address=data.address,
-        priority=data.priority,
         org_id=data.org_id,
     )
     session.commit()

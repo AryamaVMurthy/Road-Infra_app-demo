@@ -219,13 +219,20 @@ export default function WorkerHome() {
                             <h4 className="text-lg font-black text-slate-900 mb-2">{task.category_name}</h4>
                             <p className="text-sm text-slate-500 mb-3">{task.address || 'Location not specified'}</p>
                             <div className="flex items-center gap-4 text-xs text-slate-400">
-                                <span className={`px-2 py-1 rounded-lg font-bold ${
-                                    task.priority === 'P1' ? 'bg-red-50 text-red-600' :
-                                    task.priority === 'P2' ? 'bg-amber-50 text-amber-600' :
-                                    'bg-slate-50 text-slate-600'
-                                }`}>
-                                    {task.priority}
-                                </span>
+                                {(() => {
+                                    const priorityLabel = task.priority || 'UNASSIGNED'
+                                    const priorityClass =
+                                        priorityLabel === 'P1' ? 'bg-red-50 text-red-600' :
+                                        priorityLabel === 'P2' ? 'bg-amber-50 text-amber-600' :
+                                        priorityLabel === 'P3' ? 'bg-blue-50 text-blue-600' :
+                                        priorityLabel === 'P4' ? 'bg-slate-50 text-slate-600' :
+                                        'bg-slate-100 text-slate-500'
+                                    return (
+                                        <span className={`px-2 py-1 rounded-lg font-bold ${priorityClass}`}>
+                                            {priorityLabel}
+                                        </span>
+                                    )
+                                })()}
                                 {task.eta_date && (
                                     <span className="flex items-center gap-1">
                                         <Clock size={12} />

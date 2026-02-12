@@ -18,7 +18,8 @@ import { cn } from '../../../../utils/utils'
  * @param {Function} onResolve - Resolve task callback
  */
 export const TaskCard = ({ task, idx, onSelect, onResolve }) => {
-  const isCritical = task.priority === 'P1'
+  const priorityLabel = task.priority || 'UNASSIGNED'
+  const isCritical = priorityLabel === 'P1'
   const isAssigned = task.status === 'ASSIGNED'
   const isInProgress = task.status === 'ACCEPTED' || task.status === 'IN_PROGRESS'
 
@@ -41,7 +42,7 @@ export const TaskCard = ({ task, idx, onSelect, onResolve }) => {
               "w-1.5 h-1.5 rounded-full animate-pulse",
               isCritical ? "bg-rose-600" : "bg-blue-600"
             )}></div>
-            {task.priority} Priority
+            {priorityLabel} Priority
           </div>
           
           {/* Task Title */}

@@ -208,7 +208,7 @@ const IssueDetails = ({ issue }) => (
       <DetailItem 
         icon={MessageSquare}
         label="Priority"
-        value={issue.priority}
+        value={issue.priority || 'UNASSIGNED'}
       />
     </div>
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-100">

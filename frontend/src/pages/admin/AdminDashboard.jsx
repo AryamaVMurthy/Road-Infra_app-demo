@@ -54,8 +54,8 @@ export default function AdminDashboard() {
   const [editingIssueType, setEditingIssueType] = useState(null)
   
   const [newOrg, setNewOrg] = useState({ name: '', admin_email: '', zone_name: '' })
-  const [newIT, setNewIT] = useState({ name: '', default_priority: 'P3', expected_sla_days: 7 })
-  const [manualIssue, setManualIssue] = useState({ category_id: '', lat: null, lng: null, address: '', priority: '', org_id: '' })
+  const [newIT, setNewIT] = useState({ name: '', expected_sla_days: 7 })
+  const [manualIssue, setManualIssue] = useState({ category_id: '', lat: null, lng: null, address: '', org_id: '' })
   
   const [polygonPoints, setPolygonPoints] = useState([])
   const [lastRefresh, setLastRefresh] = useState(new Date())
@@ -227,16 +227,31 @@ export default function AdminDashboard() {
                                                 {org.admin_count} Admins • {org.worker_count} Workers
                                             </td>
                                             <td className="px-8 py-6 text-right">
-                                                <button 
-                                                    onClick={() => {
-                                                        setSelectedOrgForEdit(org);
-                                                        setIsEditingJurisdiction(true);
-                                                    }}
-                                                    className="flex items-center gap-1.5 text-primary hover:underline font-black uppercase tracking-widest text-[9px]"
-                                                >
-                                                    <MapIcon size={12} />
-                                                    Edit Jurisdiction
-                                                </button>
+                                                <div className="flex justify-end gap-3">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setSelectedOrgForEdit(org);
+                                                            setIsEditingJurisdiction(true);
+                                                        }}
+                                                        className="flex items-center gap-1.5 text-primary hover:underline font-black uppercase tracking-widest text-[9px]"
+                                                    >
+                                                        <MapIcon size={12} />
+                                                        Edit Jurisdiction
+                                                    </button>
+                                                    <button 
+                                                        onClick={async () => {
+                                                            if (!window.confirm(`Delete authority "${org.name}"? This cannot be undone.`)) return;
+                                                            try {
+                                                                await adminService.deleteAuthority(org.org_id);
+                                                                fetchData();
+                                                            } catch (err) { alert("Deletion failed: " + (err.response?.data?.detail || err.message)) }
+                                                        }}
+                                                        className="flex items-center gap-1.5 text-rose-400 hover:text-rose-600 hover:underline font-black uppercase tracking-widest text-[9px] transition-colors"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -264,6 +279,12 @@ export default function AdminDashboard() {
                                             className="w-full p-4 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
                                             value={newOrg.admin_email}
                                             onChange={(e) => setNewOrg({...newOrg, admin_email: e.target.value})}
+                                        />
+                                        <input 
+                                            placeholder="Zone Name (e.g. Hyderabad Central)" 
+                                            className="w-full p-4 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
+                                            value={newOrg.zone_name}
+                                            onChange={(e) => setNewOrg({...newOrg, zone_name: e.target.value})}
                                         />
                                         
                                         <div className="space-y-4">
@@ -344,7 +365,7 @@ export default function AdminDashboard() {
                         <h3 className="text-2xl font-black text-slate-900">System Issue Types</h3>
                         <button 
                             id="btn-create-type"
-                            onClick={() => {setEditingIssueType(null); setNewIT({ name: '', default_priority: 'P3', expected_sla_days: 7 }); setShowAddIssueType(true)}}
+                            onClick={() => {setEditingIssueType(null); setNewIT({ name: '', expected_sla_days: 7 }); setShowAddIssueType(true)}}
                             className="bg-primary text-white px-6 py-3 rounded-2xl font-black shadow-xl shadow-primary/20 flex items-center gap-2"
                         >
                             <Plus size={20} /> Create Type
@@ -357,7 +378,6 @@ export default function AdminDashboard() {
                                 <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400 tracking-[0.2em]">
                                     <tr>
                                         <th className="px-8 py-6">Type</th>
-                                        <th className="px-8 py-6">Priority</th>
                                         <th className="px-8 py-6">SLA (Days)</th>
                                         <th className="px-8 py-6">Status</th>
                                         <th className="px-8 py-6 text-right">Actions</th>
@@ -367,15 +387,6 @@ export default function AdminDashboard() {
                                     {issueTypes.map(cat => (
                                         <tr key={cat.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-8 py-6 font-black text-slate-900">{cat.name}</td>
-                                            <td className="px-8 py-6">
-                                                <span className={cn(
-                                                    "px-3 py-1 rounded-full text-[10px] font-black",
-                                                    cat.default_priority === 'P1' ? "bg-rose-50 text-rose-600" :
-                                                    cat.default_priority === 'P2' ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"
-                                                )}>
-                                                    {cat.default_priority}
-                                                </span>
-                                            </td>
                                             <td className="px-8 py-6 text-xs font-bold text-slate-500">{cat.expected_sla_days} Days</td>
                                             <td className="px-8 py-6">
                                                 <span className={cn(
@@ -387,7 +398,14 @@ export default function AdminDashboard() {
                                             </td>
                                             <td className="px-8 py-6 text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <button onClick={() => {setEditingIssueType(cat); setNewIT(cat); setShowAddIssueType(true)}} className="p-2 text-slate-400 hover:text-primary transition-colors btn-update-type"><Edit2 size={16} /></button>
+                                                    <button onClick={() => {
+                                                        setEditingIssueType(cat);
+                                                        setNewIT({
+                                                            name: cat.name,
+                                                            expected_sla_days: cat.expected_sla_days
+                                                        });
+                                                        setShowAddIssueType(true);
+                                                    }} className="p-2 text-slate-400 hover:text-primary transition-colors btn-update-type"><Edit2 size={16} /></button>
                                                     <button 
                                                         onClick={async () => {
                                                             if (!window.confirm("Disable this category?")) return;
@@ -420,19 +438,6 @@ export default function AdminDashboard() {
                                                 value={newIT.name}
                                                 onChange={(e) => setNewIT({...newIT, name: e.target.value})}
                                             />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Priority</label>
-                                            <select 
-                                                className="w-full p-4 mt-2 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
-                                                value={newIT.default_priority}
-                                                onChange={(e) => setNewIT({...newIT, default_priority: e.target.value})}
-                                            >
-                                                <option value="P1">P1 - Critical</option>
-                                                <option value="P2">P2 - Urgent</option>
-                                                <option value="P3">P3 - Standard</option>
-                                                <option value="P4">P4 - Low</option>
-                                            </select>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">SLA Days</label>
@@ -528,25 +533,13 @@ export default function AdminDashboard() {
                                         onChange={(e) => setManualIssue({...manualIssue, address: e.target.value})}
                                     />
 
-                                    <select 
-                                        className="w-full p-5 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-primary focus:bg-white outline-none font-bold transition-all"
-                                        value={manualIssue.priority}
-                                        onChange={(e) => setManualIssue({...manualIssue, priority: e.target.value})}
-                                    >
-                                        <option value="">Default Priority</option>
-                                        <option value="P1">P1 - Critical</option>
-                                        <option value="P2">P2 - Urgent</option>
-                                        <option value="P3">P3 - Standard</option>
-                                        <option value="P4">P4 - Low</option>
-                                    </select>
-
                                     <button 
                                         onClick={async () => {
                                             if (!manualIssue.category_id || !manualIssue.lat) return alert("Required fields missing");
                                             try {
                                                 await adminService.createManualIssue(manualIssue);
                                                 alert("Issue created");
-                                                setManualIssue({ category_id: '', lat: null, lng: null, address: '', priority: '', org_id: '' });
+                                                setManualIssue({ category_id: '', lat: null, lng: null, address: '', org_id: '' });
                                                 fetchData();
                                             } catch (e) { alert("Creation failed") }
                                         }}

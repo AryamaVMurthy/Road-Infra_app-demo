@@ -24,8 +24,10 @@ export const KanbanCard = ({
     P1: "bg-rose-50 text-rose-600",
     P2: "bg-amber-50 text-amber-600",
     P3: "bg-blue-50 text-blue-600",
-    P4: "bg-slate-50 text-slate-600"
+    P4: "bg-slate-50 text-slate-600",
+    UNASSIGNED: "bg-slate-100 text-slate-500"
   }
+  const priorityLabel = issue.priority || 'UNASSIGNED'
 
   return (
     <motion.div 
@@ -57,9 +59,9 @@ export const KanbanCard = ({
       <div className="flex gap-2 mb-4 flex-wrap pr-12">
         <span className={cn(
           "text-[10px] font-black px-2 py-0.5 rounded-full",
-          priorityClasses[issue.priority] || priorityClasses.P3
+          priorityClasses[priorityLabel] || priorityClasses.UNASSIGNED
         )}>
-          {issue.priority}
+          {priorityLabel}
         </span>
         {issue.eta_date && (
           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 flex items-center gap-1">

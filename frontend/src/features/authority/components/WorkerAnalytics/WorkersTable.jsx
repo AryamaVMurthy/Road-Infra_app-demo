@@ -119,11 +119,11 @@ const WorkerRow = ({ worker, workerAnalytics, onActivate, onDeactivate }) => {
       </td>
 
       <td className="px-4 sm:px-8 py-4 sm:py-6">
-        {workerAnalytics?.avg_resolution_hours ? (
+        {workerAnalytics?.avg_resolution_days !== undefined && workerAnalytics?.avg_resolution_days !== null ? (
           <div className="flex items-center gap-2">
             <Zap size={14} className="text-amber-500 flex-shrink-0" />
             <span className="text-sm font-bold text-slate-600">
-              {workerAnalytics.avg_resolution_hours}h avg
+              {workerAnalytics.avg_resolution_days}d avg
             </span>
           </div>
         ) : (

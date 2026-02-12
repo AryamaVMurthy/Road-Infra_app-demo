@@ -117,7 +117,7 @@ export default function AnalyticsDashboard() {
             <StatBox label="Total Reports" value={data?.summary.reported || 0} icon={AlertTriangle} colorClass="bg-rose-500" />
             <StatBox label="Resolved Tickets" value={data?.summary.resolved || 0} icon={CheckCircle2} colorClass="bg-emerald-500" />
             <StatBox label="Field Force" value={data?.summary.workers || 0} icon={Users} colorClass="bg-blue-500" />
-            <StatBox label="SLA Compliance" value={data?.summary.compliance || '0%'} icon={ShieldCheck} colorClass="bg-purple-500" />
+            <StatBox label="Completion Rate" value={data?.summary.compliance || '0%'} icon={ShieldCheck} colorClass="bg-purple-500" />
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">

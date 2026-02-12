@@ -54,7 +54,7 @@ export default function AdminDashboard() {
   const [editingIssueType, setEditingIssueType] = useState(null)
   
   const [newOrg, setNewOrg] = useState({ name: '', admin_email: '', zone_name: '' })
-  const [newIT, setNewIT] = useState({ name: '', expected_sla_days: 7 })
+  const [newIT, setNewIT] = useState({ name: '' })
   const [manualIssue, setManualIssue] = useState({ category_id: '', lat: null, lng: null, address: '', org_id: '' })
   
   const [polygonPoints, setPolygonPoints] = useState([])
@@ -96,7 +96,7 @@ export default function AdminDashboard() {
     { name: 'Total Issues', value: data?.summary?.reported || 0, color: 'bg-rose-500', icon: AlertTriangle },
     { name: 'Active Workers', value: data?.summary?.workers || 0, color: 'bg-blue-500', icon: Users },
     { name: 'Resolved', value: data?.summary?.resolved || 0, color: 'bg-emerald-500', icon: CheckCircle },
-    { name: 'Compliance', value: data?.summary?.compliance || '0%', color: 'bg-purple-500', icon: Shield },
+    { name: 'Completion Rate', value: data?.summary?.compliance || '0%', color: 'bg-purple-500', icon: Shield },
   ]
 
   const tabButton = (id, label, Icon) => (
@@ -365,7 +365,7 @@ export default function AdminDashboard() {
                         <h3 className="text-2xl font-black text-slate-900">System Issue Types</h3>
                         <button 
                             id="btn-create-type"
-                            onClick={() => {setEditingIssueType(null); setNewIT({ name: '', expected_sla_days: 7 }); setShowAddIssueType(true)}}
+                            onClick={() => {setEditingIssueType(null); setNewIT({ name: '' }); setShowAddIssueType(true)}}
                             className="bg-primary text-white px-6 py-3 rounded-2xl font-black shadow-xl shadow-primary/20 flex items-center gap-2"
                         >
                             <Plus size={20} /> Create Type
@@ -378,7 +378,6 @@ export default function AdminDashboard() {
                                 <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400 tracking-[0.2em]">
                                     <tr>
                                         <th className="px-8 py-6">Type</th>
-                                        <th className="px-8 py-6">SLA (Days)</th>
                                         <th className="px-8 py-6">Status</th>
                                         <th className="px-8 py-6 text-right">Actions</th>
                                     </tr>
@@ -387,7 +386,6 @@ export default function AdminDashboard() {
                                     {issueTypes.map(cat => (
                                         <tr key={cat.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-8 py-6 font-black text-slate-900">{cat.name}</td>
-                                            <td className="px-8 py-6 text-xs font-bold text-slate-500">{cat.expected_sla_days} Days</td>
                                             <td className="px-8 py-6">
                                                 <span className={cn(
                                                     "px-2 py-1 rounded-full text-[9px] font-black uppercase",
@@ -401,8 +399,7 @@ export default function AdminDashboard() {
                                                     <button onClick={() => {
                                                         setEditingIssueType(cat);
                                                         setNewIT({
-                                                            name: cat.name,
-                                                            expected_sla_days: cat.expected_sla_days
+                                                            name: cat.name
                                                         });
                                                         setShowAddIssueType(true);
                                                     }} className="p-2 text-slate-400 hover:text-primary transition-colors btn-update-type"><Edit2 size={16} /></button>
@@ -439,16 +436,6 @@ export default function AdminDashboard() {
                                                 onChange={(e) => setNewIT({...newIT, name: e.target.value})}
                                             />
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">SLA Days</label>
-                                            <input 
-                                                type="number"
-                                                className="w-full p-4 mt-2 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
-                                                value={newIT.expected_sla_days}
-                                                onChange={(e) => setNewIT({...newIT, expected_sla_days: parseInt(e.target.value)})}
-                                            />
-                                        </div>
-
                                         <div className="flex gap-3 pt-4">
                                             <button 
                                                 onClick={() => {setShowAddIssueType(false); setEditingIssueType(null)}}

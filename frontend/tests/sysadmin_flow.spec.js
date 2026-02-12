@@ -58,20 +58,22 @@ test.describe('Sysadmin and Worker Onboarding Flows', () => {
   })
 
   test('Sysadmin can manage issue types (CRUD)', async ({ page }) => {
+    const issueTypeName = `Pothole V2 ${Date.now()}`
+
     await loginAs(page, 'sysadmin@marg.gov.in', '/admin')
     await page.getByRole('button', { name: 'Issue Types' }).click()
     
     // Create
     await page.locator('#btn-issue-types').click()
     await page.locator('#btn-create-type').click()
-    await page.locator('input').filter({ hasText: '' }).nth(0).fill('Pothole V2')
+    await page.locator('input').filter({ hasText: '' }).nth(0).fill(issueTypeName)
     await page.locator('#btn-create-category-confirm').click()
-    await expect(page.getByRole('cell', { name: 'Pothole V2' })).toBeVisible({ timeout: 10000 })
-    
+    await expect(page.getByRole('cell', { name: issueTypeName })).toBeVisible({ timeout: 10000 })
+
     // Edit
-    await page.locator('tr').filter({ hasText: 'Pothole V2' }).locator('.btn-update-type').click()
-    await page.locator('input[type="number"]').fill('10')
+    await page.locator('tr').filter({ hasText: issueTypeName }).locator('.btn-update-type').click()
+    await page.locator('input').filter({ hasText: '' }).nth(0).fill(`${issueTypeName} Updated`)
     await page.locator('#btn-create-category-confirm').click()
-    await expect(page.getByText('10 Days')).toBeVisible()
+    await expect(page.getByRole('cell', { name: `${issueTypeName} Updated` })).toBeVisible()
   })
 })

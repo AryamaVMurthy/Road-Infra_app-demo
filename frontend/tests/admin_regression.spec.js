@@ -48,16 +48,15 @@ test.describe('Admin and Sysadmin regression coverage', () => {
     await page.getByRole('button', { name: 'Issue Types' }).click()
     await page.getByRole('button', { name: 'Create Type' }).click()
     await page.locator('label:has-text("Type Name")').locator('xpath=following::input[1]').fill(issueTypeName)
-    await page.locator('label:has-text("SLA Days")').locator('xpath=following::input[1]').fill('9')
     await page.getByRole('button', { name: 'Create', exact: true }).click()
 
     const issueTypeRow = page.getByRole('row').filter({ hasText: issueTypeName })
     await expect(issueTypeRow).toBeVisible()
 
     await issueTypeRow.locator('.btn-update-type').click()
-    await page.locator('label:has-text("SLA Days")').locator('xpath=following::input[1]').fill('11')
+    await page.locator('label:has-text("Type Name")').locator('xpath=following::input[1]').fill(`${issueTypeName} Updated`)
     await page.getByRole('button', { name: 'Update' }).click()
-    await expect(issueTypeRow).toContainText('11 Days')
+    await expect(page.getByRole('row').filter({ hasText: `${issueTypeName} Updated` })).toBeVisible()
 
     page.once('dialog', async (dialog) => {
       await dialog.accept()

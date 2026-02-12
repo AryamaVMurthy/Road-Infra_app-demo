@@ -70,8 +70,7 @@ export default function WorkerHome() {
 
   const handleAccept = async (taskId) => {
     try {
-        const etaDate = new Date(eta).toISOString();
-        await api.post(`/worker/tasks/${taskId}/accept?eta_date=${encodeURIComponent(etaDate)}`);
+        await api.post(`/worker/tasks/${taskId}/accept?eta_date=${encodeURIComponent(eta)}`);
         showToast('Task successfully accepted.', 'success');
         fetchTasks();
         setSelectedTask(null);

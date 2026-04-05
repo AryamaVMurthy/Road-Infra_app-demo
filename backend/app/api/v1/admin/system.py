@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from app.api.deps import require_roles
 from app.db.session import get_session
 from app.models.domain import Category, User
+from app.schemas.common import MessageResponse
 from app.schemas.system_admin import (
     AuthorityCreateRequest,
     AuthorityRead,
@@ -22,7 +23,12 @@ router = APIRouter()
 require_sysadmin_user = require_roles("SYSADMIN")
 
 
-@router.get("/authorities", response_model=List[AuthorityRead])
+@router.get(
+    "/authorities",
+    response_model=List[AuthorityRead],
+    summary="List authorities",
+    description="Return all configured authority organizations with linked zone metadata and user counts.",
+)
 def list_authorities(
     session: Session = Depends(get_session),
     current_user: User = Depends(require_sysadmin_user),
@@ -30,7 +36,12 @@ def list_authorities(
     return SystemAdminService.list_authorities(session)
 
 
-@router.post("/authorities", response_model=AuthorityRead)
+@router.post(
+    "/authorities",
+    response_model=AuthorityRead,
+    summary="Create an authority",
+    description="Create a new authority organization, provision its admin account, and attach a jurisdiction polygon.",
+)
 def create_authority(
     data: AuthorityCreateRequest,
     session: Session = Depends(get_session),
@@ -53,7 +64,12 @@ def create_authority(
     )
 
 
-@router.put("/authorities/{org_id}", response_model=AuthorityRead)
+@router.put(
+    "/authorities/{org_id}",
+    response_model=AuthorityRead,
+    summary="Update an authority",
+    description="Update an existing authority organization, including its name and jurisdiction polygon.",
+)
 def update_authority(
     org_id: UUID,
     data: AuthorityUpdateRequest,
@@ -76,7 +92,12 @@ def update_authority(
     )
 
 
-@router.delete("/authorities/{org_id}")
+@router.delete(
+    "/authorities/{org_id}",
+    response_model=MessageResponse,
+    summary="Delete an authority",
+    description="Delete an authority organization and its related configuration after system-admin validation passes.",
+)
 def delete_authority(
     org_id: UUID,
     session: Session = Depends(get_session),
@@ -89,7 +110,12 @@ def delete_authority(
     return {"message": "Authority deleted"}
 
 
-@router.get("/issue-types", response_model=List[Category])
+@router.get(
+    "/issue-types",
+    response_model=List[Category],
+    summary="List issue types",
+    description="Return all issue categories, optionally including inactive categories used for historical records.",
+)
 def list_issue_types(
     include_inactive: bool = Query(default=True),
     session: Session = Depends(get_session),
@@ -101,7 +127,12 @@ def list_issue_types(
     return session.exec(statement).all()
 
 
-@router.post("/issue-types", response_model=Category)
+@router.post(
+    "/issue-types",
+    response_model=Category,
+    summary="Create an issue type",
+    description="Create a new issue category that citizens and administrators can use when creating reports.",
+)
 def create_issue_type(
     data: IssueTypeCreateRequest,
     session: Session = Depends(get_session),
@@ -117,7 +148,12 @@ def create_issue_type(
     return category
 
 
-@router.put("/issue-types/{category_id}", response_model=Category)
+@router.put(
+    "/issue-types/{category_id}",
+    response_model=Category,
+    summary="Update an issue type",
+    description="Update the display name or activation status for an existing issue category.",
+)
 def update_issue_type(
     category_id: UUID,
     data: IssueTypeUpdateRequest,
@@ -136,7 +172,12 @@ def update_issue_type(
     return category
 
 
-@router.delete("/issue-types/{category_id}", response_model=Category)
+@router.delete(
+    "/issue-types/{category_id}",
+    response_model=Category,
+    summary="Deactivate an issue type",
+    description="Soft-delete an issue category by marking it inactive while preserving historical issue references.",
+)
 def delete_issue_type(
     category_id: UUID,
     session: Session = Depends(get_session),
@@ -152,7 +193,12 @@ def delete_issue_type(
     return category
 
 
-@router.post("/manual-issues", response_model=ManualIssueCreateResponse)
+@router.post(
+    "/manual-issues",
+    response_model=ManualIssueCreateResponse,
+    summary="Create a manual issue",
+    description="Create an issue directly from the administrative console, optionally targeting a specific authority organization.",
+)
 def create_manual_issue(
     data: ManualIssueCreateRequest,
     session: Session = Depends(get_session),

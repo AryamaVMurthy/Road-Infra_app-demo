@@ -74,7 +74,7 @@ class IssueService:
         statement = (
             select(Organization)
             .join(Zone)
-            .where(func.ST_Contains(Zone.boundary, func.ST_GeomFromText(point_wkt)))
+            .where(func.ST_Covers(Zone.boundary, func.ST_GeomFromText(point_wkt)))
         )
         org = session.exec(statement).first()
         return org.id if org else None

@@ -17,7 +17,7 @@ from datetime import datetime
 from uuid import uuid4, UUID
 from sqlmodel import Session, select, desc
 
-from app.models.domain import Category, User, Issue, Evidence, Otp
+from app.models.domain import Category, User, Issue, Evidence, Otp, Organization, Zone
 from app.services.issue_service import IssueService
 
 
@@ -27,14 +27,25 @@ from app.services.issue_service import IssueService
 
 
 def _seed(session: Session):
+    zone = Zone(
+        name="Central Test Zone",
+        boundary="SRID=4326;POLYGON((78.30 17.38,78.40 17.38,78.40 17.48,78.30 17.48,78.30 17.38))",
+    )
+    session.add(zone)
+    session.flush()
+
+    org = Organization(name="Central Test Authority", zone_id=zone.id)
+    session.add(org)
+    session.flush()
+
     cat = Category(name="Pothole", default_priority="P2", expected_sla_days=7)
     session.add(cat)
     citizen = User(email="citizen@test.com", role="CITIZEN")
-    admin = User(email="admin@authority.gov.in", role="ADMIN")
+    admin = User(email="admin@authority.gov.in", role="ADMIN", org_id=org.id)
     for u in (citizen, admin):
         session.add(u)
     session.commit()
-    for obj in (cat, citizen, admin):
+    for obj in (cat, citizen, admin, org, zone):
         session.refresh(obj)
     return cat, citizen, admin
 
@@ -159,6 +170,24 @@ class TestDuplicateDetection:
 
 
 class TestReportEndpointDuplicates:
+    def test_report_with_unknown_category_fails_explicitly(self, client, session):
+        cat, citizen, _ = _seed(session)
+        photo = _make_jpeg()
+        _login(client, session, citizen.email)
+
+        response = client.post(
+            "/api/v1/issues/report",
+            data={
+                "category_id": str(uuid4()),
+                "lat": "17.44",
+                "lng": "78.35",
+            },
+            files={"photo": ("test1.jpg", photo, "image/jpeg")},
+        )
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Issue category not found"
+
     def test_report_at_same_location_increments_count(self, client, session):
         cat, citizen, _ = _seed(session)
         photo = _make_jpeg()
@@ -216,7 +245,7 @@ class TestReportEndpointDuplicates:
         assert resp1.status_code == 200
         id1 = resp1.json()["issue_id"]
 
-        # Report at location B (far away)
+        # Report at location B (far away and outside all configured jurisdictions)
         resp2 = client.post(
             "/api/v1/issues/report",
             data={
@@ -226,10 +255,15 @@ class TestReportEndpointDuplicates:
             },
             files={"photo": ("test2.jpg", photo, "image/jpeg")},
         )
-        assert resp2.status_code == 200
-        id2 = resp2.json()["issue_id"]
+        assert resp2.status_code == 422
+        detail = resp2.json()["detail"]
+        assert "No authority jurisdiction covers coordinates" in detail
+        assert "28.61" in detail
+        assert "77.21" in detail
 
-        assert id1 != id2
+        issues = session.exec(select(Issue).order_by(Issue.created_at.asc())).all()
+        assert len(issues) == 1
+        assert issues[0].id == UUID(id1)
 
 
 # ===========================================================================

@@ -25,6 +25,7 @@ import { IssueReviewModal } from '../../features/authority/components/Modals/Iss
 import { WorkersTable } from '../../features/authority/components/WorkerAnalytics/WorkersTable'
 import { AnalyticsPanel } from '../../features/authority/components/WorkerAnalytics/AnalyticsPanel'
 import { OnboardWorkersModal } from '../../features/authority/components/Modals/OnboardWorkersModal'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 
 export default function AuthorityDashboard() {
   const [activeTab, setActiveTab] = useState('map') 
@@ -52,30 +53,30 @@ export default function AuthorityDashboard() {
   const { position: geoPosition } = useGeolocation()
   const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]
 
-  const fetchData = useCallback(() => {
-    Promise.all([
+  const fetchData = useCallback(async () => {
+    try {
+      const [issuesRes, workersRes, heatRes, analyticsRes] = await Promise.all([
       api.get('/admin/issues'), 
       api.get('/admin/workers-with-stats'),
       api.get('/analytics/heatmap'),
       api.get('/admin/worker-analytics')
-    ]).then(([issuesRes, workersRes, heatRes, analyticsRes]) => {
-        setIssues(issuesRes.data)
-        setWorkers(workersRes.data)
-        setHeatmapData(heatRes.data)
-        setWorkerAnalytics(analyticsRes.data)
-      }).catch(err => console.error('Fetch failed:', err))
+      ])
+
+      setIssues(issuesRes.data)
+      setWorkers(workersRes.data)
+      setHeatmapData(heatRes.data)
+      setWorkerAnalytics(analyticsRes.data)
+      setLastRefresh(new Date())
+    } catch (err) {
+      console.error('Fetch failed:', err)
+    }
   }, [])
 
-  useEffect(() => { 
-    fetchData()
-    
-    const interval = setInterval(() => {
-        fetchData()
-        setLastRefresh(new Date())
-    }, 30000)
-    
-    return () => clearInterval(interval)
-  }, [fetchData])
+  useAutoRefresh(fetchData, {
+    intervalMs: 5000,
+    refreshOnFocus: true,
+    refreshOnVisibility: true,
+  })
 
   const toggleIssueSelection = (id) => {
     setSelectedIssues(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])

@@ -15,6 +15,7 @@ from datetime import datetime
 import io
 
 from app.api.deps import require_worker_user
+from app.schemas.common import ErrorResponse, MessageResponse
 from app.schemas.issue import IssueRead
 
 router = APIRouter()
@@ -37,7 +38,16 @@ def get_worker_tasks(
     return session.exec(statement).all()
 
 
-@router.post("/tasks/{issue_id}/accept")
+@router.post(
+    "/tasks/{issue_id}/accept",
+    response_model=MessageResponse,
+    summary="Accept a task",
+    description="Accept a worker assignment and record the ETA date that the field team commits to.",
+    responses={
+        400: {"model": ErrorResponse, "description": "ETA date format is invalid"},
+        404: {"model": ErrorResponse, "description": "Task not found"},
+    },
+)
 def accept_task(
     issue_id: UUID,
     eta_date: str,
@@ -68,7 +78,13 @@ def accept_task(
     return {"message": "Task accepted"}
 
 
-@router.post("/tasks/{issue_id}/start")
+@router.post(
+    "/tasks/{issue_id}/start",
+    response_model=MessageResponse,
+    summary="Start a task",
+    description="Move an accepted worker task into active in-progress execution.",
+    responses={404: {"model": ErrorResponse, "description": "Task not found"}},
+)
 def start_task(
     issue_id: UUID,
     session: Session = Depends(get_session),
@@ -84,7 +100,13 @@ def start_task(
     return {"message": "Work started"}
 
 
-@router.post("/tasks/{issue_id}/resolve")
+@router.post(
+    "/tasks/{issue_id}/resolve",
+    response_model=MessageResponse,
+    summary="Resolve a task",
+    description="Upload resolution evidence, capture EXIF metadata, and transition the task into the resolved state.",
+    responses={404: {"model": ErrorResponse, "description": "Task not found"}},
+)
 async def resolve_task(
     issue_id: UUID,
     photo: UploadFile = File(...),

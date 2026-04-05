@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.db.session import get_session
 from app.api.deps import require_admin_user
 from app.models.domain import User, Issue
+from app.schemas.common import ErrorResponse, MessageResponse
 from app.schemas.issue import IssueRead
 from app.services.workflow_service import WorkflowService
 
@@ -29,7 +30,13 @@ def get_all_issues(
     return session.exec(statement).all()
 
 
-@router.post("/update-status")
+@router.post(
+    "/update-status",
+    response_model=MessageResponse,
+    summary="Update issue workflow status",
+    description="Transition an issue to a new workflow state using the centralized workflow service and audit the change.",
+    responses={404: {"model": ErrorResponse, "description": "Issue not found"}},
+)
 def update_issue_status(
     issue_id: UUID,
     status: str,
@@ -46,7 +53,13 @@ def update_issue_status(
     return {"message": f"Issue status updated to {status}"}
 
 
-@router.post("/approve")
+@router.post(
+    "/approve",
+    response_model=MessageResponse,
+    summary="Approve a resolved issue",
+    description="Approve a worker resolution and close the issue as the final administrative workflow step.",
+    responses={404: {"model": ErrorResponse, "description": "Issue not found"}},
+)
 def approve_issue(
     issue_id: UUID,
     session: Session = Depends(get_session),
@@ -62,7 +75,13 @@ def approve_issue(
     return {"message": "Issue approved and closed"}
 
 
-@router.post("/reject")
+@router.post(
+    "/reject",
+    response_model=MessageResponse,
+    summary="Reject a resolved issue",
+    description="Reject a resolution with a reason and send the issue back to the assigned worker for rework.",
+    responses={404: {"model": ErrorResponse, "description": "Issue not found"}},
+)
 def reject_issue(
     issue_id: UUID,
     reason: str,
@@ -79,7 +98,16 @@ def reject_issue(
     return {"message": "Issue rejected and returned to worker"}
 
 
-@router.post("/update-priority")
+@router.post(
+    "/update-priority",
+    response_model=MessageResponse,
+    summary="Update issue priority",
+    description="Set the issue priority band used for operational triage and record the change in the audit trail.",
+    responses={
+        400: {"model": ErrorResponse, "description": "Priority is invalid"},
+        404: {"model": ErrorResponse, "description": "Issue not found"},
+    },
+)
 def update_issue_priority(
     issue_id: UUID,
     priority: str,

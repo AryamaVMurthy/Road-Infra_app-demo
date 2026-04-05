@@ -146,6 +146,12 @@ class TestZoneBoundaryRouting:
         found_org_id = IssueService.find_org_for_location(session, point_wkt)
         assert found_org_id == org.id
 
+    def test_boundary_coordinate_matches_zone(self, client, session):
+        zone, org = _seed_org_with_zone(session)
+        point_wkt = "SRID=4326;POINT(78.33 17.42)"
+        found_org_id = IssueService.find_org_for_location(session, point_wkt)
+        assert found_org_id == org.id
+
     def test_outside_zone_returns_none(self, client, session):
         _seed_org_with_zone(session)
         point_wkt = "SRID=4326;POINT(0 0)"

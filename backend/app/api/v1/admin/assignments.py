@@ -8,6 +8,7 @@ from sqlmodel import Session
 from app.db.session import get_session
 from app.api.deps import require_admin_user
 from app.models.domain import User, Issue
+from app.schemas.common import ErrorResponse, MessageResponse
 from app.schemas.admin import BulkAssignRequest
 from app.services.admin import AdminService
 from app.services.workflow_service import WorkflowService
@@ -15,7 +16,13 @@ from app.services.workflow_service import WorkflowService
 router = APIRouter()
 
 
-@router.post("/assign")
+@router.post(
+    "/assign",
+    response_model=MessageResponse,
+    summary="Assign an issue to a worker",
+    description="Assign a single reported issue to a worker and record the workflow transition in audit logs.",
+    responses={404: {"model": ErrorResponse, "description": "Issue or worker not found"}},
+)
 def assign_issue(
     issue_id: UUID,
     worker_id: UUID,
@@ -28,7 +35,12 @@ def assign_issue(
     return {"message": "Issue assigned successfully"}
 
 
-@router.post("/bulk-assign")
+@router.post(
+    "/bulk-assign",
+    response_model=MessageResponse,
+    summary="Bulk assign issues to a worker",
+    description="Assign multiple issues to one worker in a single request and return the number of updated issues.",
+)
 def bulk_assign(
     data: BulkAssignRequest,
     session: Session = Depends(get_session),
@@ -42,7 +54,13 @@ def bulk_assign(
     return {"message": f"Assigned {count} issues"}
 
 
-@router.post("/reassign")
+@router.post(
+    "/reassign",
+    response_model=MessageResponse,
+    summary="Reassign an issue",
+    description="Move an already assigned issue to a different worker and return the new assignee name in the response message.",
+    responses={404: {"model": ErrorResponse, "description": "Issue or worker not found"}},
+)
 def reassign_issue(
     issue_id: UUID,
     worker_id: UUID,
@@ -56,7 +74,13 @@ def reassign_issue(
     return {"message": f"Issue reassigned to {worker.full_name or worker.email}"}
 
 
-@router.post("/unassign")
+@router.post(
+    "/unassign",
+    response_model=MessageResponse,
+    summary="Unassign a worker from an issue",
+    description="Remove the worker assignment from an issue and return it to the REPORTED state.",
+    responses={404: {"model": ErrorResponse, "description": "Issue not found"}},
+)
 def unassign_issue(
     issue_id: UUID,
     session: Session = Depends(get_session),

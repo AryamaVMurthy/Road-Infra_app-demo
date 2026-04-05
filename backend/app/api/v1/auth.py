@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from app.core.config import settings
-from app.schemas.auth import Login, OTPRequest
+from app.schemas.auth import CurrentUserResponse, Login, OTPRequest
+from app.schemas.common import ErrorResponse, MessageResponse
 from app.models.domain import User, Otp, Invite
 from sqlmodel import Session, select, desc
 from app.db.session import get_session
@@ -15,7 +16,13 @@ from app.core.time import utc_now
 router = APIRouter()
 
 
-@router.post("/otp-request")
+@router.post(
+    "/otp-request",
+    response_model=MessageResponse,
+    summary="Request a one-time password",
+    description="Generate and send an OTP to the supplied email address for passwordless sign-in.",
+    responses={429: {"model": ErrorResponse, "description": "OTP request rate limit exceeded"}},
+)
 async def request_otp(data: OTPRequest, session: Session = Depends(get_session)):
     check_otp_rate_limit(data.email)
     otp_code = EmailService.generate_otp()
@@ -29,7 +36,13 @@ async def request_otp(data: OTPRequest, session: Session = Depends(get_session))
     return {"message": "OTP sent to your email"}
 
 
-@router.post("/login")
+@router.post(
+    "/login",
+    response_model=MessageResponse,
+    summary="Complete OTP login",
+    description="Validate the latest OTP for the email address, create the user if needed, and set access and refresh cookies.",
+    responses={400: {"model": ErrorResponse, "description": "OTP is invalid or expired"}},
+)
 def login(response: Response, data: Login, session: Session = Depends(get_session)):
     latest_otp_statement = (
         select(Otp).where(Otp.email == data.email).order_by(desc(Otp.created_at))
@@ -103,7 +116,13 @@ def login(response: Response, data: Login, session: Session = Depends(get_sessio
     return {"message": "Login successful"}
 
 
-@router.post("/refresh")
+@router.post(
+    "/refresh",
+    response_model=MessageResponse,
+    summary="Refresh the authenticated session",
+    description="Rotate the refresh token cookie and issue a new access token for the current browser session.",
+    responses={401: {"model": ErrorResponse, "description": "Refresh token is missing or invalid"}},
+)
 def refresh_token(
     request: Request, response: Response, session: Session = Depends(get_session)
 ):
@@ -138,7 +157,12 @@ def refresh_token(
     return {"message": "Token refreshed"}
 
 
-@router.post("/logout")
+@router.post(
+    "/logout",
+    response_model=MessageResponse,
+    summary="Log out the current session",
+    description="Revoke the current refresh token if present and clear the authentication cookies from the response.",
+)
 def logout(
     response: Response, request: Request, session: Session = Depends(get_session)
 ):
@@ -151,11 +175,17 @@ def logout(
     return {"message": "Logged out"}
 
 
-@router.get("/me")
+@router.get(
+    "/me",
+    response_model=CurrentUserResponse,
+    summary="Get the current authenticated user",
+    description="Return the authenticated user identity and role resolved from the access token cookie or bearer token.",
+    responses={401: {"model": ErrorResponse, "description": "Authentication is required"}},
+)
 def read_users_me(current_user: User = Depends(get_current_user)):
-    return {
-        "id": str(current_user.id),
-        "email": current_user.email,
-        "role": current_user.role,
-        "full_name": current_user.full_name,
-    }
+    return CurrentUserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        role=current_user.role,
+        full_name=current_user.full_name,
+    )

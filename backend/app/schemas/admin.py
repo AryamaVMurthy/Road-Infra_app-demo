@@ -1,7 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
 
 
 class BulkAssignRequest(BaseModel):
@@ -51,11 +50,24 @@ class WorkerPerformance(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class WorkerAnalyticsSummary(BaseModel):
+    total_workers: int
+    total_active_tasks: int
+    total_resolved: int
+    avg_tasks_per_worker: float
+
+
 class WorkerAnalyticsResponse(BaseModel):
     """Full worker analytics for dashboard"""
 
     workers: List[WorkerPerformance]
-    summary: dict  # totals, averages
+    summary: WorkerAnalyticsSummary
+
+
+class DashboardStatsResponse(BaseModel):
+    reported: int
+    in_progress: int
+    resolved: int
 
 
 class WorkerBulkRegisterRequest(BaseModel):

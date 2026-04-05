@@ -14,6 +14,7 @@ from app.schemas.admin import (
     WorkerWithStats,
     BulkInviteRequest,
 )
+from app.schemas.common import ErrorResponse, MessageResponse, UserRead
 from app.services.admin_analytics_service import AdminAnalyticsService
 from app.services.worker_service import WorkerService
 from app.services.audit import AuditService
@@ -24,7 +25,12 @@ from app.core.time import utc_now
 router = APIRouter()
 
 
-@router.get("/workers", response_model=List[User])
+@router.get(
+    "/workers",
+    response_model=List[UserRead],
+    summary="List workers",
+    description="Return worker user accounts visible to the current administrator, including organization and status metadata.",
+)
 def get_workers(
     session: Session = Depends(get_session),
     current_user: User = Depends(require_admin_user),
@@ -44,7 +50,13 @@ def get_workers_with_stats(
     return AdminAnalyticsService.get_workers_with_stats(session, org_id=org_id)
 
 
-@router.post("/deactivate-worker")
+@router.post(
+    "/deactivate-worker",
+    response_model=MessageResponse,
+    summary="Deactivate a worker",
+    description="Deactivate a worker account and reset any active task assignments back into the admin workflow queue.",
+    responses={404: {"model": ErrorResponse, "description": "Worker not found"}},
+)
 def deactivate_worker(
     worker_id: UUID,
     session: Session = Depends(get_session),
@@ -56,7 +68,13 @@ def deactivate_worker(
     return {"message": "Worker deactivated and tasks reset"}
 
 
-@router.post("/activate-worker")
+@router.post(
+    "/activate-worker",
+    response_model=MessageResponse,
+    summary="Activate a worker",
+    description="Restore an existing worker account so it can receive new assignments and authenticate again.",
+    responses={404: {"model": ErrorResponse, "description": "Worker not found"}},
+)
 def activate_worker(
     worker_id: UUID,
     session: Session = Depends(get_session),
@@ -82,7 +100,12 @@ def bulk_register_workers(
     return WorkerBulkRegisterResult(**result)
 
 
-@router.post("/invite")
+@router.post(
+    "/invite",
+    response_model=MessageResponse,
+    summary="Invite a worker",
+    description="Create a single worker invitation record for a target organization.",
+)
 def invite_worker(
     email: str,
     org_id: UUID,
@@ -104,7 +127,13 @@ def invite_worker(
     return {"message": f"Invite sent to {email}"}
 
 
-@router.post("/bulk-invite")
+@router.post(
+    "/bulk-invite",
+    response_model=MessageResponse,
+    summary="Bulk invite workers",
+    description="Create invitation records for multiple worker email addresses in the current admin organization.",
+    responses={400: {"model": ErrorResponse, "description": "Admin does not belong to an organization"}},
+)
 def bulk_invite_workers(
     data: BulkInviteRequest,
     session: Session = Depends(get_session),

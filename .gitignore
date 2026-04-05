@@ -86,3 +86,6 @@ htmlcov/
 docker_data/
 postgres_data/
 minio_data/
+
+# Git worktrees
+.worktrees/

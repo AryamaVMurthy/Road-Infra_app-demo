@@ -6,7 +6,7 @@ from sqlmodel import select
 from app.core.config import settings
 from app.models.domain import Category, Evidence, Issue
 from app.services.minio_client import minio_client
-from conftest import login_via_otp
+from conftest import login_via_otp, seed_default_authority
 
 
 def _make_test_image_bytes() -> bytes:
@@ -19,6 +19,8 @@ def _make_test_image_bytes() -> bytes:
 def test_report_issue_uploads_to_minio(client, session):
     if not minio_client.bucket_exists(settings.MINIO_BUCKET):
         minio_client.make_bucket(settings.MINIO_BUCKET)
+
+    seed_default_authority(session)
 
     category = Category(name="Pothole", default_priority="P2")
     session.add(category)

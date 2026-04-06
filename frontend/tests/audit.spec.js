@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getLatestOtp } from './helpers/db.js';
+import { loginAs } from './helpers/e2e.js';
 
 const USERS = [
   { email: 'citizen@example.com', role: 'CITIZEN', dashboard: '/citizen', extraRoutes: ['/citizen/report', '/citizen/my-reports'] },
@@ -56,19 +56,7 @@ test.describe('Audit Application Routes', () => {
   for (const user of USERS) {
     test(`Audit ${user.role} Routes`, async ({ page }) => {
         console.log(`Logging in as ${user.role} (${user.email})...`);
-        await page.goto('/login');
-        await page.fill('input[type="email"]', user.email);
-        await page.click('button[type="submit"]');
-        
-        await page.waitForTimeout(2000); 
-        const otp = getLatestOtp(user.email);
-        expect(otp).toBeTruthy();
-        console.log(`OTP for ${user.email}: ${otp}`);
-        
-        await page.fill('input[placeholder="Enter 6-digit code"]', otp);
-        await page.click('button:has-text("Verify & Sign In")');
-        
-        await expect(page).toHaveURL(new RegExp(user.dashboard), { timeout: 10000 });
+        await loginAs(page, user.email, user.dashboard);
 
         const routes = [user.dashboard, ...user.extraRoutes];
         

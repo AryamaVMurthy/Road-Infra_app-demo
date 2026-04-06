@@ -21,6 +21,7 @@ from sqlmodel import Session, select, desc
 
 from app.models.domain import Category, User, Issue, Evidence, Otp
 from app.services.exif import ExifService
+from conftest import seed_default_authority
 
 
 # ---------------------------------------------------------------------------
@@ -29,11 +30,13 @@ from app.services.exif import ExifService
 
 
 def _seed(session: Session):
+    _, organization = seed_default_authority(session)
+
     cat = Category(name="Pothole", default_priority="P2", expected_sla_days=7)
     session.add(cat)
     citizen = User(email="citizen@test.com", role="CITIZEN")
-    admin = User(email="admin@authority.gov.in", role="ADMIN")
-    worker = User(email="worker@authority.gov.in", role="WORKER")
+    admin = User(email="admin@authority.gov.in", role="ADMIN", org_id=organization.id)
+    worker = User(email="worker@authority.gov.in", role="WORKER", org_id=organization.id)
     for u in (citizen, admin, worker):
         session.add(u)
     session.commit()

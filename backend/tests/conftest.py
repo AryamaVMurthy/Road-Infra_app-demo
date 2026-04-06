@@ -41,7 +41,7 @@ from app.services.minio_client import init_minio
 
 # Ensure all domain models are imported so metadata.sorted_tables is populated
 import app.models.domain  # noqa: F401
-from app.models.domain import Otp
+from app.models.domain import Otp, Organization, Zone
 
 
 @pytest.fixture(name="session")
@@ -113,3 +113,19 @@ def login_via_otp(client: TestClient, session: Session, email: str):
         json={"email": email, "otp": otp.code},
     )
     assert login_response.status_code == 200
+
+
+def seed_default_authority(session: Session):
+    zone = Zone(
+        name="Central Zone",
+        boundary="SRID=4326;POLYGON((78.30 17.38,78.40 17.38,78.40 17.48,78.30 17.48,78.30 17.38))",
+    )
+    session.add(zone)
+    session.flush()
+
+    organization = Organization(name="Central Authority", zone_id=zone.id)
+    session.add(organization)
+    session.commit()
+    session.refresh(zone)
+    session.refresh(organization)
+    return zone, organization

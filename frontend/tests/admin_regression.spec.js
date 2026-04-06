@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { runSql } from './helpers/db'
 import { loginAs } from './helpers/e2e'
 
 test.describe('Admin and Sysadmin regression coverage', () => {
@@ -35,6 +36,19 @@ test.describe('Admin and Sysadmin regression coverage', () => {
 
     await expect(page.getByText('Jurisdiction Defined')).toBeVisible()
     await page.getByRole('button', { name: 'Register Authority' }).click()
+
+    await expect
+      .poll(
+        () =>
+          runSql(
+            `SELECT id::text FROM organization WHERE name='${authorityName}' LIMIT 1;`
+          ),
+        { timeout: 10000 }
+      )
+      .not.toBe('')
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: 'Authorities' }).click()
 
     const authorityRow = page.getByRole('row').filter({ hasText: authorityName })
     await expect(authorityRow).toBeVisible()

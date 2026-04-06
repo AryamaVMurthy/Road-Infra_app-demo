@@ -14,7 +14,15 @@ export async function loginAs(page, email, targetPath) {
     throw new Error(`OTP request failed for ${email} with status ${otpRequest.status()}`)
   }
 
-  const otp = getLatestOtp(email)
+  let otp = ''
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    otp = getLatestOtp(email)
+    if (otp) {
+      break
+    }
+    await page.waitForTimeout(250)
+  }
+
   if (!otp) {
     throw new Error(`No OTP found in DB for ${email}`)
   }

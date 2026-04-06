@@ -72,8 +72,9 @@ test.describe('Golden Thread: Full Issue Lifecycle', () => {
     // PHASE 3: Worker
     await loginAs(page, WORKER_EMAIL, '/worker');
     // Accept
+    const etaDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     const acceptResp = await page.request.post(
-      `/api/v1/worker/tasks/${issueId}/accept?eta_date=${encodeURIComponent(new Date(Date.now() + 86400000).toISOString())}`
+      `/api/v1/worker/tasks/${issueId}/accept?eta_date=${encodeURIComponent(etaDate)}`
     );
     expect(acceptResp.ok()).toBe(true);
     // Start

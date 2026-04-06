@@ -2,7 +2,7 @@ import pytest
 from app.models.domain import Category, User, Issue, Otp
 from sqlmodel import Session, select
 import io
-from conftest import login_via_otp
+from conftest import login_via_otp, seed_default_authority
 
 
 def test_root(client):
@@ -36,6 +36,8 @@ def test_auth_flow(client, session):
 
 
 def test_report_issue_integration(client, session):
+    _, organization = seed_default_authority(session)
+
     # Setup: Category
     category = Category(name="Pothole", default_priority="P2")
     session.add(category)
@@ -82,6 +84,8 @@ def test_report_issue_integration(client, session):
 
 
 def test_duplicate_report_integration(client, session):
+    _, organization = seed_default_authority(session)
+
     # Setup: Category and User
     category = Category(name="Pothole")
     session.add(category)

@@ -6,6 +6,7 @@ from app.models.domain import User
 from app.db.session import get_session
 from sqlmodel import Session
 from uuid import UUID
+from app.services.vlm_client import VLMGatewayClient
 
 # Keep OAuth2PasswordBearer for Swagger UI support (it sends Authorization header)
 oauth2_scheme = OAuth2PasswordBearer(
@@ -76,3 +77,10 @@ require_admin_user = require_roles("ADMIN", "SYSADMIN")
 require_sysadmin_user = require_roles("SYSADMIN")
 require_worker_user = require_roles("WORKER")
 require_citizen_user = require_roles("CITIZEN", "ADMIN", "SYSADMIN")
+
+
+def get_vlm_gateway_client() -> VLMGatewayClient:
+    return VLMGatewayClient(
+        settings.VLM_BASE_URL,
+        timeout_seconds=settings.VLM_TIMEOUT_SECONDS,
+    )

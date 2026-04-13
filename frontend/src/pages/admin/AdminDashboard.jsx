@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import api from '../../services/api'
+import api, { API_URL } from '../../services/api'
 import { 
     Shield, Globe, Activity, Database, LogOut, 
     TrendingUp, Users, AlertTriangle, CheckCircle, 
@@ -49,12 +49,14 @@ export default function AdminDashboard() {
   const [audits, setAudits] = useState([])
   const [authorities, setAuthorities] = useState([])
   const [issueTypes, setIssueTypes] = useState([])
+  const [intakeArchive, setIntakeArchive] = useState([])
+  const [selectedArchiveItem, setSelectedArchiveItem] = useState(null)
   const [showAddAuthority, setShowAddAuthority] = useState(false)
   const [showAddIssueType, setShowAddIssueType] = useState(false)
   const [editingIssueType, setEditingIssueType] = useState(null)
   
   const [newOrg, setNewOrg] = useState({ name: '', admin_email: '', zone_name: '' })
-  const [newIT, setNewIT] = useState({ name: '' })
+  const [newIT, setNewIT] = useState({ name: '', classification_guidance: '' })
   const [manualIssue, setManualIssue] = useState({ category_id: '', lat: null, lng: null, address: '', org_id: '' })
   
   const [polygonPoints, setPolygonPoints] = useState([])
@@ -78,6 +80,14 @@ export default function AdminDashboard() {
       if (activeTab === 'logs') {
         const auditRes = await adminService.getAuditLogs(auditFilters)
         setAudits(auditRes.data)
+      }
+      if (activeTab === 'archive') {
+        const archiveRes = await adminService.getIntakeArchive()
+        setIntakeArchive(archiveRes.data)
+        setSelectedArchiveItem((current) => {
+          if (!archiveRes.data.length) return null
+          return archiveRes.data.find((item) => item.id === current?.id) || archiveRes.data[0]
+        })
       }
 
       setLastRefresh(new Date())
@@ -143,6 +153,7 @@ export default function AdminDashboard() {
                 {tabButton('authorities', 'Authorities', Building2)}
                 {tabButton('issue-types', 'Issue Types', Tags)}
                 {tabButton('manual-issue', 'Manual Report', PlusCircle)}
+                {tabButton('archive', 'Intake Archive', XCircle)}
                 <button onClick={() => navigate('/analytics')} className="w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-bold text-slate-500 hover:text-white hover:bg-white/5 transition-all">
                   <Globe size={20} /> <span className="text-sm">Full Analytics</span>
                 </button>
@@ -190,6 +201,83 @@ export default function AdminDashboard() {
                         {stats.map((s) => (
                             <AdminStat key={s.name} label={s.name} value={s.value} trend={s.trend} icon={s.icon} color={s.color} />
                         ))}
+                    </div>
+                </motion.div>
+            )}
+
+            {activeTab === 'archive' && (
+                <motion.div key="archive" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-2xl font-black text-slate-900">Rejected Intake Archive</h3>
+                        <button onClick={fetchData} className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black">Refresh</button>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
+                        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400 tracking-[0.2em]">
+                                    <tr>
+                                        <th className="px-6 py-4">Submission</th>
+                                        <th className="px-6 py-4">Reason</th>
+                                        <th className="px-6 py-4">Model</th>
+                                        <th className="px-6 py-4">Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {intakeArchive.map((item) => (
+                                        <tr
+                                            key={item.id}
+                                            className={cn(
+                                                "cursor-pointer transition-colors",
+                                                selectedArchiveItem?.id === item.id ? "bg-rose-50" : "hover:bg-slate-50"
+                                            )}
+                                            onClick={() => setSelectedArchiveItem(item)}
+                                        >
+                                            <td className="px-6 py-4 text-xs font-mono text-slate-700">{item.id.slice(0, 8)}</td>
+                                            <td className="px-6 py-4 text-sm font-bold text-slate-900">{item.reason_code}</td>
+                                            <td className="px-6 py-4 text-xs text-slate-500">{item.model_id}</td>
+                                            <td className="px-6 py-4 text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl p-6 space-y-4">
+                            {selectedArchiveItem ? (
+                                <>
+                                    <img
+                                        alt="Archived submission preview"
+                                        className="w-full h-64 object-cover rounded-[1.5rem] border border-slate-100"
+                                        src={`${API_URL}/admin/intake-archive/${selectedArchiveItem.id}/image`}
+                                    />
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Reason Code</p>
+                                        <p className="text-sm font-black text-slate-900">{selectedArchiveItem.reason_code}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Category Attempt</p>
+                                        <p className="text-sm text-slate-700">{selectedArchiveItem.selected_category_name_snapshot || 'No category match'}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Classifier Notes</p>
+                                        <p className="text-sm text-slate-700">{selectedArchiveItem.reporter_notes || 'No citizen notes provided'}</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-xs text-slate-500">
+                                        <div>
+                                            <p className="font-black text-slate-700">Model</p>
+                                            <p>{selectedArchiveItem.model_id}</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-slate-700">Quantization</p>
+                                            <p>{selectedArchiveItem.model_quantization || 'Unknown'}</p>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="h-full min-h-64 rounded-[1.5rem] border border-dashed border-slate-200 flex items-center justify-center text-sm font-bold text-slate-400">
+                                    No archived submissions available
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </motion.div>
             )}
@@ -365,7 +453,7 @@ export default function AdminDashboard() {
                         <h3 className="text-2xl font-black text-slate-900">System Issue Types</h3>
                         <button 
                             id="btn-create-type"
-                            onClick={() => {setEditingIssueType(null); setNewIT({ name: '' }); setShowAddIssueType(true)}}
+                            onClick={() => {setEditingIssueType(null); setNewIT({ name: '', classification_guidance: '' }); setShowAddIssueType(true)}}
                             className="bg-primary text-white px-6 py-3 rounded-2xl font-black shadow-xl shadow-primary/20 flex items-center gap-2"
                         >
                             <Plus size={20} /> Create Type
@@ -378,6 +466,7 @@ export default function AdminDashboard() {
                                 <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400 tracking-[0.2em]">
                                     <tr>
                                         <th className="px-8 py-6">Type</th>
+                                        <th className="px-8 py-6">Guidance</th>
                                         <th className="px-8 py-6">Status</th>
                                         <th className="px-8 py-6 text-right">Actions</th>
                                     </tr>
@@ -386,6 +475,7 @@ export default function AdminDashboard() {
                                     {issueTypes.map(cat => (
                                         <tr key={cat.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-8 py-6 font-black text-slate-900">{cat.name}</td>
+                                            <td className="px-8 py-6 text-sm text-slate-500">{cat.classification_guidance || 'No guidance set'}</td>
                                             <td className="px-8 py-6">
                                                 <span className={cn(
                                                     "px-2 py-1 rounded-full text-[9px] font-black uppercase",
@@ -399,7 +489,8 @@ export default function AdminDashboard() {
                                                     <button onClick={() => {
                                                         setEditingIssueType(cat);
                                                         setNewIT({
-                                                            name: cat.name
+                                                            name: cat.name,
+                                                            classification_guidance: cat.classification_guidance || ''
                                                         });
                                                         setShowAddIssueType(true);
                                                     }} className="p-2 text-slate-400 hover:text-primary transition-colors btn-update-type"><Edit2 size={16} /></button>
@@ -434,6 +525,14 @@ export default function AdminDashboard() {
                                                 className="w-full p-4 mt-2 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-bold"
                                                 value={newIT.name}
                                                 onChange={(e) => setNewIT({...newIT, name: e.target.value})}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Classifier Guidance</label>
+                                            <textarea
+                                                className="w-full p-4 mt-2 rounded-xl border-2 border-slate-50 focus:border-primary outline-none font-medium min-h-28"
+                                                value={newIT.classification_guidance}
+                                                onChange={(e) => setNewIT({...newIT, classification_guidance: e.target.value})}
                                             />
                                         </div>
                                         <div className="flex gap-3 pt-4">

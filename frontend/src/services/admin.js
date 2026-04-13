@@ -13,6 +13,7 @@ const adminService = {
   getIssues: () => api.get('/admin/issues'),
   updateIssueStatus: (issueId, status) => api.post(`/admin/update-status?issue_id=${issueId}&status=${status}`),
   updateIssuePriority: (issueId, priority) => api.post(`/admin/update-priority?issue_id=${issueId}&priority=${priority}`),
+  reclassifyIssue: (issueId, categoryId, reason) => api.post(`/admin/issues/${issueId}/reclassify`, { category_id: categoryId, reason }),
   approveIssue: (issueId) => api.post(`/admin/approve?issue_id=${issueId}`),
   rejectIssue: (issueId, reason) => api.post(`/admin/reject?issue_id=${issueId}&reason=${reason}`),
   assignWorker: (issueId, workerId) => api.post(`/admin/assign?issue_id=${issueId}&worker_id=${workerId}`),
@@ -33,6 +34,8 @@ const adminService = {
   deleteIssueType: (id) => api.delete(`/admin/issue-types/${id}`),
   
   createManualIssue: (data) => api.post('/admin/manual-issues', data),
+  getIntakeArchive: () => api.get('/admin/intake-archive'),
+  getIntakeArchiveSubmission: (submissionId) => api.get(`/admin/intake-archive/${submissionId}`),
   
   // Audit Logs
   getAuditLogs: (filters = {}) => {

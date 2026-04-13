@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     # Development mode - skips actual email sending
     DEV_MODE: bool = True
 
+    VLM_BASE_URL: str = "http://localhost:8090"
+    VLM_TIMEOUT_SECONDS: int = 90
+
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", extra="ignore"
     )

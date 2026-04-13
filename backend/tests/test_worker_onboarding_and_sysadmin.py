@@ -96,10 +96,15 @@ def test_sysadmin_authority_issue_type_and_manual_issue(client, session):
         "/api/v1/admin/issue-types",
         json={
             "name": "Street Sign Damage",
+            "classification_guidance": "Broken or missing signage on public roads",
         },
     )
     assert issue_type_response.status_code == 200
     category_id = issue_type_response.json()["id"]
+    assert (
+        issue_type_response.json()["classification_guidance"]
+        == "Broken or missing signage on public roads"
+    )
 
     manual_issue_response = client.post(
         "/api/v1/admin/manual-issues",
@@ -122,6 +127,21 @@ def test_sysadmin_authority_issue_type_and_manual_issue(client, session):
         select(Category).where(Category.id == category_id)
     ).first()
     assert active_category is not None
+    assert (
+        active_category.classification_guidance
+        == "Broken or missing signage on public roads"
+    )
+
+    update_response = client.put(
+        f"/api/v1/admin/issue-types/{category_id}",
+        json={"classification_guidance": "Bent, broken, or missing road signage"},
+    )
+    assert update_response.status_code == 200
+    session.refresh(active_category)
+    assert (
+        active_category.classification_guidance
+        == "Bent, broken, or missing road signage"
+    )
 
     deactivate_response = client.delete(f"/api/v1/admin/issue-types/{category_id}")
     assert deactivate_response.status_code == 200

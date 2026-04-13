@@ -1,13 +1,16 @@
 import logging
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
 from sqlmodel import Session, select, col
 from app.db.session import get_session
 from app.models.domain import Category, Issue, Evidence, User
 from app.schemas.common import ErrorResponse
-from app.schemas.issue import IssueRead, IssueReportResponse
+from app.schemas.issue import IssueRead, IssueReportRejectedResponse, IssueReportResponse
 from app.services.issue_service import IssueService
-from app.api.deps import require_citizen_user
+from app.api.deps import get_vlm_gateway_client, require_citizen_user
+from app.services.report_intake_service import ReportIntakeService
+from app.services.vlm_client import VLMGatewayClient
 from uuid import UUID
 from typing import Any, List, Optional, cast
 
@@ -17,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 @router.post(
     "/report",
-    response_model=IssueReportResponse,
+    response_model=IssueReportResponse | IssueReportRejectedResponse,
     summary="Report a road issue",
     description="Create a new citizen issue report or merge it into an existing nearby report when the location is a duplicate.",
     responses={
@@ -26,81 +29,30 @@ logger = logging.getLogger(__name__)
     },
 )
 async def report_issue(
-    category_id: UUID = Form(...),
+    category_id: Optional[UUID] = Form(None),
     lat: float = Form(...),
     lng: float = Form(...),
     address: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     photo: UploadFile = File(...),
     session: Session = Depends(get_session),
     current_user: User = Depends(require_citizen_user),
+    vlm_client: VLMGatewayClient = Depends(get_vlm_gateway_client),
 ):
-    reporter = current_user
-    category = session.get(Category, category_id)
-    if category is None:
-        raise HTTPException(status_code=404, detail="Issue category not found")
-
-    point_wkt = IssueService.build_point_wkt(lat, lng)
-    duplicate_issue = IssueService.find_duplicate_issue(session, point_wkt)
-
-    if duplicate_issue:
-        photo_content = await photo.read()
-        exif_data = IssueService.extract_exif(photo_content)
-        file_path = IssueService.store_issue_photo(photo_content)
-        duplicate_issue.report_count += 1
-        evidence = IssueService.build_evidence(
-            duplicate_issue.id, reporter.id, file_path, exif_data
-        )
-        session.add(duplicate_issue)
-        session.add(evidence)
-        session.commit()
-        return IssueReportResponse(
-            message="Report submitted successfully",
-            issue_id=duplicate_issue.id,
-        )
-
-    org_id = IssueService.find_org_for_location(session, point_wkt)
-    if org_id is None:
-        logger.warning(
-            "Rejected issue report outside configured jurisdiction for reporter=%s lat=%s lng=%s",
-            reporter.email,
-            lat,
-            lng,
-        )
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"No authority jurisdiction covers coordinates lat={lat}, lng={lng}. "
-                "Ask a system administrator to configure coverage for this area."
-            ),
-        )
-
-    photo_content = await photo.read()
-    exif_data = IssueService.extract_exif(photo_content)
-    file_path = IssueService.store_issue_photo(photo_content)
-
-    new_issue = Issue(
-        category_id=category_id,
-        status="REPORTED",
-        location=point_wkt,
+    outcome = ReportIntakeService.submit_citizen_report(
+        session=session,
+        reporter=current_user,
+        lat=lat,
+        lng=lng,
         address=address,
-        reporter_id=reporter.id,
-        org_id=org_id,
-        priority=None,
-        report_count=1,
+        reporter_notes=description,
+        photo_content=await photo.read(),
+        mime_type=photo.content_type or "image/jpeg",
+        vlm_client=vlm_client,
     )
-    session.add(new_issue)
-    session.commit()
-    session.refresh(new_issue)
-
-    evidence = IssueService.build_evidence(
-        new_issue.id, reporter.id, file_path, exif_data
-    )
-    session.add(evidence)
-    session.commit()
-    return IssueReportResponse(
-        message="Report submitted successfully",
-        issue_id=new_issue.id,
-    )
+    if outcome.accepted:
+        return outcome.response
+    return JSONResponse(status_code=outcome.status_code, content=outcome.response.model_dump(mode="json"))
 
 
 @router.get(

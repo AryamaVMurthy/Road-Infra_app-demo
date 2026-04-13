@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 from sqlmodel import SQLModel, Field, Relationship, Column
 from geoalchemy2 import Geometry
 from shapely.wkt import loads
+from sqlalchemy import JSON
 
 from app.core.time import utc_now
 
@@ -75,6 +76,7 @@ class CategoryBase(SQLModel):
     default_priority: str = "P3"
     expected_sla_days: int = 7
     is_active: bool = True
+    classification_guidance: Optional[str] = None
 
 
 class Category(CategoryBase, table=True):
@@ -97,6 +99,13 @@ class IssueBase(SQLModel):
     eta_date: Optional[datetime] = None
     accepted_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
+    intake_submission_id: Optional[UUID] = None
+    classification_source: Optional[str] = None
+    classification_confidence: Optional[float] = None
+    classification_model_id: Optional[str] = None
+    classification_model_quantization: Optional[str] = None
+    classification_prompt_version: Optional[str] = None
+    reporter_notes: Optional[str] = None
 
 
 from geoalchemy2.shape import to_shape
@@ -203,3 +212,34 @@ class AuditLog(SQLModel, table=True):
     old_value: Optional[str] = None
     new_value: Optional[str] = None
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class ReportIntakeSubmissionBase(SQLModel):
+    reporter_id: UUID = Field(foreign_key="user.id")
+    org_id: Optional[UUID] = Field(default=None, foreign_key="organization.id")
+    issue_id: Optional[UUID] = Field(default=None, foreign_key="issue.id")
+    status: str
+    reason_code: Optional[str] = None
+    selected_category_id: Optional[UUID] = Field(default=None, foreign_key="category.id")
+    selected_category_name_snapshot: Optional[str] = None
+    selected_category_confidence: Optional[float] = None
+    classification_source: Optional[str] = None
+    model_id: Optional[str] = None
+    model_quantization: Optional[str] = None
+    prompt_version: Optional[str] = None
+    reporter_notes: Optional[str] = None
+    address: Optional[str] = None
+    lat: float
+    lng: float
+    file_path: str
+    mime_type: str
+    image_sha256: str
+    raw_primary_result: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    raw_evaluator_result: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    latency_ms: Optional[int] = None
+
+
+class ReportIntakeSubmission(ReportIntakeSubmissionBase, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)

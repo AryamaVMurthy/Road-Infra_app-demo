@@ -251,8 +251,11 @@ def test_intelligent_issue_routing(client: TestClient, session: Session):
     }
     # Using multipart for photo
     import io
+    from PIL import Image
 
-    dummy_photo = io.BytesIO(b"fake-photo-content")
+    dummy_photo = io.BytesIO()
+    Image.new("RGB", (32, 32), color="red").save(dummy_photo, format="JPEG")
+    dummy_photo.seek(0)
     response = client.post(
         "/api/v1/issues/report",
         data=data,

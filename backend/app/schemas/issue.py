@@ -32,3 +32,45 @@ class IssueRead(BaseModel):
 class IssueReportResponse(BaseModel):
     message: str
     issue_id: UUID
+    submission_id: UUID
+    category_id: UUID
+    category_name: str
+    duplicate_merged: bool = False
+
+
+class IssueReportRejectedResponse(BaseModel):
+    message: str
+    submission_id: UUID
+
+
+class IssueReclassifyRequest(BaseModel):
+    category_id: UUID
+    reason: str
+
+
+class IntakeArchiveRead(BaseModel):
+    id: UUID
+    reporter_id: UUID
+    issue_id: Optional[UUID] = None
+    status: str
+    reason_code: Optional[str] = None
+    selected_category_name_snapshot: Optional[str] = None
+    model_id: Optional[str] = None
+    model_quantization: Optional[str] = None
+    prompt_version: Optional[str] = None
+    file_path: str
+    mime_type: str
+    reporter_notes: Optional[str] = None
+    address: Optional[str] = None
+    lat: float
+    lng: float
+    raw_primary_result: Optional[dict[str, Any]] = None
+    raw_evaluator_result: Optional[dict[str, Any]] = None
+    latency_ms: Optional[int] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class IntakeArchiveDetailRead(IntakeArchiveRead):
+    image_url: Optional[str] = None

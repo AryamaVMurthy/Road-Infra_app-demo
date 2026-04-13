@@ -1,12 +1,12 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, select
 
 from app.api.deps import require_roles
 from app.db.session import get_session
-from app.models.domain import Category, User
+from app.models.domain import Category, ReportIntakeSubmission, User
 from app.schemas.common import MessageResponse
 from app.schemas.system_admin import (
     AuthorityCreateRequest,
@@ -17,6 +17,9 @@ from app.schemas.system_admin import (
     ManualIssueCreateRequest,
     ManualIssueCreateResponse,
 )
+from app.schemas.issue import IntakeArchiveDetailRead, IntakeArchiveRead
+from app.services.minio_client import minio_client
+from app.core.config import settings
 from app.services.system_admin_service import SystemAdminService
 
 router = APIRouter()
@@ -142,6 +145,7 @@ def create_issue_type(
         session,
         name=data.name,
         actor_id=current_user.id,
+        classification_guidance=data.classification_guidance,
     )
     session.commit()
     session.refresh(category)
@@ -166,6 +170,7 @@ def update_issue_type(
         actor_id=current_user.id,
         name=data.name,
         is_active=data.is_active,
+        classification_guidance=data.classification_guidance,
     )
     session.commit()
     session.refresh(category)
@@ -220,3 +225,76 @@ def create_manual_issue(
         message="Manual issue created",
         created_at=issue.created_at,
     )
+
+
+@router.get(
+    "/intake-archive",
+    response_model=List[IntakeArchiveRead],
+    summary="List rejected/system-error intake submissions",
+    description="Return rejected or system-error intake submissions for sysadmin review and fraud analysis.",
+)
+def list_intake_archive(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_sysadmin_user),
+):
+    statement = (
+        select(ReportIntakeSubmission)
+        .where(ReportIntakeSubmission.status != "ACCEPTED")
+        .order_by(ReportIntakeSubmission.created_at.desc())
+    )
+    return session.exec(statement).all()
+
+
+@router.get(
+    "/intake-archive/{submission_id}",
+    response_model=IntakeArchiveDetailRead,
+    summary="Get an intake submission archive record",
+    description="Return a single rejected or system-error intake submission with full VLM outputs for sysadmin review.",
+)
+def get_intake_archive_submission(
+    submission_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_sysadmin_user),
+):
+    submission = session.get(ReportIntakeSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=404, detail="Archive submission not found")
+
+    archive_detail = IntakeArchiveDetailRead.model_validate(submission)
+    archive_detail.image_url = (
+        f"{settings.API_V1_STR}/admin/intake-archive/{submission.id}/image"
+    )
+    return archive_detail
+
+
+@router.get(
+    "/intake-archive/{submission_id}/image",
+    summary="Fetch the archived submission image",
+    description="Return the original archived intake image for a rejected or system-error submission.",
+    responses={
+        200: {
+            "description": "Archived submission image",
+            "content": {
+                "image/jpeg": {
+                    "schema": {"type": "string", "format": "binary"}
+                }
+            },
+        }
+    },
+)
+def get_intake_archive_image(
+    submission_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_sysadmin_user),
+):
+    submission = session.get(ReportIntakeSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=404, detail="Archive submission not found")
+
+    try:
+        response = minio_client.get_object(settings.MINIO_BUCKET, submission.file_path)
+        return Response(content=response.read(), media_type=submission.mime_type)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=500, detail="Failed to retrieve archived submission image"
+        ) from exc

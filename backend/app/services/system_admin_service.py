@@ -222,6 +222,7 @@ class SystemAdminService:
         session: Session,
         name: str,
         actor_id: UUID,
+        classification_guidance: Optional[str] = None,
     ) -> Category:
         existing = session.exec(
             select(Category).where(func.lower(Category.name) == name.strip().lower())
@@ -233,6 +234,9 @@ class SystemAdminService:
             name=name.strip(),
             default_priority="P3",
             is_active=True,
+            classification_guidance=classification_guidance.strip()
+            if classification_guidance
+            else None,
         )
         session.add(category)
         session.flush()
@@ -255,6 +259,7 @@ class SystemAdminService:
         actor_id: UUID,
         name: Optional[str] = None,
         is_active: Optional[bool] = None,
+        classification_guidance: Optional[str] = None,
     ) -> Category:
         category = session.get(Category, category_id)
         if not category:
@@ -265,6 +270,10 @@ class SystemAdminService:
             category.name = name.strip()
         if is_active is not None:
             category.is_active = is_active
+        if classification_guidance is not None:
+            category.classification_guidance = (
+                classification_guidance.strip() or None
+            )
 
         session.add(category)
         AuditService.log(

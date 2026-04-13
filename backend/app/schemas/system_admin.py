@@ -35,6 +35,7 @@ class IssueTypeCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=2, max_length=100)
+    classification_guidance: Optional[str] = Field(default=None, max_length=500)
 
 
 class IssueTypeUpdateRequest(BaseModel):
@@ -42,6 +43,7 @@ class IssueTypeUpdateRequest(BaseModel):
 
     name: Optional[str] = Field(default=None, min_length=2, max_length=100)
     is_active: Optional[bool] = None
+    classification_guidance: Optional[str] = Field(default=None, max_length=500)
 
 
 class ManualIssueCreateRequest(BaseModel):

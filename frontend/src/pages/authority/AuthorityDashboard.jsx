@@ -39,6 +39,7 @@ export default function AuthorityDashboard() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
   const [workers, setWorkers] = useState([])
+  const [issueTypes, setIssueTypes] = useState([])
   const [workerAnalytics, setWorkerAnalytics] = useState(null)
   
   const [selectedIssues, setSelectedIssues] = useState([])
@@ -55,17 +56,19 @@ export default function AuthorityDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [issuesRes, workersRes, heatRes, analyticsRes] = await Promise.all([
+      const [issuesRes, workersRes, heatRes, analyticsRes, issueTypesRes] = await Promise.all([
       api.get('/admin/issues'), 
       api.get('/admin/workers-with-stats'),
       api.get('/analytics/heatmap'),
-      api.get('/admin/worker-analytics')
+      api.get('/admin/worker-analytics'),
+      api.get('/categories'),
       ])
 
       setIssues(issuesRes.data)
       setWorkers(workersRes.data)
       setHeatmapData(heatRes.data)
       setWorkerAnalytics(analyticsRes.data)
+      setIssueTypes(issueTypesRes.data.filter((type) => type.is_active))
       setLastRefresh(new Date())
     } catch (err) {
       console.error('Fetch failed:', err)
@@ -118,6 +121,19 @@ export default function AuthorityDashboard() {
         setShowOnboardModal(false)
         fetchData()
     } catch (e) { alert("Onboarding failed") }
+    setSubmitting(false)
+  }
+
+  const handleReclassify = async (issueId, categoryId, reason) => {
+    if (!categoryId || !reason) return
+    setSubmitting(true)
+    try {
+      await adminService.reclassifyIssue(issueId, categoryId, reason)
+      setReviewIssue(null)
+      fetchData()
+    } catch (e) {
+      alert('Reclassification failed')
+    }
     setSubmitting(false)
   }
 
@@ -371,13 +387,15 @@ export default function AuthorityDashboard() {
             )}
            </AnimatePresence>
 
-           <IssueReviewModal 
-                issue={reviewIssue}
-                onClose={() => setReviewIssue(null)}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                submitting={submitting}
-           />
+      <IssueReviewModal 
+        issue={reviewIssue} 
+        issueTypes={issueTypes}
+        onClose={() => setReviewIssue(null)} 
+        onApprove={handleApprove} 
+        onReject={handleReject} 
+        onReclassify={handleReclassify}
+        submitting={submitting}
+      />
 
            {showOnboardModal && (
                <OnboardWorkersModal 

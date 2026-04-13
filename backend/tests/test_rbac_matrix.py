@@ -8,10 +8,11 @@ from PIL import Image
 from sqlmodel import Session
 
 from app.models.domain import Category, Issue, User
-from conftest import login_via_otp
+from conftest import login_via_otp, seed_default_authority
 
 
 def _seed_all_roles(session: Session):
+    _, organization = seed_default_authority(session)
     category = Category(name="TestCat", default_priority="P3", expected_sla_days=7)
     session.add(category)
 
@@ -22,7 +23,11 @@ def _seed_all_roles(session: Session):
         ("ADMIN", "admin@authority.gov.in"),
         ("SYSADMIN", "sysadmin@marg.gov.in"),
     ]:
-        user = User(email=email, role=role)
+        user = User(
+            email=email,
+            role=role,
+            org_id=organization.id if role in {"ADMIN", "WORKER"} else None,
+        )
         session.add(user)
         users[role] = user
 

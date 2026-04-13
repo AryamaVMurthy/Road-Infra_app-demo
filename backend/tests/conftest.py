@@ -38,6 +38,8 @@ _truncate_engine = create_engine(
 from app.main import app as fastapi_app
 from app.db.session import get_session
 from app.services.minio_client import init_minio
+from app.api.deps import get_vlm_gateway_client
+from app.services.vlm_client import VLMClassificationResult
 
 # Ensure all domain models are imported so metadata.sorted_tables is populated
 import app.models.domain  # noqa: F401
@@ -82,6 +84,30 @@ def override_app_db_dependency():
     fastapi_app.dependency_overrides[get_session] = get_session_override
     yield
     fastapi_app.dependency_overrides.pop(get_session, None)
+
+
+@pytest.fixture(autouse=True)
+def override_vlm_gateway_dependency():
+    class DefaultTestVLMGatewayClient:
+        def classify_intake(self, **kwargs):
+            category_name = sorted(kwargs["active_categories"])[0]
+            return VLMClassificationResult(
+                decision="ACCEPTED_CATEGORY_MATCH",
+                category_name=category_name,
+                confidence=0.95,
+                model_id="test-vlm-gateway",
+                model_quantization="Q8_0",
+                prompt_version=kwargs["prompt_version"],
+                raw_primary_result={"decision": "ACCEPTED_CATEGORY_MATCH"},
+                raw_evaluator_result={"status": "pass"},
+                latency_ms=10,
+            )
+
+    fastapi_app.dependency_overrides[get_vlm_gateway_client] = (
+        lambda: DefaultTestVLMGatewayClient()
+    )
+    yield
+    fastapi_app.dependency_overrides.pop(get_vlm_gateway_client, None)
 
 
 @pytest.fixture(name="client")

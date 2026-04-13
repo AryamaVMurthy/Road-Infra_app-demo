@@ -19,9 +19,11 @@ import { API_URL } from '../../../../services/api'
  * @param {Function} onReject - Reject issue callback (with reason)
  * @param {boolean} submitting - Whether an action is in progress
  */
-export const IssueReviewModal = ({ issue, onClose, onApprove, onReject, submitting }) => {
+export const IssueReviewModal = ({ issue, issueTypes = [], onClose, onApprove, onReject, onReclassify, submitting }) => {
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
+  const [nextCategoryId, setNextCategoryId] = useState(issue?.category_id || '')
+  const [reclassifyReason, setReclassifyReason] = useState('')
 
   if (!issue) return null
 
@@ -89,6 +91,55 @@ export const IssueReviewModal = ({ issue, onClose, onApprove, onReject, submitti
           {/* Issue Details */}
           <div className="px-6 sm:px-10 py-4 bg-white border-t">
             <IssueDetails issue={issue} />
+          </div>
+
+          <div className="px-6 sm:px-10 py-6 bg-white border-t space-y-4">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Classification</p>
+              <p className="text-sm font-bold text-slate-800 mt-1">
+                {issue.category_name}
+                {issue.classification_confidence != null && ` • ${Math.round(issue.classification_confidence * 100)}% confidence`}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                {issue.classification_model_id || 'No model metadata'}
+                {issue.classification_prompt_version && ` • prompt ${issue.classification_prompt_version}`}
+              </p>
+            </div>
+
+            {onReclassify && issueTypes.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto] items-end">
+                <label className="text-xs font-bold text-slate-600">
+                  Reclassify Category
+                  <select
+                    aria-label="Reclassify Category"
+                    className="mt-1 w-full p-3 rounded-xl border border-slate-200 bg-white"
+                    value={nextCategoryId}
+                    onChange={(e) => setNextCategoryId(e.target.value)}
+                  >
+                    {issueTypes.map((type) => (
+                      <option key={type.id} value={type.id}>{type.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-bold text-slate-600">
+                  Reclassification Reason
+                  <input
+                    aria-label="Reclassification Reason"
+                    className="mt-1 w-full p-3 rounded-xl border border-slate-200 bg-white"
+                    value={reclassifyReason}
+                    onChange={(e) => setReclassifyReason(e.target.value)}
+                    placeholder="Explain the override"
+                  />
+                </label>
+                <button
+                  onClick={() => onReclassify(issue.id, nextCategoryId, reclassifyReason)}
+                  className="px-5 py-3 bg-slate-900 text-white rounded-xl font-bold"
+                  disabled={!nextCategoryId || !reclassifyReason.trim()}
+                >
+                  Save Reclassification
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Actions Footer */}

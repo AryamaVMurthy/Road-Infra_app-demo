@@ -170,23 +170,28 @@ class TestDuplicateDetection:
 
 
 class TestReportEndpointDuplicates:
-    def test_report_with_unknown_category_fails_explicitly(self, client, session):
+    def test_report_without_active_categories_fails_explicitly(self, client, session):
         cat, citizen, _ = _seed(session)
+        cat.is_active = False
+        session.add(cat)
+        session.commit()
         photo = _make_jpeg()
         _login(client, session, citizen.email)
 
         response = client.post(
             "/api/v1/issues/report",
             data={
-                "category_id": str(uuid4()),
                 "lat": "17.44",
                 "lng": "78.35",
             },
             files={"photo": ("test1.jpg", photo, "image/jpeg")},
         )
 
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Issue category not found"
+        assert response.status_code == 500
+        assert (
+            response.json()["detail"]
+            == "No active issue types are configured for VLM classification"
+        )
 
     def test_report_at_same_location_increments_count(self, client, session):
         cat, citizen, _ = _seed(session)

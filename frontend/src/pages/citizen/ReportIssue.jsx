@@ -12,23 +12,16 @@ import { InteractiveMap, Marker } from '../../components/InteractiveMap'
 
 
 export default function ReportIssue() {
-  const [categories, setCategories] = useState([])
-  const [selectedCategory, setSelectedCategory] = useState('')
   const [description, setDescription] = useState('')
   const [photo, setPhoto] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
   const [position, setPosition] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(1)
+  const [submissionResult, setSubmissionResult] = useState(null)
   const navigate = useNavigate()
 
   const { loading: geoLoading, position: geoPosition } = useGeolocation()
-
-  useEffect(() => {
-    api.get('/categories').then(res => {
-      setCategories(res.data.filter(c => c.is_active))
-    })
-  }, [])
 
   useEffect(() => {
     if (!geoLoading && geoPosition && !position) {
@@ -45,25 +38,31 @@ export default function ReportIssue() {
   }
 
   const handleSubmit = async () => {
-    if (!selectedCategory || !position || !photo) {
+    if (!position || !photo) {
       alert("Please complete all required fields")
       return
     }
 
     setSubmitting(true)
     const formData = new FormData()
-    formData.append('category_id', selectedCategory)
     formData.append('description', description)
     formData.append('lat', position.lat)
     formData.append('lng', position.lng)
     formData.append('photo', photo)
 
     try {
-      await api.post('/issues/report', formData)
+      const response = await api.post('/issues/report', formData)
+      setSubmissionResult({ kind: 'accepted', ...response.data })
       setStep(3)
       setTimeout(() => navigate('/citizen/my-reports'), 3000)
     } catch (err) {
-      alert("Failed to submit report. Please try again.")
+      const rejection = err?.response?.data
+      if (err?.response?.status === 422 && rejection?.submission_id) {
+        setSubmissionResult({ kind: 'rejected', ...rejection })
+        setStep(3)
+      } else {
+        alert("Failed to submit report. Please try again.")
+      }
     } finally {
       setSubmitting(false)
     }
@@ -134,28 +133,8 @@ export default function ReportIssue() {
                     )}
                 </div>
 
-                <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Incident Category</label>
-                    <div className="grid grid-cols-2 gap-3">
-                        {categories.map((cat) => (
-                            <button
-                                key={cat.id}
-                                onClick={() => setSelectedCategory(cat.id)}
-                                className={cn(
-                                    "p-4 rounded-2xl text-xs font-bold text-left border-2 transition-all active:scale-95",
-                                    selectedCategory === cat.id 
-                                        ? "bg-primary text-white border-primary shadow-xl shadow-primary/20" 
-                                        : "bg-white text-slate-600 border-slate-100 hover:border-slate-200"
-                                )}
-                            >
-                                {cat.name}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
                 <button 
-                    disabled={!photo || !selectedCategory}
+                    disabled={!photo}
                     onClick={() => setStep(2)}
                     className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black shadow-2xl disabled:bg-slate-200 disabled:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-3"
                 >
@@ -200,7 +179,7 @@ export default function ReportIssue() {
                 </div>
 
                 <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Additional Notes (Optional)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Notes For Classifier And Field Team (Optional)</label>
                     <textarea 
                         className="w-full p-6 bg-slate-50 rounded-[2rem] border-2 border-transparent focus:border-primary focus:bg-white transition-all outline-none font-medium text-slate-700 resize-none"
                         rows="4"
@@ -247,7 +226,14 @@ export default function ReportIssue() {
                     <p className="text-slate-500 font-medium max-w-xs mx-auto">Your report has been received by the central dispatch system.</p>
                 </div>
                 <div className="pt-10">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Redirecting to Dashboard...</p>
+                    {submissionResult?.kind === 'accepted' ? (
+                      <>
+                        <p className="text-slate-500 font-medium max-w-xs mx-auto">Assigned to {submissionResult.category_name}.</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse mt-4">Redirecting to Dashboard...</p>
+                      </>
+                    ) : (
+                      <p className="text-slate-500 font-medium max-w-xs mx-auto">The image was rejected by intake screening.</p>
+                    )}
                 </div>
             </motion.div>
           )}

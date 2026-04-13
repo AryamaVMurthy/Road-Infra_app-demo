@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { loginAs } from './helpers/e2e'
+import { ensureTestImage, loginAs } from './helpers/e2e'
 import { resetDatabase } from './helpers/db'
 
 test.describe('Map Engine Rigor', () => {
@@ -23,40 +23,57 @@ test.describe('Map Engine Rigor', () => {
   })
 
   test('Geocoder search works correctly', async ({ page }) => {
+    const testImage = ensureTestImage('map_rigor_geocoder.jpg')
     await loginAs(page, 'citizen@example.com', '/citizen/report')
     
-    await page.setInputFiles('input[type="file"]', {
-      name: 'test.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from('fake-image')
-    })
-    
-    await page.click('button:has-text("Pothole")')
+    await page.setInputFiles('input[type="file"]', testImage)
     await page.click('button:has-text("Continue to Location")')
+
+    const loader = page.locator('text=Getting your location...')
+    if (await loader.isVisible().catch(() => false)) {
+      await expect(loader).not.toBeVisible({ timeout: 20000 })
+    }
     
+    const geocoder = page.locator('.mapboxgl-ctrl-geocoder')
     const geocoderInput = page.locator('.mapboxgl-ctrl-geocoder--input')
-    await expect(geocoderInput).toBeVisible({ timeout: 10000 })
+    const controlsVisible = await geocoder.first().isVisible().catch(() => false)
+      && await geocoderInput.first().isVisible().catch(() => false)
+
+    if (!controlsVisible) {
+      await expect(page.getByText('Map unavailable: missing Mapbox token configuration.')).toBeVisible()
+      return
+    }
+
+    await expect(geocoder.first()).toBeVisible({ timeout: 10000 })
+    await expect(geocoderInput.first()).toBeVisible({ timeout: 10000 })
     
-    await geocoderInput.fill('Central Park')
+    await geocoderInput.first().fill('Central Park')
     await page.keyboard.press('Enter')
     
     await page.waitForTimeout(1000)
   })
 
   test('GPS Locate control exists and is clickable', async ({ page }) => {
+    const testImage = ensureTestImage('map_rigor_gps.jpg')
     await loginAs(page, 'citizen@example.com', '/citizen/report')
     
-    await page.setInputFiles('input[type="file"]', {
-      name: 'test.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from('fake-image')
-    })
-    
-    await page.click('button:has-text("Pothole")')
+    await page.setInputFiles('input[type="file"]', testImage)
     await page.click('button:has-text("Continue to Location")')
+
+    const loader = page.locator('text=Getting your location...')
+    if (await loader.isVisible().catch(() => false)) {
+      await expect(loader).not.toBeVisible({ timeout: 20000 })
+    }
     
     const locateBtn = page.locator('.mapboxgl-ctrl-geolocate')
-    await expect(locateBtn).toBeVisible({ timeout: 10000 })
-    await locateBtn.click()
+    const controlVisible = await locateBtn.first().isVisible().catch(() => false)
+
+    if (!controlVisible) {
+      await expect(page.getByText('Map unavailable: missing Mapbox token configuration.')).toBeVisible()
+      return
+    }
+
+    await expect(locateBtn.first()).toBeVisible({ timeout: 10000 })
+    await locateBtn.first().click()
   })
 })

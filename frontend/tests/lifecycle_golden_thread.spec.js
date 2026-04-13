@@ -8,6 +8,7 @@ const ADMIN_EMAIL = 'admin@authority.gov.in';
 const WORKER_EMAIL = 'worker@authority.gov.in';
 
 let WORKER_ID;
+let CATEGORY_ID;
 
 test.describe('Golden Thread: Full Issue Lifecycle', () => {
   test.setTimeout(180000);
@@ -17,10 +18,14 @@ test.describe('Golden Thread: Full Issue Lifecycle', () => {
     WORKER_ID = runSql(
       `SELECT id FROM "user" WHERE email='${WORKER_EMAIL}' LIMIT 1;`
     ).trim();
+    CATEGORY_ID = runSql(
+      `SELECT id FROM category WHERE name='Pothole' LIMIT 1;`
+    ).trim();
     expect(WORKER_ID).toBeTruthy();
+    expect(CATEGORY_ID).toBeTruthy();
   });
 
-  test('REPORTED → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED', async ({ page, context }) => {
+  test('manual issue → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED', async ({ page, context }) => {
     page.on('console', msg => {
       const text = msg.text();
       if (!text.includes('ERR_INSUFFICIENT_RESOURCES') && !text.includes('Failed to load resource')) {
@@ -33,29 +38,20 @@ test.describe('Golden Thread: Full Issue Lifecycle', () => {
 
     const testImage = ensureTestImage();
 
-    // PHASE 1: Citizen reports
-    await loginAs(page, CITIZEN_EMAIL, '/citizen');
-    await expect(page.locator('text=Report New Issue')).toBeVisible({ timeout: 15000 });
-    await page.click('text=Report New Issue');
-    await page.waitForURL('**/citizen/report', { timeout: 10000 });
-
-    // Step 1: Capture Evidence
-    await page.locator('input[type="file"]').setInputFiles(testImage);
-    await page.locator('button:has-text("Pothole")').click();
-    await page.click('button:has-text("Continue to Location")');
-
-    // Step 2: Pin Location
-    await page.click('button:has-text("Broadcast Report")');
-
-    // Step 3: Success
-    await Promise.race([
-        page.waitForURL('**/citizen/my-reports', { timeout: 15000 }),
-        page.waitForSelector('text=/Successfully Logged/i', { timeout: 15000 }),
-    ]);
-
-    const issueId = runSql(
-      `SELECT id FROM issue WHERE status='REPORTED' ORDER BY created_at DESC LIMIT 1;`
-    ).trim();
+    // PHASE 1: Sysadmin creates a routed issue explicitly so the workflow test is
+    // deterministic even with VLM intake screening enabled.
+    await loginAs(page, 'sysadmin@marg.gov.in', '/admin');
+    const createResponse = await page.request.post('/api/v1/admin/manual-issues', {
+      data: {
+        category_id: CATEGORY_ID,
+        lat: 17.4447,
+        lng: 78.3483,
+        address: 'Golden Thread Road',
+      },
+    });
+    expect(createResponse.ok()).toBe(true);
+    const createBody = await createResponse.json();
+    const issueId = createBody.issue_id;
     expect(issueId).toBeTruthy();
     console.log(`PHASE 1 DONE: Issue ${issueId} created as REPORTED`);
 

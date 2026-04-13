@@ -8,10 +8,11 @@ from sqlalchemy.orm import selectinload
 
 from app.db.session import get_session
 from app.api.deps import require_admin_user
-from app.models.domain import User, Issue
+from app.models.domain import User, Issue, Category
 from app.schemas.common import ErrorResponse, MessageResponse
-from app.schemas.issue import IssueRead
+from app.schemas.issue import IssueRead, IssueReclassifyRequest
 from app.services.workflow_service import WorkflowService
+from app.services.audit import AuditService
 
 router = APIRouter()
 
@@ -128,8 +129,6 @@ def update_issue_priority(
     issue.priority = priority
     session.add(issue)
 
-    from app.services.audit import AuditService
-
     AuditService.log(
         session,
         "PRIORITY_CHANGE",
@@ -141,3 +140,41 @@ def update_issue_priority(
     )
     session.commit()
     return {"message": f"Issue priority updated to {priority}"}
+
+
+@router.post(
+    "/issues/{issue_id}/reclassify",
+    response_model=MessageResponse,
+    summary="Override an issue category",
+    description="Allow admin or sysadmin users to correct the category assigned during intake classification.",
+)
+def reclassify_issue(
+    issue_id: UUID,
+    data: IssueReclassifyRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_admin_user),
+):
+    issue = session.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    if current_user.role == "ADMIN" and issue.org_id != current_user.org_id:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    category = session.get(Category, data.category_id)
+    if not category or not category.is_active:
+        raise HTTPException(status_code=404, detail="Issue category not found")
+
+    old_category_id = issue.category_id
+    issue.category_id = category.id
+    session.add(issue)
+    AuditService.log(
+        session,
+        "CATEGORY_OVERRIDE",
+        "ISSUE",
+        issue.id,
+        current_user.id,
+        str(old_category_id),
+        str(category.id),
+    )
+    session.commit()
+    return {"message": "Issue category updated"}

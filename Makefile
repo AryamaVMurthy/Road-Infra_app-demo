@@ -1,23 +1,29 @@
-.PHONY: test-backend test-frontend test-e2e test-all coverage
+.PHONY: dev-up dev-down dev-logs dev-ps test-backend test-gateway test-frontend test-e2e test-all
+
+dev-up:
+	@./scripts/dev_up.sh
+
+dev-down:
+	@docker compose down
+
+dev-logs:
+	@docker compose logs -f --tail=200 frontend backend vlm-gateway llama-server
+
+dev-ps:
+	@docker compose ps
 
 test-backend:
-	@echo "Running Backend Tests..."
-	@docker run --rm -v "$$(pwd)/backend:/app" --network lucky-panda_default \
-		-e POSTGRES_SERVER=db \
-		-e MINIO_ENDPOINT=minio:9000 \
-		lucky-panda-backend sh -c "pip install pytest pytest-asyncio pytest-cov && PYTHONPATH=. python -m pytest tests"
+	@PYTHONPATH=backend .venv/bin/pytest backend/tests -q
+
+test-gateway:
+	@PYTHONPATH=$$(pwd) .venv/bin/pytest vlm_gateway/tests -q
 
 test-frontend:
-	@echo "Running Frontend Unit Tests..."
-	@cd frontend && npm test
+	@npm --prefix frontend run lint
+	@npm --prefix frontend run test
+	@npm --prefix frontend run build
 
 test-e2e:
-	@echo "Running End-to-End Tests..."
-	@cd frontend && npx playwright test
+	@npm --prefix frontend exec playwright test
 
-test-all: test-backend test-frontend test-e2e
-	@echo "All tests passed with high rigor!"
-
-coverage:
-	@echo "Generating Coverage Report..."
-	@PYTHONPATH=backend backend/venv/bin/pytest --cov=backend/app backend/tests --cov-report=html
+test-all: test-backend test-gateway test-frontend test-e2e

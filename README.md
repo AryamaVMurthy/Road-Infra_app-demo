@@ -13,37 +13,47 @@ REPORTED → ASSIGNED → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED
 | Backend | FastAPI, SQLModel, PostgreSQL + PostGIS, MinIO |
 | Frontend | React 18, Vite, Tailwind CSS, Mapbox GL, Recharts |
 | Auth | OTP login + JWT access/refresh tokens in HttpOnly cookies |
+| AI Intake | `llama-server` + `llama.cpp`, Redis-backed `vlm-gateway`, DSPy prompt artifact |
 | Infra | Docker Compose, Nginx reverse proxy |
-| Testing | pytest (154 tests), Vitest (17 tests), Playwright E2E (38 tests) |
+| Testing | pytest, Vitest, Playwright E2E |
 
 ---
 
-## Quick Start (Development)
+## Quick Start (Local AI Stack)
 
 ### Prerequisites
 
-- Docker & Docker Compose v2+
-- Node.js 20+
-- Python 3.12+
+- Docker Engine with Docker Compose v2
 
-### 1. Clone and configure
+You do **not** need local Node.js or Python just to boot the application stack. Those are only needed if you want to run the local test suites outside Docker.
+
+### 1. Clone the branch
 
 ```bash
 git clone https://github.com/AryamaVMurthy/Road-Infra_app-demo.git
 cd Road-Infra_app-demo
-
-# Copy env templates
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
 ```
 
-Edit `backend/.env` and `frontend/.env` with your values. For development, the defaults work out of the box.
-
-### 2. Start with Docker Compose
+If you are using the AI intake branch specifically:
 
 ```bash
-docker compose up --build
+git checkout with_AI_filtering
 ```
+
+### 2. Start the full stack
+
+```bash
+make dev-up
+```
+
+This is the supported fresh-machine startup path for this branch. It:
+
+- builds and starts the full Compose stack
+- waits for `db`, `minio`, `redis`, and `llama-server` to become healthy
+- waits for `backend`, `vlm-gateway`, and `frontend` to be running
+- prints the URLs and seeded accounts you need next
+
+The first `llama-server` start may take several minutes because the GGUF model is downloaded into the Docker cache volume.
 
 ### 3. Access the application
 
@@ -52,7 +62,36 @@ docker compose up --build
 | Frontend | http://localhost:3011 |
 | API (via frontend proxy) | http://localhost:3011/api/v1 |
 | API Docs (dev only) | http://localhost:3011/api/v1/docs |
+| VLM Gateway Docs | http://localhost:8090/docs |
+| llama-server Health | http://localhost:8081/health |
 | MinIO Console | http://localhost:9011 |
+
+### 4. Common local commands
+
+```bash
+make dev-ps
+make dev-logs
+make dev-down
+```
+
+---
+
+## Level 1 AI Intake
+
+This branch uses a **Level 1 AI screening flow only**:
+
+- the citizen submits a photo, location, and optional description
+- the AI decides only whether the image is an in-scope civic report or a rejected/spam submission
+- the AI does **not** assign the final issue category
+- accepted reports enter the system as **uncategorized**
+- an admin or sysadmin assigns the category manually later
+- sysadmin can inspect the intake archive and override rejected submissions
+
+Current runtime path:
+
+```text
+frontend -> backend -> vlm-gateway -> llama-server
+```
 
 ---
 
@@ -173,14 +212,16 @@ docker compose logs backend --tail=200 | grep -i otp
 
 ### Citizen
 1. Request OTP and login
-2. Report issue with photo, category, and map location
-3. Track reports in My Reports with audit trail
+2. Report issue with photo, map location, and optional description
+3. AI screens the submission as accepted or rejected
+4. Track accepted reports in My Reports with audit trail
 
 ### Admin / Authority
 1. Review issues on Operations Map and Kanban Triage
-2. Assign/reassign/unassign workers
-3. Approve or reject resolved issues
-4. View worker analytics and heatmap
+2. Assign the category for uncategorized accepted issues
+3. Assign/reassign/unassign workers
+4. Approve or reject resolved issues
+5. View worker analytics and heatmap
 
 ### Worker
 1. View assigned tasks
@@ -191,7 +232,8 @@ docker compose logs backend --tail=200 | grep -i otp
 1. Register new authorities with jurisdiction
 2. Manage issue types (CRUD)
 3. Onboard workers via invite or bulk CSV
-4. View system-wide audit logs
+4. Review the AI intake archive and override rejected submissions when needed
+5. View system-wide audit logs
 
 ---
 
@@ -208,7 +250,7 @@ docker compose logs backend --tail=200 | grep -i otp
 - `GET /api/v1/categories` — List active issue categories
 
 ### Issues (Citizen)
-- `POST /api/v1/issues/report` — Report new issue (multipart)
+- `POST /api/v1/issues/report` — Report new issue (multipart, no category required)
 - `GET /api/v1/issues/my-reports` — List citizen's reports
 
 ### Admin
@@ -221,6 +263,7 @@ docker compose logs backend --tail=200 | grep -i otp
 - `POST /api/v1/admin/bulk-assign` — Bulk assign issues
 - `POST /api/v1/admin/reassign` — Reassign to different worker
 - `POST /api/v1/admin/unassign` — Remove assignment
+- `POST /api/v1/admin/issues/{issue_id}/assign-category` — Assign or correct category manually
 
 ### Admin - Workers
 - `GET /api/v1/admin/workers` — All workers
@@ -245,6 +288,10 @@ docker compose logs backend --tail=200 | grep -i otp
 - `PUT /api/v1/admin/issue-types/{category_id}` — Update issue type
 - `DELETE /api/v1/admin/issue-types/{category_id}` — Deactivate issue type
 - `POST /api/v1/admin/manual-issues` — Create manual issue
+- `GET /api/v1/admin/intake-archive` — List archived intake submissions
+- `GET /api/v1/admin/intake-archive/{submission_id}` — View intake submission details
+- `GET /api/v1/admin/intake-archive/{submission_id}/image` — View archived intake image
+- `POST /api/v1/admin/intake-archive/{submission_id}/mark-not-spam` — Override rejected submission into accepted issue
 
 ### Worker
 - `GET /api/v1/worker/tasks` — Assigned tasks
@@ -268,32 +315,17 @@ docker compose logs backend --tail=200 | grep -i otp
 ### Run all tests
 
 ```bash
-# Backend (154 tests)
-cd backend
-source ../.venv/bin/activate
-PYTHONPATH=. pytest tests/ -q --tb=short
-
-# Frontend lint (0 errors)
-cd frontend
-npm run lint
-
-# Frontend unit/integration (17 tests)
-cd frontend
-npm test
-
-# Frontend E2E (38 tests)
-cd frontend
-npx playwright test --reporter=list
+make test-backend
+make test-gateway
+make test-frontend
+make test-e2e
 ```
 
-### Verified Test Status
+For a full local verification pass, run:
 
-| Suite | Tests | Coverage |
-|-------|-------|----------|
-| Backend pytest | 154 passed | Auth, RBAC, workflow lifecycle, audit, analytics, media, bulk ops |
-| Frontend ESLint | 0 errors | All source files |
-| Frontend Vitest | 17 passed | Auth interceptor, context, login, modals |
-| Playwright E2E | 38 passed | Full lifecycle, RBAC security, mobile responsiveness, maps, analytics |
+```bash
+make test-all
+```
 
 ---
 

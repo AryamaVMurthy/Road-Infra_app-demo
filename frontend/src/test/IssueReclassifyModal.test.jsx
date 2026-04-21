@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { IssueReviewModal } from '../features/authority/components/Modals/IssueReviewModal'
 
 
-describe('IssueReviewModal reclassification', () => {
-  it('shows AI classification metadata and submits a reclassification request', () => {
+describe('IssueReviewModal category assignment', () => {
+  it('shows manual category assignment controls and submits an assignment request', () => {
     const onReclassify = vi.fn()
 
     render(
@@ -13,11 +13,8 @@ describe('IssueReviewModal reclassification', () => {
         issue={{
           id: 'issue-1',
           status: 'REPORTED',
-          category_name: 'Pothole',
-          category_id: 'cat-1',
-          classification_model_id: 'LiquidAI/LFM2.5-VL-1.6B-GGUF',
-          classification_confidence: 0.91,
-          classification_prompt_version: 'v1',
+          category_name: null,
+          category_id: null,
         }}
         issueTypes={[
           { id: 'cat-1', name: 'Pothole' },
@@ -31,16 +28,16 @@ describe('IssueReviewModal reclassification', () => {
       />
     )
 
-    expect(screen.getByText(/ai classification/i)).toBeInTheDocument()
-    expect(screen.getByText(/LiquidAI\/LFM2.5-VL-1.6B-GGUF/i)).toBeInTheDocument()
+    expect(screen.getByText(/category assignment/i)).toBeInTheDocument()
+    expect(screen.getByText(/spam/i)).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText(/reclassify category/i), {
+    fireEvent.change(screen.getByLabelText(/assign category/i), {
       target: { value: 'cat-2' },
     })
-    fireEvent.change(screen.getByLabelText(/reclassification reason/i), {
+    fireEvent.change(screen.getByLabelText(/assignment reason/i), {
       target: { value: 'Manual review found drainage issue' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /save reclassification/i }))
+    fireEvent.click(screen.getByRole('button', { name: /save category/i }))
 
     expect(onReclassify).toHaveBeenCalledWith('issue-1', 'cat-2', 'Manual review found drainage issue')
   })

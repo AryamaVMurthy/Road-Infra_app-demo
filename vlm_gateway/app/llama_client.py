@@ -3,23 +3,23 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any, Callable
 
 import httpx
 
-from vlm_gateway.app.parser import (
-    ContractViolationError,
-    parse_evaluator_response,
-    parse_llama_chat_response,
-)
+from vlm_gateway.app.parser import ContractViolationError, parse_llama_chat_response
 from vlm_gateway.app.prompts import (
-    build_description_request,
-    build_evaluator_request,
+    DSPyLevel1PromptSource,
     build_primary_classification_request,
+    load_dspy_level1_prompt_source,
 )
 
 
 Classifier = Callable[[dict[str, Any]], dict[str, Any]]
+DEFAULT_DSPY_LEVEL1_PROGRAM_PATH = (
+    Path(__file__).resolve().parents[2] / "artifacts" / "models" / "intake_dspy" / "level1" / "gepa" / "program"
+)
 
 
 def create_llama_classifier(
@@ -27,32 +27,23 @@ def create_llama_classifier(
     *,
     model_id: str = "LiquidAI/LFM2.5-VL-1.6B-GGUF",
     model_quantization: str = "Q8_0",
-    timeout_seconds: int = 20,
+    timeout_seconds: int = 180,
+    prompt_program_path: Path | str = DEFAULT_DSPY_LEVEL1_PROGRAM_PATH,
 ) -> Classifier:
     client = httpx.Client(timeout=timeout_seconds)
+    prompt_source = load_dspy_level1_prompt_source(prompt_program_path)
 
     def classify(job: dict[str, Any]) -> dict[str, Any]:
         started = time.perf_counter()
         image_data_url = f"data:{job['mime_type']};base64,{job['image_base64']}"
-        description_request = build_description_request(
-            image_data_url=image_data_url,
-            reporter_notes=job.get("reporter_notes"),
-            prompt_version=job["prompt_version"],
-        )
-        description_request["model"] = model_id
-        description_request["max_tokens"] = 128
-        description_response = _post_json(client, endpoint, description_request)
-        image_description = _extract_text_content(description_response)
-
         primary_request = build_primary_classification_request(
             image_data_url=image_data_url,
-            image_description=image_description,
             reporter_notes=job.get("reporter_notes"),
             active_categories=job["active_categories"],
-            prompt_version=job["prompt_version"],
+            prompt_source=prompt_source,
         )
         primary_request["model"] = model_id
-        primary_request["max_tokens"] = 256
+        primary_request["max_tokens"] = 160
 
         primary_response = _post_json(client, endpoint, primary_request)
         primary_result = parse_llama_chat_response(
@@ -61,52 +52,47 @@ def create_llama_classifier(
             prompt_version=job["prompt_version"],
         )
 
-        if primary_result.decision == "ACCEPTED_CATEGORY_MATCH":
-            evaluator_request = build_evaluator_request(
-                image_data_url=image_data_url,
-                image_description=image_description,
-                active_categories=job["active_categories"],
-                prompt_version=job["prompt_version"],
-                primary_result={
-                    "decision": primary_result.decision,
-                    "category_name": primary_result.category_name,
-                    "confidence": primary_result.confidence,
-                },
-            )
-            evaluator_request["model"] = model_id
-            evaluator_request["max_tokens"] = 128
-
-            evaluator_response = _post_json(client, endpoint, evaluator_request)
-            evaluator_result = parse_evaluator_response(payload=evaluator_response)
-            if evaluator_result.status != "pass":
-                raise ContractViolationError(
-                    "Evaluator rejected the primary model result: "
-                    f"{evaluator_result.failure_reason or 'unspecified'}"
-                )
-        else:
-            evaluator_response = {
-                "status": "skipped",
-                "reason": "primary_rejection_does_not_require_category_confirmation",
-            }
-
         latency_ms = int((time.perf_counter() - started) * 1000)
         return {
             "decision": primary_result.decision,
-            "category_name": primary_result.category_name,
+            "category_name": None,
             "confidence": primary_result.confidence,
-            "model_id": primary_result.model_id or model_id,
+            "model_id": _normalize_model_id(
+                primary_result.model_id,
+                configured_model_id=model_id,
+                model_quantization=model_quantization,
+            ),
             "model_quantization": model_quantization,
             "prompt_version": primary_result.prompt_version,
-            "raw_primary_result": {
-                "description": image_description,
-                "description_response": description_response,
-                "classification_response": primary_response,
+            "raw_primary_result": _build_raw_primary_result(
+                prompt_source=prompt_source,
+                response_payload=primary_response,
+                primary_result=primary_result,
+            ),
+            "raw_evaluator_result": {
+                "status": "not_run",
+                "reason": "level1_only_classifier",
             },
-            "raw_evaluator_result": evaluator_response,
             "latency_ms": latency_ms,
         }
 
     return classify
+
+
+def _build_raw_primary_result(
+    *,
+    prompt_source: DSPyLevel1PromptSource,
+    response_payload: dict[str, Any],
+    primary_result,
+) -> dict[str, Any]:
+    return {
+        "prompt_backend": "llama_dspy_level1",
+        "output_field_names": list(prompt_source.output_field_names),
+        "decision": primary_result.decision,
+        "best_matching_category_hint": primary_result.best_matching_category_hint,
+        "rationale": primary_result.rationale,
+        "response_payload": response_payload,
+    }
 
 
 def _post_json(
@@ -122,18 +108,16 @@ def _post_json(
     return body
 
 
-def _extract_text_content(payload: dict[str, Any]) -> str:
-    try:
-        content = payload["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise ContractViolationError(
-            "llama-server payload must include choices[0].message.content"
-        ) from exc
+def _normalize_model_id(
+    raw_model_id: str,
+    *,
+    configured_model_id: str,
+    model_quantization: str,
+) -> str:
+    if not raw_model_id:
+        return configured_model_id
 
-    if not isinstance(content, str):
-        raise ContractViolationError("Description response content must be plain text")
-
-    cleaned = content.strip()
-    if not cleaned:
-        raise ContractViolationError("Description response content must not be empty")
-    return cleaned
+    suffix = f":{model_quantization}"
+    if raw_model_id.endswith(suffix):
+        return raw_model_id[: -len(suffix)]
+    return raw_model_id

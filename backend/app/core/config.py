@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     DEV_MODE: bool = True
 
     VLM_BASE_URL: str = "http://localhost:8090"
-    VLM_TIMEOUT_SECONDS: int = 90
+    VLM_TIMEOUT_SECONDS: int = 240
 
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", extra="ignore"

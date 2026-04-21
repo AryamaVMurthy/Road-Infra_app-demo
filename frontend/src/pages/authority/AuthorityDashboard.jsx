@@ -128,11 +128,11 @@ export default function AuthorityDashboard() {
     if (!categoryId || !reason) return
     setSubmitting(true)
     try {
-      await adminService.reclassifyIssue(issueId, categoryId, reason)
+      await adminService.assignIssueCategory(issueId, categoryId, reason)
       setReviewIssue(null)
       fetchData()
     } catch (e) {
-      alert('Reclassification failed')
+      alert('Category assignment failed')
     }
     setSubmitting(false)
   }

@@ -10,6 +10,7 @@ def build_postgres_statements() -> list[str]:
     return [
         "ALTER TABLE category ADD COLUMN IF NOT EXISTS classification_guidance VARCHAR(500)",
         "ALTER TABLE issue ADD COLUMN IF NOT EXISTS intake_submission_id UUID",
+        "ALTER TABLE issue ALTER COLUMN category_id DROP NOT NULL",
         "ALTER TABLE issue ADD COLUMN IF NOT EXISTS classification_source VARCHAR(255)",
         "ALTER TABLE issue ADD COLUMN IF NOT EXISTS classification_confidence DOUBLE PRECISION",
         "ALTER TABLE issue ADD COLUMN IF NOT EXISTS classification_model_id VARCHAR(255)",
@@ -53,11 +54,29 @@ def _iter_statements() -> Iterable[str]:
         yield statement
 
 
-def main() -> None:
+def resolve_database_url() -> str:
     database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise RuntimeError("DATABASE_URL must be set to run migrate_vlm_intake_schema.py")
+    if database_url:
+        return database_url
 
+    postgres_server = os.getenv("POSTGRES_SERVER")
+    postgres_user = os.getenv("POSTGRES_USER")
+    postgres_password = os.getenv("POSTGRES_PASSWORD")
+    postgres_db = os.getenv("POSTGRES_DB")
+    if all([postgres_server, postgres_user, postgres_password, postgres_db]):
+        return (
+            f"postgresql://{postgres_user}:{postgres_password}"
+            f"@{postgres_server}/{postgres_db}"
+        )
+
+    raise RuntimeError(
+        "DATABASE_URL or POSTGRES_* environment variables must be set to run "
+        "migrate_vlm_intake_schema.py"
+    )
+
+
+def main() -> None:
+    database_url = resolve_database_url()
     engine = create_engine(database_url)
     with engine.begin() as connection:
         for statement in _iter_statements():

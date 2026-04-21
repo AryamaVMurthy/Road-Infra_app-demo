@@ -190,7 +190,7 @@ class TestReportEndpointDuplicates:
         assert response.status_code == 500
         assert (
             response.json()["detail"]
-            == "No active issue types are configured for VLM classification"
+            == "No active issue types are configured for spam gating"
         )
 
     def test_report_at_same_location_increments_count(self, client, session):

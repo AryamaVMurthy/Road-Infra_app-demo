@@ -271,6 +271,22 @@ export default function AdminDashboard() {
                                             <p>{selectedArchiveItem.model_quantization || 'Unknown'}</p>
                                         </div>
                                     </div>
+                                    <button
+                                        className="w-full px-4 py-3 rounded-2xl bg-slate-900 text-white text-sm font-black"
+                                        onClick={async () => {
+                                            try {
+                                                await adminService.markSubmissionNotSpam(
+                                                    selectedArchiveItem.id,
+                                                    'Manual review confirmed valid civic issue'
+                                                )
+                                                await fetchData()
+                                            } catch (err) {
+                                                alert('Failed to override spam decision')
+                                            }
+                                        }}
+                                    >
+                                        Mark As Not Spam
+                                    </button>
                                 </>
                             ) : (
                                 <div className="h-full min-h-64 rounded-[1.5rem] border border-dashed border-slate-200 flex items-center justify-center text-sm font-bold text-slate-400">

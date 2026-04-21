@@ -15,3 +15,5 @@ Pillow
 fastapi-mail
 redis
 email-validator
+PyYAML
+dspy==3.1.3

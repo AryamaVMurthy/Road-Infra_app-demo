@@ -91,3 +91,18 @@ minio_data/
 
 # Git worktrees
 .worktrees/
+
+# Dataset preparation artifacts
+artifacts/datasets/
+artifacts/models/*
+!artifacts/models/intake_dspy/
+artifacts/models/intake_dspy/*
+!artifacts/models/intake_dspy/level1/
+artifacts/models/intake_dspy/level1/*
+!artifacts/models/intake_dspy/level1/gepa/
+artifacts/models/intake_dspy/level1/gepa/*
+!artifacts/models/intake_dspy/level1/gepa/program/
+!artifacts/models/intake_dspy/level1/gepa/program/metadata.json
+!artifacts/models/intake_dspy/level1/gepa/program/program.pkl
+map_engine_report.jpg
+map_rigor_*.jpg

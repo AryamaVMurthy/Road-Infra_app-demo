@@ -10,7 +10,7 @@ from app.db.session import get_session
 from app.api.deps import require_admin_user
 from app.models.domain import User, Issue, Category
 from app.schemas.common import ErrorResponse, MessageResponse
-from app.schemas.issue import IssueRead, IssueReclassifyRequest
+from app.schemas.issue import IssueRead, IssueCategoryAssignmentRequest
 from app.services.workflow_service import WorkflowService
 from app.services.audit import AuditService
 
@@ -143,14 +143,14 @@ def update_issue_priority(
 
 
 @router.post(
-    "/issues/{issue_id}/reclassify",
+    "/issues/{issue_id}/assign-category",
     response_model=MessageResponse,
-    summary="Override an issue category",
-    description="Allow admin or sysadmin users to correct the category assigned during intake classification.",
+    summary="Assign or reassign an issue category",
+    description="Allow admin or sysadmin users to manually assign the category for uncategorized issues and later correct it if needed.",
 )
-def reclassify_issue(
+def assign_issue_category(
     issue_id: UUID,
-    data: IssueReclassifyRequest,
+    data: IssueCategoryAssignmentRequest,
     session: Session = Depends(get_session),
     current_user: User = Depends(require_admin_user),
 ):
@@ -169,11 +169,11 @@ def reclassify_issue(
     session.add(issue)
     AuditService.log(
         session,
-        "CATEGORY_OVERRIDE",
+        "CATEGORY_ASSIGNED" if old_category_id is None else "CATEGORY_REASSIGNED",
         "ISSUE",
         issue.id,
         current_user.id,
-        str(old_category_id),
+        str(old_category_id) if old_category_id is not None else None,
         str(category.id),
     )
     session.commit()

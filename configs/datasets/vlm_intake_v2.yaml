@@ -1,0 +1,173 @@
+dataset_name: vlm_intake_v2
+seed: 42
+output_root: ../../artifacts/datasets/vlm_intake_v2
+min_short_edge: 256
+jpeg_quality: 92
+
+positive_sources:
+  - dataset_id: programmerrdai/road-issues-detection-dataset
+    dataset_slug: road_issues_detection
+    source_url: https://huggingface.co/datasets/Programmer-RD-AI/road-issues-detection-dataset
+    license_name: Kaggle dataset mirror
+    license_url: https://huggingface.co/datasets/Programmer-RD-AI/road-issues-detection-dataset
+    author_or_uploader: Programmer-RD-AI
+    output_dir: raw/kaggle/road_issues_detection
+    mirror_dataset_id: Programmer-RD-AI/road-issues-detection-dataset
+    mirror_split: train
+    mirror_config_name: default
+    mirror_image_field: image
+    mirror_label_field: label
+    mirror_fetch_margin: 12
+    mirror_sampling_strategy: rows_api
+    mirror_offset_hints:
+      Littering Garbage on Public Places Issues: 0
+      Broken Road Sign Issues: 4000
+      Damaged Road issues: 5400
+      Pothole Issues: 6400
+    label_mapping:
+      Pothole Issues: pothole
+      Damaged Road issues: damaged_road
+      Broken Road Sign Issues: damaged_road_sign
+      Littering Garbage on Public Places Issues: garbage_litter
+
+  - dataset_id: manot/pothole-segmentation
+    dataset_slug: pothole_seg_manot
+    source_url: https://huggingface.co/datasets/manot/pothole-segmentation
+    license_name: CC
+    license_url: https://huggingface.co/datasets/manot/pothole-segmentation
+    author_or_uploader: manot
+    output_dir: raw/hf_supplements/pothole_manot
+    mirror_dataset_id: manot/pothole-segmentation
+    mirror_split: train
+    mirror_config_name: full
+    mirror_image_field: image
+    mirror_label_field: none
+    mirror_fetch_margin: 10
+    mirror_sampling_strategy: rows_api
+    label_mapping:
+      pothole: pothole
+
+  - dataset_id: keremberke/pothole-segmentation
+    dataset_slug: pothole_seg_keremberke
+    source_url: https://huggingface.co/datasets/keremberke/pothole-segmentation
+    license_name: dataset card license
+    license_url: https://huggingface.co/datasets/keremberke/pothole-segmentation
+    author_or_uploader: keremberke
+    output_dir: raw/hf_supplements/pothole_keremberke
+    mirror_dataset_id: keremberke/pothole-segmentation
+    mirror_split: train
+    mirror_config_name: full
+    mirror_image_field: image
+    mirror_label_field: none
+    mirror_fetch_margin: 5
+    mirror_sampling_strategy: rows_api
+    label_mapping:
+      pothole: pothole
+
+rejected_dataset_sources:
+  - dataset_id: cvdl/oxford-pets
+    config_name: default
+    split: train
+    image_field: img
+    label_field: category
+    count: 12
+    topic_bucket: animals_or_pets
+    negative_source_type: real_irrelevant
+    source_url: https://huggingface.co/datasets/cvdl/oxford-pets
+    license_name: MIT
+    license_url: https://huggingface.co/datasets/cvdl/oxford-pets
+    author_or_uploader: ZHAW CVDL
+    output_dir: raw/rejected_datasets/oxford_pets
+    notes: non-road animal photos for real irrelevant rejects
+
+  - dataset_id: keremberke/indoor-scene-classification
+    config_name: full
+    split: train
+    image_field: image
+    label_field: labels
+    diversity_field: labels
+    max_per_diversity_value: 1
+    count: 12
+    topic_bucket: indoor_random_scenes
+    negative_source_type: real_irrelevant
+    source_url: https://huggingface.co/datasets/keremberke/indoor-scene-classification
+    license_name: dataset card license
+    license_url: https://huggingface.co/datasets/keremberke/indoor-scene-classification
+    author_or_uploader: keremberke
+    output_dir: raw/rejected_datasets/indoor_scenes
+    notes: indoor scene photos without road or public infrastructure context
+
+  - dataset_id: Zitacron/real-vs-ai-corpus
+    config_name: default
+    split: train
+    page_length: 20
+    image_field: image
+    filter_field: label_text
+    filter_values: [ai]
+    source_dataset_field: source_dataset
+    source_license_field: source_license
+    diversity_field: source_dataset
+    max_per_diversity_value: 4
+    count: 4
+    topic_bucket: spoof_mixed
+    negative_source_type: synthetic_spoof
+    source_url: https://huggingface.co/datasets/Zitacron/real-vs-ai-corpus
+    license_name: cc-by-4.0 base card with row-level source licenses
+    license_url: https://huggingface.co/datasets/Zitacron/real-vs-ai-corpus
+    author_or_uploader: Zitacron
+    output_dir: raw/rejected_datasets/zitacron_spoof
+    notes: row-level source_dataset and source_license preserved in sidecars
+
+  - dataset_id: prithivMLmods/Realistic-Face-Portrait-1024px
+    config_name: default
+    split: train
+    page_length: 20
+    image_field: image
+    count: 16
+    topic_bucket: spoof_portraits
+    negative_source_type: synthetic_spoof
+    source_url: https://huggingface.co/datasets/prithivMLmods/Realistic-Face-Portrait-1024px
+    license_name: Apache-2.0
+    license_url: https://huggingface.co/datasets/prithivMLmods/Realistic-Face-Portrait-1024px
+    author_or_uploader: prithivMLmods
+    output_dir: raw/rejected_datasets/synthetic_portraits
+    notes: synthetic portrait spoofs
+
+  - dataset_id: absinc/sopg
+    config_name: default
+    split: train
+    page_length: 20
+    image_field: image
+    count: 16
+    topic_bucket: spoof_objects_scenes
+    negative_source_type: synthetic_spoof
+    source_url: https://huggingface.co/datasets/absinc/sopg
+    license_name: MIT
+    license_url: https://huggingface.co/datasets/absinc/sopg
+    author_or_uploader: absinc
+    output_dir: raw/rejected_datasets/sopg
+    notes: synthetic object and scene spoofs
+
+target_counts:
+  pothole: 120
+  damaged_road: 44
+  damaged_road_sign: 44
+  garbage_litter: 50
+  rejected_real_irrelevant: 24
+  rejected_synthetic_spoof: 36
+
+split_targets:
+  train:
+    pothole: 96
+    damaged_road: 36
+    damaged_road_sign: 36
+    garbage_litter: 40
+    rejected_real_irrelevant: 18
+    rejected_synthetic_spoof: 28
+  test:
+    pothole: 24
+    damaged_road: 8
+    damaged_road_sign: 8
+    garbage_litter: 10
+    rejected_real_irrelevant: 6
+    rejected_synthetic_spoof: 8

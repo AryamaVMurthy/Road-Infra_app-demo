@@ -53,3 +53,20 @@ export function ensureTestImage(filename = 'golden_test.jpg') {
 
   return imagePath
 }
+
+export async function waitForMapOrFallback(page, timeout = 15000) {
+  const map = page.locator('.mapboxgl-map')
+  const fallback = page.getByText('Map unavailable: missing Mapbox token configuration.')
+
+  await Promise.any([
+    map.first().waitFor({ state: 'visible', timeout }),
+    fallback.waitFor({ state: 'visible', timeout }),
+  ])
+
+  if (await fallback.isVisible().catch(() => false)) {
+    return 'fallback'
+  }
+
+  await map.first().waitFor({ state: 'visible', timeout })
+  return 'map'
+}

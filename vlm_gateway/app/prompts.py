@@ -1,169 +1,112 @@
-"""Prompt builders for llama-server intake classification."""
+"""Prompt builders for the Level 1 llama-server intake classification path."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
+import dspy
 
-def build_description_request(
-    *,
-    image_data_url: str,
-    reporter_notes: str | None,
-    prompt_version: str,
-) -> dict[str, Any]:
-    notes = reporter_notes.strip() if reporter_notes else "None provided"
 
-    system_prompt = (
-        f"You are the MARG intake image describer. Prompt version: {prompt_version}.\n"
-        "Look at the image carefully and describe only what is visibly present.\n"
-        "Prefer concrete visual details over guesses.\n"
-        "Mention visible road defects, drains, standing water, garbage, street lights, "
-        "or signs that the image is synthetic, irrelevant, or non-civic when applicable.\n"
-        "Return plain text only in one or two short sentences."
+FINAL_ANSWER_SUFFIX = (
+    "\n\nAppend this exact final answer format after completing the DSPy task. "
+    "Output only these three lines and nothing else:\n"
+    "decision: <IN_SCOPE or REJECT>\n"
+    "best_matching_category_hint: <category name or None>\n"
+    "rationale: <short rationale>"
+)
+
+
+@dataclass(frozen=True, slots=True)
+class DSPyLevel1PromptSource:
+    instructions: str
+    output_field_names: tuple[str, ...]
+
+
+@lru_cache(maxsize=8)
+def load_dspy_level1_prompt_source(program_path: Path | str) -> DSPyLevel1PromptSource:
+    resolved_program_path = Path(program_path)
+    if not resolved_program_path.exists():
+        raise ValueError(
+            f"DSPy Level 1 program path `{resolved_program_path}` does not exist."
+        )
+
+    program = dspy.load(str(resolved_program_path), allow_pickle=True)
+    predictor = getattr(program, "predictor", None)
+    if predictor is None:
+        raise ValueError(
+            f"DSPy Level 1 program `{resolved_program_path}` is missing predictor state."
+        )
+
+    signature = getattr(predictor, "signature", None)
+    if signature is None:
+        raise ValueError(
+            f"DSPy Level 1 program `{resolved_program_path}` is missing predictor signature state."
+        )
+
+    instructions = getattr(signature, "instructions", None)
+    if not isinstance(instructions, str) or not instructions.strip():
+        raise ValueError(
+            f"DSPy Level 1 program `{resolved_program_path}` is missing optimized instructions."
+        )
+
+    output_fields = tuple(
+        field_name
+        for field_name, field_info in signature.fields.items()
+        if field_info.json_schema_extra.get("__dspy_field_type") == "output"
     )
+    if output_fields != ("decision", "best_matching_category_hint", "rationale"):
+        raise ValueError(
+            "DSPy Level 1 prompt source must expose decision, best_matching_category_hint, "
+            f"and rationale outputs; got {output_fields!r}."
+        )
 
-    user_prompt = (
-        "Describe this citizen-submitted image for a downstream classifier.\n"
-        f"Reporter notes: {notes}"
+    return DSPyLevel1PromptSource(
+        instructions=instructions,
+        output_field_names=output_fields,
     )
-
-    return {
-        "temperature": 0,
-        "seed": 7,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": user_prompt},
-                    {"type": "image_url", "image_url": {"url": image_data_url}},
-                ],
-            },
-        ],
-    }
 
 
 def build_primary_classification_request(
     *,
     image_data_url: str,
-    image_description: str,
     reporter_notes: str | None,
     active_categories: dict[str, str],
-    prompt_version: str,
+    prompt_source: DSPyLevel1PromptSource,
 ) -> dict[str, Any]:
-    category_lines = "\n".join(
-        f"- {name}: {guidance}" for name, guidance in sorted(active_categories.items())
-    )
-    notes = reporter_notes.strip() if reporter_notes else "None provided"
+    del reporter_notes
 
-    system_prompt = (
-        f"You are the MARG intake classifier. Prompt version: {prompt_version}.\n"
-        "Return JSON only.\n"
-        "Decide whether the image is a valid civic road-infrastructure issue image.\n"
-        "Strongly prefer classifying into one of the active categories when the image "
-        "plausibly fits any active category.\n"
-        "Use REJECTED only when the image clearly does not fit any active category at all.\n"
-        "Use exactly one of these decisions: ACCEPTED_CATEGORY_MATCH, REJECTED.\n"
-        "If decision is ACCEPTED_CATEGORY_MATCH, category_name must be one of the active categories.\n"
-        "If decision is REJECTED, category_name must be null.\n"
-        "Active categories:\n"
-        f"{category_lines}"
+    category_catalog = "\n".join(
+        f"{name}: {guidance}" for name, guidance in sorted(active_categories.items())
     )
 
     user_prompt = (
-        "Classify this citizen-submitted image.\n"
-        f"Reporter notes: {notes}\n"
-        f"Visual description: {image_description}\n"
-        "If the image plausibly matches an active category, choose that category.\n"
-        "Only reject when no active category fits at all.\n"
-        "Return a JSON object with decision, category_name, confidence."
+        "Use the provided category catalog and image to complete the DSPy Level 1 task.\n"
+        f"Category Catalog:\n{category_catalog}"
     )
-
-    return {
-        "temperature": 0,
-        "seed": 7,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": user_prompt},
-                    {"type": "image_url", "image_url": {"url": image_data_url}},
-                ],
-            },
-        ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "marg_intake_primary_result",
-                "schema": {
-                    "type": "object",
-                    "required": [
-                        "decision",
-                        "category_name",
-                        "confidence",
-                    ],
-                    "properties": {
-                        "decision": {"type": "string"},
-                        "category_name": {"type": ["string", "null"]},
-                        "confidence": {"type": "number"},
-                    },
-                    "additionalProperties": False,
-                },
-            },
+    json_schema = {
+        "type": "object",
+        "required": list(prompt_source.output_field_names),
+        "properties": {
+            "decision": {"type": "string"},
+            "best_matching_category_hint": {"type": "string"},
+            "rationale": {"type": "string"},
         },
+        "additionalProperties": False,
     }
 
-
-def build_evaluator_request(
-    *,
-    image_data_url: str,
-    image_description: str,
-    active_categories: dict[str, str],
-    prompt_version: str,
-    primary_result: dict[str, Any],
-) -> dict[str, Any]:
-    category_lines = "\n".join(
-        f"- {name}: {guidance}" for name, guidance in sorted(active_categories.items())
-    )
-
-    system_prompt = (
-        f"You are the MARG intake evaluator. Prompt version: {prompt_version}.\n"
-        "Return JSON only.\n"
-        "Review the image, the active categories, and the primary classifier result.\n"
-        "Fail only if the primary result breaks the contract or is not justified by the image.\n"
-        "Valid primary outcomes include accepted category matches and valid rejections.\n"
-        "Rubric:\n"
-        "- If decision is ACCEPTED_CATEGORY_MATCH, PASS only if the image clearly fits "
-        "the chosen active category.\n"
-        "- If decision is REJECTED and category_name is null, "
-        "you MUST return PASS when the image is real but does not plausibly fit any "
-        "of the active categories.\n"
-        "- A real image of an animal, person, indoor object, or unrelated outdoor scene "
-        "that does not match any active category is a valid rejection and should PASS.\n"
-        "- Do not mark a valid non-category real image as FAIL merely because it is not "
-        "a civic issue. That is exactly when REJECTED should PASS.\n"
-        "- Do not fail a result merely because it is a rejection. Rejections are valid outcomes.\n"
-        "If the primary result is coherent and justified by the image, return "
-        '{"status":"pass","failure_reason":null}.\n'
-        "If it is not coherent or not justified, return "
-        '{"status":"fail","failure_reason":"<short explanation>"}.\n'
-        "Active categories:\n"
-        f"{category_lines}"
-    )
-
-    user_prompt = (
-        "Evaluate this primary intake classification result.\n"
-        f"Visual description: {image_description}\n"
-        f"Primary result: {primary_result}\n"
-        "Return a JSON object with status and failure_reason only."
-    )
-
     return {
         "temperature": 0,
         "seed": 7,
+        "reasoning_format": "none",
+        "chat_template_kwargs": {"enable_thinking": False},
         "messages": [
-            {"role": "system", "content": system_prompt},
+            {
+                "role": "system",
+                "content": f"{prompt_source.instructions}{FINAL_ANSWER_SUFFIX}",
+            },
             {
                 "role": "user",
                 "content": [
@@ -173,18 +116,7 @@ def build_evaluator_request(
             },
         ],
         "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "marg_intake_evaluator_result",
-                "schema": {
-                    "type": "object",
-                    "required": ["status", "failure_reason"],
-                    "properties": {
-                        "status": {"type": "string"},
-                        "failure_reason": {"type": ["string", "null"]},
-                    },
-                    "additionalProperties": False,
-                },
-            },
+            "type": "json_object",
+            "schema": json_schema,
         },
     }

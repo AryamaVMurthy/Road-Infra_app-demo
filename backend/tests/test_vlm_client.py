@@ -14,13 +14,13 @@ def test_vlm_client_maps_accepted_gateway_response():
         lambda request: httpx.Response(
             200,
             json={
-                "decision": "ACCEPTED_CATEGORY_MATCH",
-                "category_name": "Pothole",
+                "decision": "IN_SCOPE",
+                "category_name": None,
                 "confidence": 0.92,
                 "model_id": "LiquidAI/LFM2.5-VL-1.6B-GGUF",
                 "model_quantization": "Q8_0",
                 "prompt_version": "v1",
-                "raw_primary_result": {"decision": "ACCEPTED_CATEGORY_MATCH"},
+                "raw_primary_result": {"decision": "IN_SCOPE"},
                 "raw_evaluator_result": {"status": "pass"},
                 "latency_ms": 1100,
             },
@@ -43,8 +43,8 @@ def test_vlm_client_maps_accepted_gateway_response():
     )
 
     assert isinstance(result, VLMClassificationResult)
-    assert result.decision == "ACCEPTED_CATEGORY_MATCH"
-    assert result.category_name == "Pothole"
+    assert result.decision == "IN_SCOPE"
+    assert result.category_name is None
     assert result.model_quantization == "Q8_0"
 
 
@@ -115,7 +115,7 @@ def test_vlm_client_rejects_malformed_gateway_response():
         lambda request: httpx.Response(
             200,
             json={
-                "decision": "ACCEPTED_CATEGORY_MATCH",
+                "decision": "IN_SCOPE",
             },
         )
     )

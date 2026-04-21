@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { ensureTestImage, loginAs } from './helpers/e2e'
+import { ensureTestImage, loginAs, waitForMapOrFallback } from './helpers/e2e'
 import { resetDatabase } from './helpers/db'
 
 test.describe('Map Engine Rigor', () => {
@@ -16,12 +16,11 @@ test.describe('Map Engine Rigor', () => {
     await loginAs(page, 'sysadmin@marg.gov.in', '/admin')
     await page.goto('/analytics', { waitUntil: 'domcontentloaded' })
     
-    const mapContainer = page.locator('.mapboxgl-map, .map-container')
-    const mapVisible = await mapContainer.first().isVisible().catch(() => false)
-    if (mapVisible) {
-      await expect(mapContainer.first()).toBeVisible({ timeout: 15000 })
-    } else {
+    const mapState = await waitForMapOrFallback(page)
+    if (mapState === 'fallback') {
       await expect(page.getByText('Map unavailable: missing Mapbox token configuration.')).toBeVisible()
+    } else {
+      await expect(page.locator('.mapboxgl-map').first()).toBeVisible({ timeout: 15000 })
     }
     
     await page.getByRole('button', { name: 'Live Markers' }).click()
@@ -50,12 +49,12 @@ test.describe('Map Engine Rigor', () => {
         await expect(loader).not.toBeVisible({ timeout: 20000 })
     }
     
-    const mapContainer = page.locator('.mapboxgl-map, .map-container')
-    const mapVisible = await mapContainer.first().isVisible().catch(() => false)
-    if (mapVisible) {
-      await expect(mapContainer.first()).toBeVisible({ timeout: 15000 })
-    } else {
+    const mapState = await waitForMapOrFallback(page)
+    if (mapState === 'fallback') {
       await expect(page.getByText('Map unavailable: missing Mapbox token configuration.')).toBeVisible()
+      return
+    } else {
+      await expect(page.locator('.mapboxgl-map').first()).toBeVisible({ timeout: 15000 })
     }
 
     const geolocate = page.locator('.mapboxgl-ctrl-geolocate')

@@ -1,90 +1,97 @@
 from vlm_gateway.app.prompts import (
-    build_description_request,
+    DSPyLevel1PromptSource,
     build_primary_classification_request,
 )
 
 
-def test_build_description_request_uses_openai_multimodal_shape():
-    request = build_description_request(
-        image_data_url="data:image/jpeg;base64,ZmFrZQ==",
-        reporter_notes="Large cavity near the divider",
-        prompt_version="v1",
+def _prompt_source() -> DSPyLevel1PromptSource:
+    return DSPyLevel1PromptSource(
+        instructions="EXACT DSPY LEVEL1 INSTRUCTIONS",
+        output_field_names=("decision", "best_matching_category_hint", "rationale"),
     )
-
-    assert "response_format" not in request
-    assert request["messages"][0]["role"] == "system"
-    assert request["messages"][1]["role"] == "user"
-    assert request["messages"][1]["content"][0]["type"] == "text"
-    assert request["messages"][1]["content"][1]["type"] == "image_url"
-    assert request["temperature"] == 0
-    assert request["seed"] == 7
 
 
 def test_build_primary_classification_request_uses_openai_multimodal_shape():
     request = build_primary_classification_request(
         image_data_url="data:image/jpeg;base64,ZmFrZQ==",
-        image_description="A damaged road surface with a visible cavity in the lane.",
         reporter_notes="Large cavity near the divider",
         active_categories={
-            "Pothole": "Road-surface collapse or cavity in drivable area",
-            "Drainage": "Blocked drain, standing water, or overflow",
+            "pothole": "Road-surface collapse or cavity in drivable area",
+            "damaged_road": "Cracked, eroded, or broken road surface without a discrete cavity",
         },
-        prompt_version="v1",
+        prompt_source=_prompt_source(),
     )
 
-    assert request["response_format"]["type"] == "json_schema"
+    assert request["response_format"]["type"] == "json_object"
     assert request["messages"][0]["role"] == "system"
+    assert request["messages"][0]["content"].startswith("EXACT DSPY LEVEL1 INSTRUCTIONS")
+    assert "Append this exact final answer format" in request["messages"][0]["content"]
     assert request["messages"][1]["role"] == "user"
     assert request["messages"][1]["content"][0]["type"] == "text"
     assert request["messages"][1]["content"][1]["type"] == "image_url"
     assert request["temperature"] == 0
     assert request["seed"] == 7
+    assert request["reasoning_format"] == "none"
+    assert request["chat_template_kwargs"] == {"enable_thinking": False}
     assert (
         request["messages"][1]["content"][1]["image_url"]["url"]
         == "data:image/jpeg;base64,ZmFrZQ=="
     )
 
 
-def test_build_primary_classification_request_embeds_categories_and_prompt_version():
+def test_build_primary_classification_request_only_appends_output_suffix_to_dspy_prompt():
     request = build_primary_classification_request(
         image_data_url="data:image/jpeg;base64,ZmFrZQ==",
-        image_description="Standing water near a blocked roadside drain.",
-        reporter_notes="water accumulation beside drain",
-        active_categories={
-            "Pothole": "Road-surface collapse or cavity in drivable area",
-            "Drainage": "Blocked drain, standing water, or overflow",
-        },
-        prompt_version="v7",
+        reporter_notes=None,
+        active_categories={"pothole": "Road-surface collapse or cavity in drivable area"},
+        prompt_source=_prompt_source(),
     )
 
     system_prompt = request["messages"][0]["content"]
+
+    assert system_prompt.startswith("EXACT DSPY LEVEL1 INSTRUCTIONS")
+    assert system_prompt.count("EXACT DSPY LEVEL1 INSTRUCTIONS") == 1
+    assert system_prompt.endswith("rationale: <short rationale>")
+
+
+def test_build_primary_classification_request_embeds_category_catalog_only():
+    request = build_primary_classification_request(
+        image_data_url="data:image/jpeg;base64,ZmFrZQ==",
+        reporter_notes="cat photo pretending to be a pothole",
+        active_categories={
+            "pothole": "Road-surface collapse or cavity in drivable area",
+            "garbage_litter": "Visible dumped waste or litter accumulation in public roadside space",
+        },
+        prompt_source=_prompt_source(),
+    )
+
     user_prompt = request["messages"][1]["content"][0]["text"]
 
-    assert "v7" in system_prompt
-    assert "Pothole" in system_prompt
-    assert "Drainage" in system_prompt
-    assert "Road-surface collapse or cavity in drivable area" in system_prompt
-    assert "Blocked drain, standing water, or overflow" in system_prompt
-    assert "water accumulation beside drain" in user_prompt
-    assert "Standing water near a blocked roadside drain." in user_prompt
-    assert "Return JSON only" in system_prompt
+    assert "Category Catalog:" in user_prompt
+    assert "pothole: Road-surface collapse or cavity in drivable area" in user_prompt
+    assert (
+        "garbage_litter: Visible dumped waste or litter accumulation in public roadside space"
+        in user_prompt
+    )
+    assert "cat photo pretending to be a pothole" not in user_prompt
 
 
-def test_build_primary_classification_request_embeds_binary_decision_contract():
+def test_build_primary_classification_request_uses_dspy_output_schema():
     request = build_primary_classification_request(
         image_data_url="data:image/jpeg;base64,ZmFrZQ==",
-        image_description="A broken road surface.",
-        reporter_notes="None",
-        active_categories={
-            "Pothole": "Road-surface collapse or cavity in drivable area",
-        },
-        prompt_version="v1",
+        reporter_notes=None,
+        active_categories={"pothole": "Road-surface collapse or cavity in drivable area"},
+        prompt_source=_prompt_source(),
     )
 
-    system_prompt = request["messages"][0]["content"]
+    schema = request["response_format"]["schema"]
 
-    assert "ACCEPTED_CATEGORY_MATCH, REJECTED" in system_prompt
-    assert "If decision is ACCEPTED_CATEGORY_MATCH" in system_prompt
-    assert "If decision is REJECTED" in system_prompt
-    assert "Strongly prefer classifying into one of the active categories" in system_prompt
-    assert "Only reject when no active category fits at all." in request["messages"][1]["content"][0]["text"]
+    assert schema["required"] == [
+        "decision",
+        "best_matching_category_hint",
+        "rationale",
+    ]
+    assert schema["properties"]["decision"] == {"type": "string"}
+    assert schema["properties"]["best_matching_category_hint"] == {"type": "string"}
+    assert schema["properties"]["rationale"] == {"type": "string"}
+    assert schema["additionalProperties"] is False

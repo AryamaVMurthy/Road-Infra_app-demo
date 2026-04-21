@@ -9,6 +9,7 @@ const apiGetMock = vi.fn()
 const getAuthoritiesMock = vi.fn()
 const getIssueTypesMock = vi.fn()
 const getIntakeArchiveMock = vi.fn()
+const markSubmissionNotSpamMock = vi.fn()
 
 vi.mock('../services/api', () => ({
   API_URL: '/api/v1',
@@ -22,6 +23,7 @@ vi.mock('../services/admin', () => ({
     getAuthorities: (...args) => getAuthoritiesMock(...args),
     getIssueTypes: (...args) => getIssueTypesMock(...args),
     getIntakeArchive: (...args) => getIntakeArchiveMock(...args),
+    markSubmissionNotSpam: (...args) => markSubmissionNotSpamMock(...args),
   },
 }))
 
@@ -58,6 +60,7 @@ describe('Admin archive tab', () => {
     apiGetMock.mockResolvedValue({ data: { summary: {} } })
     getAuthoritiesMock.mockResolvedValue({ data: [] })
     getIssueTypesMock.mockResolvedValue({ data: [] })
+    markSubmissionNotSpamMock.mockResolvedValue({ data: { message: 'Submission converted into an uncategorized issue' } })
     getIntakeArchiveMock.mockResolvedValue({
       data: [
         {
@@ -97,5 +100,28 @@ describe('Admin archive tab', () => {
       expect.stringContaining('/admin/intake-archive/11111111-1111-1111-1111-111111111111/image')
     )
     expect(screen.getByText('Banner photo')).toBeInTheDocument()
+  })
+
+  it('lets an admin override a spam rejection', async () => {
+    render(
+      <MemoryRouter>
+        <AdminDashboard />
+      </MemoryRouter>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Intake Archive' }))
+
+    await waitFor(() =>
+      expect(getIntakeArchiveMock).toHaveBeenCalledTimes(1)
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /mark as not spam/i }))
+
+    await waitFor(() =>
+      expect(markSubmissionNotSpamMock).toHaveBeenCalledWith(
+        '11111111-1111-1111-1111-111111111111',
+        expect.stringMatching(/manual review/i)
+      )
+    )
   })
 })

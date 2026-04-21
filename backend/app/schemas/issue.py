@@ -6,7 +6,7 @@ from typing import Optional, List, Any
 
 class IssueRead(BaseModel):
     id: UUID
-    category_id: UUID
+    category_id: Optional[UUID] = None
     category_name: Optional[str] = None
     worker_id: Optional[UUID] = None
     worker_name: Optional[str] = None
@@ -33,9 +33,10 @@ class IssueReportResponse(BaseModel):
     message: str
     issue_id: UUID
     submission_id: UUID
-    category_id: UUID
-    category_name: str
+    category_id: Optional[UUID] = None
+    category_name: Optional[str] = None
     duplicate_merged: bool = False
+    requires_admin_category_assignment: bool = False
 
 
 class IssueReportRejectedResponse(BaseModel):
@@ -43,8 +44,12 @@ class IssueReportRejectedResponse(BaseModel):
     submission_id: UUID
 
 
-class IssueReclassifyRequest(BaseModel):
+class IssueCategoryAssignmentRequest(BaseModel):
     category_id: UUID
+    reason: str
+
+
+class IntakeSpamOverrideRequest(BaseModel):
     reason: str
 
 

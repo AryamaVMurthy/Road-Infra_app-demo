@@ -28,7 +28,7 @@ def test_intake_submission_row_can_be_created(session):
     assert submission.issue_id is None
 
 
-def test_accepted_submission_can_link_to_issue_and_category(session):
+def test_accepted_submission_can_link_to_uncategorized_issue(session):
     citizen = User(email="accepted-citizen@example.com", role="CITIZEN")
     category = Category(
         name="Pothole",
@@ -41,7 +41,7 @@ def test_accepted_submission_can_link_to_issue_and_category(session):
     session.refresh(category)
 
     issue = Issue(
-        category_id=category.id,
+        category_id=None,
         status="REPORTED",
         location="SRID=4326;POINT(78.3483 17.4447)",
         reporter_id=citizen.id,
@@ -61,11 +61,8 @@ def test_accepted_submission_can_link_to_issue_and_category(session):
     submission = ReportIntakeSubmission(
         reporter_id=citizen.id,
         issue_id=issue.id,
-        status="ACCEPTED",
-        reason_code="ACCEPTED",
-        selected_category_id=category.id,
-        selected_category_name_snapshot="Pothole",
-        selected_category_confidence=0.93,
+        status="ACCEPTED_UNCATEGORIZED",
+        reason_code="IN_SCOPE",
         classification_source="vlm_gateway",
         model_id="LiquidAI/LFM2.5-VL-1.6B-GGUF",
         model_quantization="Q8_0",
@@ -76,7 +73,7 @@ def test_accepted_submission_can_link_to_issue_and_category(session):
         file_path="intake/submission.jpg",
         mime_type="image/jpeg",
         image_sha256="abc123",
-        raw_primary_result={"decision": "ACCEPTED_CATEGORY_MATCH"},
+        raw_primary_result={"decision": "IN_SCOPE"},
         raw_evaluator_result={"status": "pass"},
         latency_ms=900,
     )
@@ -85,8 +82,8 @@ def test_accepted_submission_can_link_to_issue_and_category(session):
     session.refresh(submission)
 
     assert submission.issue_id == issue.id
-    assert submission.selected_category_id == category.id
-    assert submission.selected_category_name_snapshot == "Pothole"
+    assert submission.selected_category_id is None
+    assert submission.selected_category_name_snapshot is None
 
 
 def test_rejected_submission_does_not_require_issue_link(session):
@@ -97,8 +94,8 @@ def test_rejected_submission_does_not_require_issue_link(session):
 
     submission = ReportIntakeSubmission(
         reporter_id=citizen.id,
-        status="REJECTED",
-        reason_code="REJECTED",
+        status="REJECTED_SPAM",
+        reason_code="SPAM_REJECTED",
         classification_source="vlm_gateway",
         model_id="LiquidAI/LFM2.5-VL-1.6B-GGUF",
         model_quantization="Q8_0",
@@ -117,4 +114,4 @@ def test_rejected_submission_does_not_require_issue_link(session):
     session.refresh(submission)
 
     assert submission.issue_id is None
-    assert submission.reason_code == "REJECTED"
+    assert submission.reason_code == "SPAM_REJECTED"

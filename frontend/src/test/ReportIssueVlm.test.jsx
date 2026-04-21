@@ -42,8 +42,9 @@ describe('ReportIssue VLM flow', () => {
       data: {
         issue_id: 'issue-1',
         submission_id: 'submission-1',
-        category_id: 'category-1',
-        category_name: 'Pothole',
+        category_id: null,
+        category_name: null,
+        requires_admin_category_assignment: true,
         duplicate_merged: false,
         message: 'Report submitted successfully',
       },
@@ -62,7 +63,7 @@ describe('ReportIssue VLM flow', () => {
     fireEvent.click(await screen.findByRole('button', { name: /broadcast report/i }))
 
     await waitFor(() =>
-      expect(screen.getByText(/assigned to pothole/i)).toBeInTheDocument()
+      expect(screen.getByText(/accepted for review/i)).toBeInTheDocument()
     )
   })
 

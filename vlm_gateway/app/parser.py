@@ -7,10 +7,8 @@ from dataclasses import dataclass
 from typing import Any
 
 
-VALID_DECISIONS = {
-    "ACCEPTED_CATEGORY_MATCH",
-    "REJECTED",
-}
+VALID_DECISIONS = {"IN_SCOPE", "REJECTED"}
+DSPY_DECISIONS = {"IN_SCOPE", "REJECT"}
 
 LEGACY_REJECTION_DECISIONS = {
     "REJECTED_SPOOF_SYNTHETIC",
@@ -28,6 +26,8 @@ class ParsedClassification:
     decision: str
     category_name: str | None
     confidence: float | None
+    best_matching_category_hint: str | None
+    rationale: str | None
     prompt_version: str
     model_id: str
 
@@ -49,7 +49,7 @@ def parse_llama_chat_response(
     parsed = _load_model_output(content)
 
     raw_decision = parsed.get("decision")
-    if raw_decision in LEGACY_REJECTION_DECISIONS:
+    if raw_decision in LEGACY_REJECTION_DECISIONS or raw_decision == "REJECT":
         decision = "REJECTED"
     else:
         decision = raw_decision
@@ -60,15 +60,49 @@ def parse_llama_chat_response(
         )
 
     category_name = parsed.get("category_name")
-    if decision == "ACCEPTED_CATEGORY_MATCH":
-        if category_name not in allowed_categories:
-            raise ContractViolationError(
-                "Model output category_name must be an allowed category"
-            )
-    elif decision == "REJECTED" and category_name is not None:
+    if category_name is not None:
         raise ContractViolationError(
-            "Rejected model decisions must not include a category_name"
+            "Spam-gating model decisions must not include a category_name"
         )
+
+    best_matching_category_hint = _normalize_optional_string(
+        parsed.get("best_matching_category_hint"),
+        field_name="best_matching_category_hint",
+        null_sentinels={"none", "null", "n/a", "na"},
+    )
+    rationale = _normalize_optional_string(
+        parsed.get("rationale"),
+        field_name="rationale",
+    )
+
+    uses_dspy_shape = (
+        raw_decision == "REJECT"
+        or "best_matching_category_hint" in parsed
+        or "rationale" in parsed
+    )
+
+    if uses_dspy_shape:
+        if rationale is None:
+            raise ContractViolationError("DSPy model output rationale must be a string")
+
+        if decision == "IN_SCOPE":
+            if not best_matching_category_hint:
+                raise ContractViolationError(
+                    "DSPy IN_SCOPE output must include best_matching_category_hint"
+                )
+            normalized_allowed_categories = {
+                str(category).strip().casefold() for category in allowed_categories
+            }
+            if best_matching_category_hint.casefold() not in normalized_allowed_categories:
+                raise ContractViolationError(
+                    "DSPy best_matching_category_hint must match one of the allowed categories"
+                )
+        else:
+            if best_matching_category_hint:
+                raise ContractViolationError(
+                    "DSPy REJECT output must leave best_matching_category_hint empty"
+                )
+            best_matching_category_hint = None
 
     confidence = parsed.get("confidence")
     if confidence is None:
@@ -89,15 +123,12 @@ def parse_llama_chat_response(
                 "Model output confidence must be between 0.0 and 1.0"
             )
 
-    if decision == "ACCEPTED_CATEGORY_MATCH" and confidence_value is None:
-        raise ContractViolationError(
-            "Accepted model outputs must include a numeric confidence"
-        )
-
     return ParsedClassification(
         decision=decision,
-        category_name=category_name,
+        category_name=None,
         confidence=confidence_value,
+        best_matching_category_hint=best_matching_category_hint,
+        rationale=rationale,
         prompt_version=prompt_version,
         model_id=model_id,
     )
@@ -128,8 +159,64 @@ def _load_json_object(content: str) -> dict[str, Any]:
 def _load_model_output(content: str) -> dict[str, Any]:
     stripped = content.strip()
     if stripped == "REJECTED":
-        return {"decision": "REJECTED", "category_name": None, "confidence": None}
-    return _load_json_object(stripped)
+        return {
+            "decision": "REJECTED",
+            "category_name": None,
+            "confidence": None,
+        }
+    if stripped == "IN_SCOPE":
+        return {
+            "decision": "IN_SCOPE",
+            "category_name": None,
+            "confidence": None,
+        }
+    try:
+        return _load_json_object(stripped)
+    except ContractViolationError:
+        structured_text = _load_llama_structured_text_object(stripped)
+        if structured_text is not None:
+            return structured_text
+        raise
+
+
+def _normalize_optional_string(
+    value: Any,
+    *,
+    field_name: str,
+    null_sentinels: set[str] | None = None,
+) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ContractViolationError(f"Model output {field_name} must be a string or null")
+
+    normalized = value.strip()
+    if null_sentinels and normalized.casefold() in null_sentinels:
+        return None
+    return normalized or None
+
+
+def _load_llama_structured_text_object(content: str) -> dict[str, Any] | None:
+    fields: dict[str, str] = {}
+    allowed_field_names = {"decision", "best_matching_category_hint", "rationale"}
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if ":" not in line:
+            return None
+
+        name, value = line.split(":", 1)
+        normalized_name = name.strip()
+        if normalized_name not in allowed_field_names:
+            return None
+        fields[normalized_name] = value.strip()
+
+    if set(fields) != allowed_field_names:
+        return None
+
+    return fields
 
 
 def parse_evaluator_response(*, payload: dict[str, Any]) -> ParsedEvaluatorResult:

@@ -85,7 +85,11 @@ class Category(CategoryBase, table=True):
 
 
 class IssueBase(SQLModel):
-    category_id: UUID = Field(foreign_key="category.id")
+    category_id: Optional[UUID] = Field(
+        default=None,
+        foreign_key="category.id",
+        nullable=True,
+    )
     status: str = "REPORTED"
     # PostGIS point: SRID 4326 (WGS84)
     location: Any = Field(sa_column=Column(Geometry(geometry_type="POINT", srid=4326)))
@@ -142,7 +146,7 @@ class Issue(IssueBase, table=True):
     def category_name(self) -> str:
         return self.category.name if self.category else "Uncategorized"
 
-    category: Category = Relationship(back_populates="issues")
+    category: Optional[Category] = Relationship(back_populates="issues")
     reporter: User = Relationship(
         back_populates="reported_issues",
         sa_relationship_kwargs={"foreign_keys": "[Issue.reporter_id]"},

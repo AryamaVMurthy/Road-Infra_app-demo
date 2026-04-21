@@ -4,9 +4,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, select
 
-from app.api.deps import require_roles
+from app.api.deps import require_admin_user, require_roles
 from app.db.session import get_session
-from app.models.domain import Category, ReportIntakeSubmission, User
+from app.models.domain import Category, Issue, ReportIntakeSubmission, User
 from app.schemas.common import MessageResponse
 from app.schemas.system_admin import (
     AuthorityCreateRequest,
@@ -17,10 +17,16 @@ from app.schemas.system_admin import (
     ManualIssueCreateRequest,
     ManualIssueCreateResponse,
 )
-from app.schemas.issue import IntakeArchiveDetailRead, IntakeArchiveRead
+from app.schemas.issue import (
+    IntakeArchiveDetailRead,
+    IntakeArchiveRead,
+    IntakeSpamOverrideRequest,
+)
 from app.services.minio_client import minio_client
 from app.core.config import settings
 from app.services.system_admin_service import SystemAdminService
+from app.services.issue_service import IssueService
+from app.services.audit import AuditService
 
 router = APIRouter()
 require_sysadmin_user = require_roles("SYSADMIN")
@@ -237,11 +243,12 @@ def list_intake_archive(
     session: Session = Depends(get_session),
     current_user: User = Depends(require_sysadmin_user),
 ):
-    statement = (
-        select(ReportIntakeSubmission)
-        .where(ReportIntakeSubmission.status != "ACCEPTED")
-        .order_by(ReportIntakeSubmission.created_at.desc())
+    statement = select(ReportIntakeSubmission).where(
+        ReportIntakeSubmission.status.in_(
+            ["REJECTED_SPAM", "SYSTEM_ERROR", "ACCEPTED_UNCATEGORIZED", "OVERRIDDEN_TO_ACCEPTED"]
+        )
     )
+    statement = statement.order_by(ReportIntakeSubmission.created_at.desc())
     return session.exec(statement).all()
 
 
@@ -298,3 +305,68 @@ def get_intake_archive_image(
         raise HTTPException(
             status_code=500, detail="Failed to retrieve archived submission image"
         ) from exc
+
+
+@router.post(
+    "/intake-archive/{submission_id}/mark-not-spam",
+    response_model=MessageResponse,
+    summary="Override a spam decision and create an uncategorized issue",
+    description="Convert a spam-rejected intake submission into an uncategorized issue after manual admin review confirms it is a valid civic report.",
+)
+def mark_submission_not_spam(
+    submission_id: UUID,
+    data: IntakeSpamOverrideRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_sysadmin_user),
+):
+    submission = session.get(ReportIntakeSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=404, detail="Archive submission not found")
+    if submission.issue_id is not None:
+        raise HTTPException(status_code=409, detail="Archive submission is already linked to an issue")
+    if submission.status != "REJECTED_SPAM":
+        raise HTTPException(status_code=409, detail="Only spam-rejected submissions can be overridden")
+
+    issue = Issue(
+        category_id=None,
+        status="REPORTED",
+        location=IssueService.build_point_wkt(submission.lat, submission.lng),
+        address=submission.address,
+        reporter_id=submission.reporter_id,
+        org_id=submission.org_id,
+        priority="P3",
+        report_count=1,
+        intake_submission_id=submission.id,
+        classification_source=submission.classification_source,
+        classification_confidence=submission.selected_category_confidence,
+        classification_model_id=submission.model_id,
+        classification_model_quantization=submission.model_quantization,
+        classification_prompt_version=submission.prompt_version,
+        reporter_notes=submission.reporter_notes,
+    )
+    session.add(issue)
+    session.commit()
+    session.refresh(issue)
+
+    evidence = IssueService.build_evidence(
+        issue.id,
+        submission.reporter_id,
+        submission.file_path,
+        {},
+    )
+    submission.issue_id = issue.id
+    submission.status = "ACCEPTED_UNCATEGORIZED"
+    submission.reason_code = "OVERRIDDEN_NOT_SPAM"
+    session.add(evidence)
+    session.add(submission)
+    AuditService.log(
+        session,
+        "INTAKE_OVERRIDE_TO_ACCEPTED",
+        "INTAKE_SUBMISSION",
+        submission.id,
+        current_user.id,
+        "REJECTED_SPAM",
+        "ACCEPTED_UNCATEGORIZED",
+    )
+    session.commit()
+    return {"message": "Submission converted into an uncategorized issue"}

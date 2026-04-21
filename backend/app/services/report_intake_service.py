@@ -1,4 +1,4 @@
-"""Citizen report intake orchestration for VLM-backed classification."""
+"""Citizen report intake orchestration for AI-backed spam gating."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ class ReportIntakeService:
         if not active_categories:
             raise HTTPException(
                 status_code=500,
-                detail="No active issue types are configured for VLM classification",
+                detail="No active issue types are configured for spam gating",
             )
 
         exif_data = IssueService.extract_exif(normalized_photo)
@@ -120,17 +120,17 @@ class ReportIntakeService:
             classification=classification,
         )
 
-        if classification.decision != "ACCEPTED_CATEGORY_MATCH":
-            submission.status = "REJECTED"
-            submission.reason_code = "REJECTED"
+        if classification.decision == "REJECTED":
+            submission.status = "REJECTED_SPAM"
+            submission.reason_code = "SPAM_REJECTED"
             AuditService.log(
                 session,
-                "INTAKE_REJECTED",
+                "INTAKE_REJECTED_SPAM",
                 "INTAKE_SUBMISSION",
                 submission.id,
                 reporter.id,
                 None,
-                "REJECTED",
+                "REJECTED_SPAM",
             )
             session.add(submission)
             session.commit()
@@ -142,19 +142,14 @@ class ReportIntakeService:
                     submission_id=submission.id,
                 ),
             )
-
-        selected_category = next(
-            (category for category in active_categories if category.name == classification.category_name),
-            None,
-        )
-        if selected_category is None:
+        if classification.decision != "IN_SCOPE":
             submission.status = "SYSTEM_ERROR"
-            submission.reason_code = "UNKNOWN_CATEGORY_FROM_VLM"
+            submission.reason_code = "UNKNOWN_GATEWAY_DECISION"
             session.add(submission)
             session.commit()
             raise HTTPException(
                 status_code=503,
-                detail="VLM gateway returned a category that is not active in the backend",
+                detail="VLM gateway returned an unsupported spam-gating decision",
             )
 
         duplicate_issue = IssueService.find_duplicate_issue(session, point_wkt)
@@ -166,12 +161,12 @@ class ReportIntakeService:
                 file_path,
                 exif_data,
             )
-            submission.status = "ACCEPTED"
+            submission.status = "ACCEPTED_UNCATEGORIZED"
+            submission.reason_code = "IN_SCOPE"
             submission.issue_id = duplicate_issue.id
-            submission.selected_category_id = selected_category.id
             AuditService.log(
                 session,
-                "INTAKE_ACCEPTED",
+                "INTAKE_ACCEPTED_UNCATEGORIZED",
                 "INTAKE_SUBMISSION",
                 submission.id,
                 reporter.id,
@@ -190,19 +185,20 @@ class ReportIntakeService:
                     issue_id=duplicate_issue.id,
                     submission_id=submission.id,
                     category_id=duplicate_issue.category_id,
-                    category_name=duplicate_issue.category_name,
+                    category_name=duplicate_issue.category_name if duplicate_issue.category_id else None,
                     duplicate_merged=True,
+                    requires_admin_category_assignment=duplicate_issue.category_id is None,
                 ),
             )
 
         new_issue = Issue(
-            category_id=selected_category.id,
+            category_id=None,
             status="REPORTED",
             location=point_wkt,
             address=address,
             reporter_id=reporter.id,
             org_id=org_id,
-            priority=selected_category.default_priority,
+            priority="P3",
             report_count=1,
             intake_submission_id=submission.id,
             classification_source="vlm_gateway",
@@ -222,12 +218,12 @@ class ReportIntakeService:
             file_path,
             exif_data,
         )
-        submission.status = "ACCEPTED"
+        submission.status = "ACCEPTED_UNCATEGORIZED"
+        submission.reason_code = "IN_SCOPE"
         submission.issue_id = new_issue.id
-        submission.selected_category_id = selected_category.id
         AuditService.log(
             session,
-            "INTAKE_ACCEPTED",
+            "INTAKE_ACCEPTED_UNCATEGORIZED",
             "INTAKE_SUBMISSION",
             submission.id,
             reporter.id,
@@ -245,9 +241,10 @@ class ReportIntakeService:
                 message="Report submitted successfully",
                 issue_id=new_issue.id,
                 submission_id=submission.id,
-                category_id=selected_category.id,
-                category_name=selected_category.name,
+                category_id=None,
+                category_name=None,
                 duplicate_merged=False,
+                requires_admin_category_assignment=True,
             ),
         )
 
@@ -257,9 +254,10 @@ class ReportIntakeService:
         submission: ReportIntakeSubmission,
         classification: VLMClassificationResult,
     ) -> None:
-        submission.reason_code = "ACCEPTED" if classification.decision == "ACCEPTED_CATEGORY_MATCH" else "REJECTED"
-        submission.selected_category_name_snapshot = classification.category_name
-        submission.selected_category_confidence = classification.confidence
+        submission.reason_code = "IN_SCOPE" if classification.decision == "IN_SCOPE" else "SPAM_REJECTED"
+        submission.selected_category_id = None
+        submission.selected_category_name_snapshot = None
+        submission.selected_category_confidence = None
         submission.classification_source = "vlm_gateway"
         submission.model_id = classification.model_id
         submission.model_quantization = classification.model_quantization

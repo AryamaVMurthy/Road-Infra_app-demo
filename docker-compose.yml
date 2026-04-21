@@ -59,6 +59,11 @@ services:
     volumes:
       - .:/workspace
       - llama_hf_cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/health >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   backend:
     build: ./backend
@@ -74,7 +79,7 @@ services:
       SECRET_KEY: dev-secret-key-change-in-production
       DEV_MODE: "true"
       VLM_BASE_URL: http://vlm-gateway:8090
-      VLM_TIMEOUT_SECONDS: "95"
+      VLM_TIMEOUT_SECONDS: "240"
     depends_on:
       db:
         condition: service_healthy
@@ -103,8 +108,8 @@ services:
       LLAMA_SERVER_URL: http://llama-server:8081/v1/chat/completions
       VLM_MODEL_ID: LiquidAI/LFM2.5-VL-1.6B-GGUF
       VLM_MODEL_QUANTIZATION: Q8_0
-      LLAMA_TIMEOUT_SECONDS: "90"
-      VLM_RESULT_TIMEOUT_SECONDS: "95"
+      LLAMA_TIMEOUT_SECONDS: "180"
+      VLM_RESULT_TIMEOUT_SECONDS: "240"
       VLM_MAX_QUEUE_SIZE: "8"
     ports:
       - "8090:8090"

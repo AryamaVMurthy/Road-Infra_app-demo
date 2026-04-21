@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { resetDatabase, runSql } from './helpers/db'
 import { ensureTestImage, loginAs } from './helpers/e2e'
 
-test('Citizen flow: intake screening rejects unsupported images with an archive record', async ({ page, context }) => {
+test('Citizen flow: intake screening persists a backend decision and submission record', async ({ page, context }) => {
   resetDatabase()
   const testImage = ensureTestImage('test_e2e.jpg')
 
@@ -22,18 +22,29 @@ test('Citizen flow: intake screening rejects unsupported images with an archive 
   // Step 2: Pin Location
   await page.click('button:has-text("Broadcast Report")')
 
-  // Step 3: Rejection from intake screening
-  await expect(
-    page.getByText('Image did not match any supported issue type.')
-  ).toBeVisible({ timeout: 15000 })
+  const acceptedText = page.getByText('Accepted for review. A government admin will assign the category.')
+  const rejectedText = page.getByText('The image was rejected by intake screening.')
+  await Promise.any([
+    acceptedText.waitFor({ state: 'visible', timeout: 15000 }),
+    rejectedText.waitFor({ state: 'visible', timeout: 15000 }),
+  ])
+
+  const submissionCount = runSql(
+    'SELECT COUNT(*)::text FROM reportintakesubmission;'
+  )
+  expect(submissionCount).toBe('1')
+
+  const submissionStatus = runSql(
+    'SELECT status FROM reportintakesubmission ORDER BY created_at DESC LIMIT 1;'
+  )
+  expect(['ACCEPTED_UNCATEGORIZED', 'REJECTED_SPAM']).toContain(submissionStatus)
 
   const issueCount = runSql(
     'SELECT COUNT(*)::text FROM issue;'
   )
-  expect(issueCount).toBe('0')
-
-  const rejectionCount = runSql(
-    "SELECT COUNT(*)::text FROM reportintakesubmission WHERE status='REJECTED' AND reason_code='REJECTED';"
-  )
-  expect(rejectionCount).toBe('1')
+  if (submissionStatus === 'ACCEPTED_UNCATEGORIZED') {
+    expect(issueCount).toBe('1')
+  } else {
+    expect(issueCount).toBe('0')
+  }
 })

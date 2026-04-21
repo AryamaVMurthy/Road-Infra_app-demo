@@ -35,7 +35,11 @@ def test_live_gateway_returns_contract_valid_response(redis_url):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["decision"] in {"ACCEPTED_CATEGORY_MATCH", "REJECTED"}
+    assert body["decision"] in {"IN_SCOPE", "REJECTED"}
     assert body["model_id"] == "LiquidAI/LFM2.5-VL-1.6B-GGUF"
     assert body["prompt_version"] == "live-v1"
     assert isinstance(body["latency_ms"], int)
+    assert body["raw_evaluator_result"] == {
+        "status": "not_run",
+        "reason": "level1_only_classifier",
+    }

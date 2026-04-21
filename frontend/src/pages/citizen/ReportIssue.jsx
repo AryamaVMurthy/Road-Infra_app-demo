@@ -228,7 +228,7 @@ export default function ReportIssue() {
                 <div className="pt-10">
                     {submissionResult?.kind === 'accepted' ? (
                       <>
-                        <p className="text-slate-500 font-medium max-w-xs mx-auto">Assigned to {submissionResult.category_name}.</p>
+                        <p className="text-slate-500 font-medium max-w-xs mx-auto">Accepted for review. A government admin will assign the category.</p>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse mt-4">Redirecting to Dashboard...</p>
                       </>
                     ) : (

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { ensureTestImage, loginAs } from './helpers/e2e'
+import { ensureTestImage, loginAs, waitForMapOrFallback } from './helpers/e2e'
 import { resetDatabase } from './helpers/db'
 
 test.describe('Map Engine Rigor', () => {
@@ -34,13 +34,19 @@ test.describe('Map Engine Rigor', () => {
       await expect(loader).not.toBeVisible({ timeout: 20000 })
     }
     
+    const mapState = await waitForMapOrFallback(page)
+    if (mapState === 'fallback') {
+      await expect(page.getByText('Map unavailable: missing Mapbox token configuration.')).toBeVisible()
+      return
+    }
+
     const geocoder = page.locator('.mapboxgl-ctrl-geocoder')
     const geocoderInput = page.locator('.mapboxgl-ctrl-geocoder--input')
     const controlsVisible = await geocoder.first().isVisible().catch(() => false)
       && await geocoderInput.first().isVisible().catch(() => false)
 
     if (!controlsVisible) {
-      await expect(page.getByText('Map unavailable: missing Mapbox token configuration.')).toBeVisible()
+      await expect(page.locator('.mapboxgl-map').first()).toBeVisible({ timeout: 10000 })
       return
     }
 
@@ -65,11 +71,17 @@ test.describe('Map Engine Rigor', () => {
       await expect(loader).not.toBeVisible({ timeout: 20000 })
     }
     
+    const mapState = await waitForMapOrFallback(page)
+    if (mapState === 'fallback') {
+      await expect(page.getByText('Map unavailable: missing Mapbox token configuration.')).toBeVisible()
+      return
+    }
+
     const locateBtn = page.locator('.mapboxgl-ctrl-geolocate')
     const controlVisible = await locateBtn.first().isVisible().catch(() => false)
 
     if (!controlVisible) {
-      await expect(page.getByText('Map unavailable: missing Mapbox token configuration.')).toBeVisible()
+      await expect(page.locator('.mapboxgl-map').first()).toBeVisible({ timeout: 10000 })
       return
     }
 

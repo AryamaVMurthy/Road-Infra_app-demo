@@ -23,4 +23,4 @@ EXPOSE 8088
 
 USER appuser
 
-CMD ["sh", "-c", "python seed.py && uvicorn app.main:app --host 0.0.0.0 --port 8088 --workers 2 --access-log"]
+CMD ["python", "start_backend.py"]

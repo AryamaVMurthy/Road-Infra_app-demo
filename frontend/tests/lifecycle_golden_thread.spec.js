@@ -3,7 +3,6 @@ import { test, expect } from '@playwright/test';
 import { resetDatabase, runSql } from './helpers/db';
 import { ensureTestImage, loginAs } from './helpers/e2e';
 
-const CITIZEN_EMAIL = 'citizen@example.com';
 const ADMIN_EMAIL = 'admin@authority.gov.in';
 const WORKER_EMAIL = 'worker@authority.gov.in';
 

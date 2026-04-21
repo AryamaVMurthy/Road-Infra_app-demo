@@ -50,26 +50,12 @@ from app.models.domain import Otp, Organization, Zone
 def session_fixture():
     init_minio()
 
-    with test_engine.connect() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
-        conn.commit()
-    SQLModel.metadata.create_all(test_engine)
-
     with _truncate_engine.connect() as conn:
-        existing = {
-            row[0]
-            for row in conn.execute(
-                text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
-            ).fetchall()
-        }
-        tables = [
-            t.name
-            for t in reversed(SQLModel.metadata.sorted_tables)
-            if t.name in existing
-        ]
-        if tables:
-            names = ", ".join(f'"{t}"' for t in tables)
-            conn.execute(text(f"TRUNCATE {names} RESTART IDENTITY CASCADE;"))
+        conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE;"))
+        conn.execute(text("CREATE SCHEMA public;"))
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
+
+    SQLModel.metadata.create_all(test_engine)
 
     with Session(test_engine) as session:
         yield session
@@ -90,15 +76,14 @@ def override_app_db_dependency():
 def override_vlm_gateway_dependency():
     class DefaultTestVLMGatewayClient:
         def classify_intake(self, **kwargs):
-            category_name = sorted(kwargs["active_categories"])[0]
             return VLMClassificationResult(
-                decision="ACCEPTED_CATEGORY_MATCH",
-                category_name=category_name,
+                decision="IN_SCOPE",
+                category_name=None,
                 confidence=0.95,
                 model_id="test-vlm-gateway",
                 model_quantization="Q8_0",
                 prompt_version=kwargs["prompt_version"],
-                raw_primary_result={"decision": "ACCEPTED_CATEGORY_MATCH"},
+                raw_primary_result={"decision": "IN_SCOPE"},
                 raw_evaluator_result={"status": "pass"},
                 latency_ms=10,
             )

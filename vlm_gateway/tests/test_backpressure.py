@@ -26,13 +26,13 @@ def test_gateway_returns_overload_when_queue_is_full(redis_url):
     def slow_classifier(job):
         release.wait(timeout=5)
         return {
-            "decision": "ACCEPTED_CATEGORY_MATCH",
-            "category_name": "Pothole",
+            "decision": "IN_SCOPE",
+            "category_name": None,
             "confidence": 0.9,
             "model_id": "fake-model",
             "model_quantization": "Q8_0",
             "prompt_version": job["prompt_version"],
-            "raw_primary_result": {"decision": "ACCEPTED_CATEGORY_MATCH"},
+            "raw_primary_result": {"decision": "IN_SCOPE"},
             "raw_evaluator_result": {"status": "pass"},
             "latency_ms": 200,
         }

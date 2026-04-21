@@ -25,13 +25,13 @@ def _payload(submission_id: str) -> dict:
 def test_enqueue_request_roundtrip_returns_completed_result(redis_url):
     def fake_classifier(job):
         return {
-            "decision": "ACCEPTED_CATEGORY_MATCH",
-            "category_name": "Pothole",
+            "decision": "IN_SCOPE",
+            "category_name": None,
             "confidence": 0.91,
             "model_id": "fake-model",
             "model_quantization": "Q8_0",
             "prompt_version": job["prompt_version"],
-            "raw_primary_result": {"decision": "ACCEPTED_CATEGORY_MATCH"},
+            "raw_primary_result": {"decision": "IN_SCOPE"},
             "raw_evaluator_result": {"status": "pass"},
             "latency_ms": 12,
         }
@@ -42,8 +42,8 @@ def test_enqueue_request_roundtrip_returns_completed_result(redis_url):
         response = client.post("/internal/v1/intake/classify", json=_payload("sub-1"))
 
     assert response.status_code == 200
-    assert response.json()["decision"] == "ACCEPTED_CATEGORY_MATCH"
-    assert response.json()["category_name"] == "Pothole"
+    assert response.json()["decision"] == "IN_SCOPE"
+    assert response.json()["category_name"] is None
 
 
 def test_gateway_processes_requests_in_fifo_order(redis_url):
@@ -53,13 +53,13 @@ def test_gateway_processes_requests_in_fifo_order(redis_url):
         processed.append(job["submission_id"])
         time.sleep(0.1)
         return {
-            "decision": "ACCEPTED_CATEGORY_MATCH",
-            "category_name": "Pothole",
+            "decision": "IN_SCOPE",
+            "category_name": None,
             "confidence": 0.95,
             "model_id": "fake-model",
             "model_quantization": "Q8_0",
             "prompt_version": job["prompt_version"],
-            "raw_primary_result": {"decision": "ACCEPTED_CATEGORY_MATCH"},
+            "raw_primary_result": {"decision": "IN_SCOPE"},
             "raw_evaluator_result": {"status": "pass"},
             "latency_ms": 20,
         }

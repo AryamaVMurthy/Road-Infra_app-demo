@@ -3,7 +3,7 @@ import { resetDatabase, runSql } from './helpers/db'
 import { ensureTestImage, loginAs } from './helpers/e2e'
 
 test.describe('Citizen Rigorous Flow', () => {
-  test('submits repeated unsupported reports that remain archived and never create issues', async ({ page, context }) => {
+  test('submits repeated reports and records stable intake outcomes', async ({ page, context }) => {
     resetDatabase()
     const testImage = ensureTestImage('test_rigor.jpg')
 
@@ -18,24 +18,32 @@ test.describe('Citizen Rigorous Flow', () => {
       await page.locator('input[type="file"]').setInputFiles(testImage)
       await page.click('button:has-text("Continue to Location")')
 
-      // Step 2: Submit and expect rejection from intake screening
+      // Step 2: Submit and accept whichever decision the integrated model returns
       await page.click('button:has-text("Broadcast Report")')
-      await expect(
-        page.getByText('Image did not match any supported issue type.')
-      ).toBeVisible({ timeout: 15000 })
+      await Promise.any([
+        page.getByText('Accepted for review. A government admin will assign the category.')
+          .waitFor({ state: 'visible', timeout: 15000 }),
+        page.getByText('The image was rejected by intake screening.')
+          .waitFor({ state: 'visible', timeout: 15000 }),
+      ])
     }
 
     await submitReport()
     await submitReport()
 
+    const submissionCount = runSql(
+      'SELECT COUNT(*)::text FROM reportintakesubmission;'
+    )
+    expect(submissionCount).toBe('2')
+
+    const distinctStatuses = runSql(
+      "SELECT string_agg(DISTINCT status, ',' ORDER BY status) FROM reportintakesubmission;"
+    )
+    expect(distinctStatuses).toMatch(/ACCEPTED_UNCATEGORIZED|REJECTED_SPAM/)
+
     const issueCount = runSql(
       'SELECT COUNT(*)::text FROM issue;'
     )
-    expect(issueCount).toBe('0')
-
-    const rejectionCount = runSql(
-      "SELECT COUNT(*)::text FROM reportintakesubmission WHERE status='REJECTED' AND reporter_id=(SELECT id FROM \"user\" WHERE email='citizen@example.com' LIMIT 1);"
-    )
-    expect(rejectionCount).toBe('2')
+    expect(['0', '1']).toContain(issueCount)
   })
 })

@@ -18,7 +18,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from vlm_gateway.app.parser import parse_llama_chat_response
-from vlm_gateway.app.prompts import build_primary_classification_request
+from vlm_gateway.app.prompts import (
+    build_primary_classification_request,
+    load_dspy_level1_prompt_source,
+)
 
 
 def main() -> int:
@@ -33,6 +36,13 @@ def main() -> int:
         default=str(PROJECT_ROOT / "test_e2e.jpg"),
         help="local image path for the smoke test",
     )
+    parser.add_argument(
+        "--program-path",
+        default=str(
+            PROJECT_ROOT / "artifacts" / "models" / "intake_dspy" / "level1" / "gepa" / "program"
+        ),
+        help="compiled DSPy level 1 program directory used as the prompt source",
+    )
     args = parser.parse_args()
 
     image_path = Path(args.image)
@@ -40,18 +50,21 @@ def main() -> int:
     image_data_url = (
         "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("ascii")
     )
+    prompt_source = load_dspy_level1_prompt_source(Path(args.program_path))
 
     payload = build_primary_classification_request(
         image_data_url=image_data_url,
         reporter_notes="Smoke-test classification for a likely road issue image.",
         active_categories={
-            "Pothole": "Road-surface collapse or cavity in drivable area",
-            "Drainage": "Blocked drain, standing water, or overflow",
+            "pothole": "Broken or missing road surface forming a visible hole or cavity.",
+            "damaged_road": "Cracked, eroded, or broken road surface without a discrete pothole cavity.",
+            "damaged_road_sign": "Missing, broken, bent, or unreadable roadside sign infrastructure.",
+            "garbage_litter": "Visible dumped waste or litter accumulation in public roadside space.",
         },
-        prompt_version="smoke-v1",
+        prompt_source=prompt_source,
     )
     payload["model"] = "LiquidAI/LFM2.5-VL-1.6B-GGUF"
-    payload["max_tokens"] = 256
+    payload["max_tokens"] = 160
 
     request = urllib.request.Request(
         args.url,
@@ -69,7 +82,12 @@ def main() -> int:
 
     parsed = parse_llama_chat_response(
         payload=json.loads(raw_body),
-        allowed_categories={"Pothole", "Drainage"},
+        allowed_categories={
+            "pothole",
+            "damaged_road",
+            "damaged_road_sign",
+            "garbage_litter",
+        },
         prompt_version="smoke-v1",
     )
     print(json.dumps(dataclasses.asdict(parsed), indent=2, sort_keys=True))

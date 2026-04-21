@@ -50,7 +50,7 @@ export const IssueReviewModal = ({ issue, issueTypes = [], onClose, onApprove, o
                 Infrastructure Intelligence Console
               </h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                Incident Ticket #{issue.id.slice(0,8)} • Category: {issue.category_name}
+                Incident Ticket #{issue.id.slice(0,8)} • Category: {issue.category_name || 'Uncategorized'}
                 {issue.eta_date && (
                   <span className="ml-4 text-amber-600">• ETA: {new Date(issue.eta_date).toLocaleDateString()}</span>
                 )}
@@ -95,40 +95,39 @@ export const IssueReviewModal = ({ issue, issueTypes = [], onClose, onApprove, o
 
           <div className="px-6 sm:px-10 py-6 bg-white border-t space-y-4">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Classification</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Assignment</p>
               <p className="text-sm font-bold text-slate-800 mt-1">
-                {issue.category_name}
-                {issue.classification_confidence != null && ` • ${Math.round(issue.classification_confidence * 100)}% confidence`}
+                {issue.category_name || 'Uncategorized'}
               </p>
               <p className="text-xs text-slate-500 mt-1">
-                {issue.classification_model_id || 'No model metadata'}
-                {issue.classification_prompt_version && ` • prompt ${issue.classification_prompt_version}`}
+                AI only screened this report for spam. Final category is assigned by a government admin.
               </p>
             </div>
 
             {onReclassify && issueTypes.length > 0 && (
               <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto] items-end">
                 <label className="text-xs font-bold text-slate-600">
-                  Reclassify Category
+                  Assign Category
                   <select
-                    aria-label="Reclassify Category"
+                    aria-label="Assign Category"
                     className="mt-1 w-full p-3 rounded-xl border border-slate-200 bg-white"
                     value={nextCategoryId}
                     onChange={(e) => setNextCategoryId(e.target.value)}
                   >
+                    {!issue.category_id && <option value="">Select a category</option>}
                     {issueTypes.map((type) => (
                       <option key={type.id} value={type.id}>{type.name}</option>
                     ))}
                   </select>
                 </label>
                 <label className="text-xs font-bold text-slate-600">
-                  Reclassification Reason
+                  Assignment Reason
                   <input
-                    aria-label="Reclassification Reason"
+                    aria-label="Assignment Reason"
                     className="mt-1 w-full p-3 rounded-xl border border-slate-200 bg-white"
                     value={reclassifyReason}
                     onChange={(e) => setReclassifyReason(e.target.value)}
-                    placeholder="Explain the override"
+                    placeholder="Explain the category decision"
                   />
                 </label>
                 <button
@@ -136,7 +135,7 @@ export const IssueReviewModal = ({ issue, issueTypes = [], onClose, onApprove, o
                   className="px-5 py-3 bg-slate-900 text-white rounded-xl font-bold"
                   disabled={!nextCategoryId || !reclassifyReason.trim()}
                 >
-                  Save Reclassification
+                  Save Category
                 </button>
               </div>
             )}

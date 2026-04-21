@@ -24,7 +24,7 @@ def create_app(
     redis_url: str,
     classifier: Classifier,
     max_queue_size: int = 8,
-    result_timeout_seconds: int = 25,
+    result_timeout_seconds: int = 240,
 ) -> FastAPI:
     queue = RedisJobQueue(redis_url=redis_url, max_queue_size=max_queue_size)
     stop_event = threading.Event()

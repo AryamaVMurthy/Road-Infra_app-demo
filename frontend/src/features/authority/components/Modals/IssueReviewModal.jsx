@@ -11,7 +11,7 @@ import { API_URL } from '../../../../services/api'
  * - Before/after photo comparison
  * - Issue details display
  * - Approve/Reject actions for resolved issues
- * - Rejection reason input
+ * - Optional category assignment for uncategorized issues
  * 
  * @param {Object} issue - Issue data to review
  * @param {Function} onClose - Close modal callback
@@ -23,7 +23,6 @@ export const IssueReviewModal = ({ issue, issueTypes = [], onClose, onApprove, o
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [nextCategoryId, setNextCategoryId] = useState(issue?.category_id || '')
-  const [reclassifyReason, setReclassifyReason] = useState('')
 
   if (!issue) return null
 
@@ -105,7 +104,7 @@ export const IssueReviewModal = ({ issue, issueTypes = [], onClose, onApprove, o
             </div>
 
             {onReclassify && issueTypes.length > 0 && (
-              <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto] items-end">
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] items-end">
                 <label className="text-xs font-bold text-slate-600">
                   Assign Category
                   <select
@@ -120,20 +119,10 @@ export const IssueReviewModal = ({ issue, issueTypes = [], onClose, onApprove, o
                     ))}
                   </select>
                 </label>
-                <label className="text-xs font-bold text-slate-600">
-                  Assignment Reason
-                  <input
-                    aria-label="Assignment Reason"
-                    className="mt-1 w-full p-3 rounded-xl border border-slate-200 bg-white"
-                    value={reclassifyReason}
-                    onChange={(e) => setReclassifyReason(e.target.value)}
-                    placeholder="Explain the category decision"
-                  />
-                </label>
                 <button
-                  onClick={() => onReclassify(issue.id, nextCategoryId, reclassifyReason)}
+                  onClick={() => onReclassify(issue.id, nextCategoryId)}
                   className="px-5 py-3 bg-slate-900 text-white rounded-xl font-bold"
-                  disabled={!nextCategoryId || !reclassifyReason.trim()}
+                  disabled={!nextCategoryId}
                 >
                   Save Category
                 </button>

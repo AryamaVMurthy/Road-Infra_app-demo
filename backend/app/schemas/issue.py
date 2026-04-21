@@ -46,7 +46,7 @@ class IssueReportRejectedResponse(BaseModel):
 
 class IssueCategoryAssignmentRequest(BaseModel):
     category_id: UUID
-    reason: str
+    reason: Optional[str] = None
 
 
 class IntakeSpamOverrideRequest(BaseModel):

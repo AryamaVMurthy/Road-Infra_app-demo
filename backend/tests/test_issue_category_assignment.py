@@ -47,7 +47,7 @@ def test_admin_can_assign_category_to_uncategorized_issue(client, session):
 
     response = client.post(
         f"/api/v1/admin/issues/{issue.id}/assign-category",
-        json={"category_id": str(drainage.id), "reason": "Field triage reviewed the issue"},
+        json={"category_id": str(drainage.id)},
     )
 
     assert response.status_code == 200
@@ -72,7 +72,7 @@ def test_sysadmin_can_reassign_existing_category_and_audit_it(client, session):
     login_via_otp(client, session, sysadmin.email)
     response = client.post(
         f"/api/v1/admin/issues/{issue.id}/assign-category",
-        json={"category_id": str(drainage.id), "reason": "Override after review"},
+        json={"category_id": str(drainage.id)},
     )
 
     assert response.status_code == 200
@@ -94,7 +94,7 @@ def test_citizen_and_worker_cannot_assign_issue_category(client, session):
     login_via_otp(client, session, citizen.email)
     citizen_response = client.post(
         f"/api/v1/admin/issues/{issue.id}/assign-category",
-        json={"category_id": str(drainage.id), "reason": "Override"},
+        json={"category_id": str(drainage.id)},
     )
     assert citizen_response.status_code == 403
 
@@ -102,6 +102,6 @@ def test_citizen_and_worker_cannot_assign_issue_category(client, session):
     login_via_otp(client, session, worker.email)
     worker_response = client.post(
         f"/api/v1/admin/issues/{issue.id}/assign-category",
-        json={"category_id": str(drainage.id), "reason": "Override"},
+        json={"category_id": str(drainage.id)},
     )
     assert worker_response.status_code == 403

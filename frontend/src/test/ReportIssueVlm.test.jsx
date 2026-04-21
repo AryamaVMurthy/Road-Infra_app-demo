@@ -67,7 +67,7 @@ describe('ReportIssue VLM flow', () => {
     )
   })
 
-  it('shows generic rejection message when intake screening rejects the image', async () => {
+  it('shows a dedicated prominent rejection state when intake screening rejects the image', async () => {
     postMock.mockRejectedValue({
       response: {
         status: 422,
@@ -88,8 +88,10 @@ describe('ReportIssue VLM flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /continue to location/i }))
     fireEvent.click(await screen.findByRole('button', { name: /broadcast report/i }))
 
-    await waitFor(() =>
-      expect(screen.getByText(/rejected by intake screening/i)).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByText(/report rejected/i)).toBeInTheDocument())
+
+    expect(screen.queryByText(/successfully logged/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/intake screening blocked this submission/i)).toBeInTheDocument()
+    expect(screen.getByText(/try again with a clearer photo of a real civic issue/i)).toBeInTheDocument()
   })
 })

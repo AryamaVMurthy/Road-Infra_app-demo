@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../../services/api'
 import { 
     Camera, Send, ArrowLeft, Loader2,
-    ShieldCheck, X, CheckCircle2
+    ShieldCheck, X, CheckCircle2, TriangleAlert
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/utils'
@@ -67,6 +67,8 @@ export default function ReportIssue() {
       setSubmitting(false)
     }
   }
+
+  const isRejectedSubmission = submissionResult?.kind === 'rejected'
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans">
@@ -218,23 +220,45 @@ export default function ReportIssue() {
               animate={{ opacity: 1, scale: 1 }}
               className="py-20 flex flex-col items-center text-center space-y-8"
             >
-                <div className="w-32 h-32 bg-emerald-50 rounded-[3rem] flex items-center justify-center text-emerald-500 shadow-inner">
-                    <CheckCircle2 size={64} className="animate-bounce" />
-                </div>
-                <div className="space-y-3">
-                    <h2 className="text-4xl font-black text-slate-900">Successfully Logged</h2>
-                    <p className="text-slate-500 font-medium max-w-xs mx-auto">Your report has been received by the central dispatch system.</p>
-                </div>
-                <div className="pt-10">
-                    {submissionResult?.kind === 'accepted' ? (
-                      <>
-                        <p className="text-slate-500 font-medium max-w-xs mx-auto">Accepted for review. A government admin will assign the category.</p>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse mt-4">Redirecting to Dashboard...</p>
-                      </>
-                    ) : (
-                      <p className="text-slate-500 font-medium max-w-xs mx-auto">The image was rejected by intake screening.</p>
-                    )}
-                </div>
+                {isRejectedSubmission ? (
+                  <div className="w-full max-w-xl rounded-[2.5rem] border border-red-200 bg-[radial-gradient(circle_at_top,_rgba(254,202,202,0.7),_rgba(255,255,255,1)_58%)] px-8 py-10 shadow-[0_28px_80px_rgba(153,27,27,0.16)]">
+                    <div className="mx-auto flex w-fit items-center gap-3 rounded-full border border-red-200 bg-red-50 px-5 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-red-700">
+                      <span className="h-2.5 w-2.5 rounded-full bg-red-600 shadow-[0_0_18px_rgba(220,38,38,0.75)]"></span>
+                      Screening Blocked
+                    </div>
+                    <div className="mt-8 flex flex-col items-center space-y-6">
+                      <div className="flex h-32 w-32 items-center justify-center rounded-[3rem] border border-red-200 bg-gradient-to-br from-red-50 via-red-100 to-rose-200 text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_24px_50px_rgba(220,38,38,0.16)]">
+                        <TriangleAlert size={68} className="drop-shadow-[0_10px_24px_rgba(153,27,27,0.28)]" />
+                      </div>
+                      <div className="space-y-3">
+                        <h2 className="text-4xl font-black text-red-950">Report Rejected</h2>
+                        <p className="mx-auto max-w-md text-base font-semibold leading-7 text-red-900">
+                          Intake screening blocked this submission before it entered the civic issue workflow.
+                        </p>
+                      </div>
+                      <div className="w-full rounded-[2rem] border border-red-200/80 bg-white/80 px-6 py-5 text-left shadow-inner">
+                        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-600">Next step</p>
+                        <p className="mt-3 text-sm font-medium leading-6 text-slate-700">
+                          Try again with a clearer photo of a real civic issue. Avoid unrelated, obstructed, or low-information images.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-32 h-32 bg-emerald-50 rounded-[3rem] flex items-center justify-center text-emerald-500 shadow-inner">
+                        <CheckCircle2 size={64} className="animate-bounce" />
+                    </div>
+                    <div className="space-y-3">
+                        <h2 className="text-4xl font-black text-slate-900">Successfully Logged</h2>
+                        <p className="text-slate-500 font-medium max-w-xs mx-auto">Your report has been received by the central dispatch system.</p>
+                    </div>
+                    <div className="pt-10">
+                      <p className="text-slate-500 font-medium max-w-xs mx-auto">Accepted for review. A government admin will assign the category.</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse mt-4">Redirecting to Dashboard...</p>
+                    </div>
+                  </>
+                )}
             </motion.div>
           )}
         </AnimatePresence>

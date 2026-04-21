@@ -8,6 +8,7 @@ from sqlmodel import Session, col, func, select
 
 from app.models.domain import Issue, User
 from app.core.time import utc_now
+from app.services.public_analytics_service import PublicAnalyticsService
 
 
 class AdminAnalyticsService:
@@ -229,3 +230,21 @@ class AdminAnalyticsService:
             "in_progress": session.exec(in_progress_stmt).one(),
             "resolved": session.exec(resolved_stmt).one(),
         }
+
+    @staticmethod
+    def get_heatmap_data(
+        session: Session, org_id: Optional[UUID] = None
+    ) -> List[Dict[str, Any]]:
+        return PublicAnalyticsService.get_heatmap_data(session, org_id=org_id)
+
+    @staticmethod
+    def get_map_issues(
+        session: Session, org_id: Optional[UUID] = None
+    ) -> List[Dict[str, Any]]:
+        return PublicAnalyticsService.get_public_issues(session, org_id=org_id)
+
+    @staticmethod
+    def get_global_stats(
+        session: Session, org_id: Optional[UUID] = None
+    ) -> Dict[str, Any]:
+        return PublicAnalyticsService.get_global_stats(session, org_id=org_id)

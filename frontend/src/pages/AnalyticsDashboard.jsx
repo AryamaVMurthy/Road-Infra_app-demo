@@ -17,6 +17,7 @@ import { MapboxHeatmap } from '../components/MapboxHeatmap'
 import { IssueMarkersLayer } from '../components/IssueMarkersLayer'
 import { useGeolocation, DEFAULT_CENTER } from '../hooks/useGeolocation'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
+import { useAuth } from '../hooks/useAuth'
 
 const StatBox = ({ label, value, trend, icon: Icon, colorClass }) => (
     <motion.div 
@@ -40,6 +41,7 @@ const StatBox = ({ label, value, trend, icon: Icon, colorClass }) => (
 )
 
 export default function AnalyticsDashboard() {
+  const { user } = useAuth()
   const [data, setData] = useState(null)
   const [heatmapData, setHeatmapData] = useState([])
   const [issues, setIssues] = useState([])
@@ -50,6 +52,7 @@ export default function AnalyticsDashboard() {
 
   const { position: geoPosition } = useGeolocation()
   const userLocation = geoPosition ? [geoPosition.lat, geoPosition.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]
+  const useAdminScopedAnalytics = user?.role === 'ADMIN' || user?.role === 'SYSADMIN'
 
   const fetchAnalytics = useCallback(async ({ showLoader = false } = {}) => {
     if (showLoader) {
@@ -57,10 +60,13 @@ export default function AnalyticsDashboard() {
     }
 
     try {
+      const statsUrl = useAdminScopedAnalytics ? '/admin/stats' : '/analytics/stats'
+      const heatmapUrl = useAdminScopedAnalytics ? '/admin/heatmap' : '/analytics/heatmap'
+      const issuesUrl = useAdminScopedAnalytics ? '/admin/issues-map' : '/analytics/issues-public'
       const [statsRes, heatRes, issuesRes] = await Promise.all([
-        api.get('/analytics/stats'),
-        api.get('/analytics/heatmap'),
-        api.get('/analytics/issues-public')
+        api.get(statsUrl),
+        api.get(heatmapUrl),
+        api.get(issuesUrl)
       ])
       setData(statsRes.data)
       setHeatmapData(heatRes.data)
@@ -73,7 +79,7 @@ export default function AnalyticsDashboard() {
         setLoading(false)
       }
     }
-  }, [])
+  }, [useAdminScopedAnalytics])
 
   useEffect(() => {
     fetchAnalytics({ showLoader: true })

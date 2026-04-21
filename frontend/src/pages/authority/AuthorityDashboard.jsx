@@ -59,7 +59,7 @@ export default function AuthorityDashboard() {
       const [issuesRes, workersRes, heatRes, analyticsRes, issueTypesRes] = await Promise.all([
       api.get('/admin/issues'), 
       api.get('/admin/workers-with-stats'),
-      api.get('/analytics/heatmap'),
+      api.get('/admin/heatmap'),
       api.get('/admin/worker-analytics'),
       api.get('/categories'),
       ])
@@ -124,11 +124,11 @@ export default function AuthorityDashboard() {
     setSubmitting(false)
   }
 
-  const handleReclassify = async (issueId, categoryId, reason) => {
-    if (!categoryId || !reason) return
+  const handleReclassify = async (issueId, categoryId) => {
+    if (!categoryId) return
     setSubmitting(true)
     try {
-      await adminService.assignIssueCategory(issueId, categoryId, reason)
+      await adminService.assignIssueCategory(issueId, categoryId)
       setReviewIssue(null)
       fetchData()
     } catch (e) {
